@@ -49,7 +49,7 @@ export default async function MemberLayout({
       )}
 
       {/* Main content */}
-      <main className={paymentStatus?.status === 'GRACE_PERIOD' || paymentStatus?.status === 'OVERRIDE' ? 'pt-20' : ''}>
+      <main className={`pt-16 ${paymentStatus?.status === 'GRACE_PERIOD' || paymentStatus?.status === 'OVERRIDE' ? 'pt-[144px]' : ''}`}>
         {children}
       </main>
     </div>
