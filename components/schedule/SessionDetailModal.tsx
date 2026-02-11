@@ -7,10 +7,11 @@
  * Tabs: Workout, Members, Voting
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Session, RecurringSlot, User } from '@prisma/client';
 import { WorkoutEditor } from './WorkoutEditor';
 import { VoteSummary } from './VoteSummary';
+import { MAX_CLASS_SIZE } from '@/lib/constants';
 
 type SessionWithDetails = Session & {
   recurringSlot: RecurringSlot;
@@ -27,6 +28,15 @@ interface SessionDetailModalProps {
 
 export function SessionDetailModal({ session, onClose, onUpdate }: SessionDetailModalProps) {
   const [activeTab, setActiveTab] = useState<'workout' | 'members' | 'voting'>('workout');
+
+  // Close modal on Escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
 
   // Format session time
   const sessionTime = new Date();
@@ -116,7 +126,7 @@ export function SessionDetailModal({ session, onClose, onUpdate }: SessionDetail
           {activeTab === 'members' && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-surface-100">
-                Assigned Members ({session.members.length}/20)
+                Assigned Members ({session.members.length}/{MAX_CLASS_SIZE})
               </h3>
               {session.members.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

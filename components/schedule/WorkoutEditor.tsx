@@ -9,6 +9,7 @@
 
 import { useState } from 'react';
 import { Session } from '@prisma/client';
+import { MAX_WORKOUT_TITLE_LENGTH, MAX_WORKOUT_DETAILS_LENGTH } from '@/lib/constants';
 
 interface WorkoutEditorProps {
   session: Pick<Session, 'id' | 'workoutTitle' | 'workoutDetails'>;
@@ -18,11 +19,27 @@ interface WorkoutEditorProps {
 export function WorkoutEditor({ session, onUpdate }: WorkoutEditorProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState(session.workoutTitle || '');
   const [details, setDetails] = useState(session.workoutDetails || '');
 
   const handleSave = async () => {
     setIsSaving(true);
+    setError(null);
+
+    // Validate
+    if (title.length > MAX_WORKOUT_TITLE_LENGTH) {
+      setError(`Workout title is too long (max ${MAX_WORKOUT_TITLE_LENGTH} characters)`);
+      setIsSaving(false);
+      return;
+    }
+
+    if (details.length > MAX_WORKOUT_DETAILS_LENGTH) {
+      setError(`Workout details are too long (max ${MAX_WORKOUT_DETAILS_LENGTH} characters)`);
+      setIsSaving(false);
+      return;
+    }
+
     try {
       const response = await fetch(`/api/sessions/${session.id}`, {
         method: 'PATCH',
@@ -37,8 +54,8 @@ export function WorkoutEditor({ session, onUpdate }: WorkoutEditorProps) {
 
       setIsEditing(false);
       onUpdate();
-    } catch (error) {
-      alert(error instanceof Error ? error.message : 'Failed to save workout');
+    } catch (err) {
+      setError('Failed to save workout. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -81,27 +98,39 @@ export function WorkoutEditor({ session, onUpdate }: WorkoutEditorProps) {
     <div className="space-y-4">
       <h3 className="text-lg font-semibold text-surface-100">Edit Workout</h3>
 
+      {error && (
+        <div role="alert" className="p-4 bg-error/20 border border-error/50 rounded-lg text-error text-sm">
+          {error}
+        </div>
+      )}
+
       <div>
-        <label className="block text-sm font-medium text-surface-300 mb-2">Workout Title</label>
+        <label htmlFor="workout-title" className="block text-sm font-medium text-surface-300 mb-2">
+          Workout Title
+        </label>
         <input
+          id="workout-title"
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="e.g., Upper Body Strength"
+          maxLength={MAX_WORKOUT_TITLE_LENGTH}
           className="w-full px-4 py-2 bg-surface-800 border border-surface-700 rounded-lg text-surface-100 focus:outline-none focus:ring-2 focus:ring-primary"
           disabled={isSaving}
         />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-surface-300 mb-2">
+        <label htmlFor="workout-details" className="block text-sm font-medium text-surface-300 mb-2">
           Workout Details
         </label>
         <textarea
+          id="workout-details"
           value={details}
           onChange={(e) => setDetails(e.target.value)}
           rows={8}
           placeholder="Describe the workout..."
+          maxLength={MAX_WORKOUT_DETAILS_LENGTH}
           className="w-full px-4 py-2 bg-surface-800 border border-surface-700 rounded-lg text-surface-100 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
           disabled={isSaving}
         />
