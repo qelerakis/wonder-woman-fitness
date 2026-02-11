@@ -62,6 +62,8 @@ export const ALLOWED_PHOTO_FORMATS = ['image/jpeg', 'image/png'] as const;
 export const PROFILE_PHOTO_SIZE = 400; // 400x400 square
 
 // ===== TEXT FIELD LIMITS =====
+export const MAX_NAME_LENGTH = 100;
+export const MAX_PHONE_LENGTH = 20;
 export const MAX_DEPART_REASON_LENGTH = 500;
 export const MAX_PRIVATE_SESSION_NOTES_LENGTH = 500;
 export const MAX_PRIVATE_SESSION_EXERCISE_LENGTH = 1000;

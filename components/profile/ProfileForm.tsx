@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { MemberUpdateSchema } from '@/types';
 
 interface ProfileFormProps {
   member: {
@@ -19,6 +20,13 @@ export function ProfileForm({ member }: ProfileFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  useEffect(() => {
+    if (success) {
+      const timer = setTimeout(() => setSuccess(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [success]);
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -26,10 +34,19 @@ export function ProfileForm({ member }: ProfileFormProps) {
     setSuccess(false);
 
     const formData = new FormData(e.currentTarget);
-    const data = {
+    const rawData = {
       name: formData.get('name') as string,
       phone: formData.get('phone') as string,
     };
+
+    const result = MemberUpdateSchema.safeParse(rawData);
+    if (!result.success) {
+      setError(result.error.issues[0].message);
+      setIsSubmitting(false);
+      return;
+    }
+
+    const data = result.data;
 
     try {
       const response = await fetch(`/api/members/${member.id}`, {
@@ -56,14 +73,14 @@ export function ProfileForm({ member }: ProfileFormProps) {
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Success message */}
       {success && (
-        <div className="p-4 bg-success/20 border border-success/50 rounded-lg text-success text-sm">
+        <div role="status" className="p-4 bg-success/20 border border-success/50 rounded-lg text-success text-sm">
           Profile updated successfully!
         </div>
       )}
 
       {/* Error message */}
       {error && (
-        <div className="p-4 bg-error/20 border border-error/50 rounded-lg text-error text-sm">
+        <div role="alert" className="p-4 bg-error/20 border border-error/50 rounded-lg text-error text-sm">
           {error}
         </div>
       )}
@@ -79,6 +96,7 @@ export function ProfileForm({ member }: ProfileFormProps) {
           name="name"
           defaultValue={member.name}
           required
+          maxLength={100}
           className="w-full px-4 py-2 bg-surface border border-gray-700 rounded-lg text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary"
         />
       </div>
@@ -94,6 +112,7 @@ export function ProfileForm({ member }: ProfileFormProps) {
           name="phone"
           defaultValue={member.phone}
           required
+          maxLength={20}
           className="w-full px-4 py-2 bg-surface border border-gray-700 rounded-lg text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary"
         />
       </div>
