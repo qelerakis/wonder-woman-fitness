@@ -29,10 +29,8 @@ interface SessionDetailClientProps {
 export function SessionDetailClient({
   sessionData,
   isMember,
-  userId,
 }: SessionDetailClientProps) {
   const router = useRouter();
-  const [isVoting, setIsVoting] = useState(false);
 
   // Calculate session date and time for display
   const sessionDate = addDays(sessionData.weekDate, sessionData.recurringSlot.dayOfWeek - 1);
@@ -41,7 +39,6 @@ export function SessionDetailClient({
   const formattedTime = format(sessionDateTime, 'h:mm a');
 
   const handleVote = async (attending: boolean) => {
-    setIsVoting(true);
     try {
       const response = await fetch('/api/votes', {
         method: 'POST',
@@ -65,8 +62,6 @@ export function SessionDetailClient({
     } catch (error) {
       console.error('Vote error:', error);
       alert('Failed to record vote. Please try again.');
-    } finally {
-      setIsVoting(false);
     }
   };
 

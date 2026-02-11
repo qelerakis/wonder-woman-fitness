@@ -10,7 +10,6 @@ import { Session, RecurringSlot, User } from '@prisma/client';
 import { WeeklyCalendar } from '@/components/schedule/WeeklyCalendar';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { addDays } from 'date-fns';
 
 type SessionWithDetails = Session & {
   recurringSlot: RecurringSlot;
@@ -24,7 +23,7 @@ interface ScheduleClientProps {
   userId: string;
 }
 
-export function ScheduleClient({ sessions, weekStart, userId }: ScheduleClientProps) {
+export function ScheduleClient({ sessions, weekStart }: ScheduleClientProps) {
   const router = useRouter();
 
   const handleSessionClick = (session: SessionWithDetails) => {
