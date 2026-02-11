@@ -58,7 +58,6 @@ export default async function MemberSessionDetailPage({
     <SessionDetailClient
       sessionData={sessionData}
       isMember={isMember}
-      userId={session.user.id}
     />
   );
 }

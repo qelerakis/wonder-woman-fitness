@@ -19,7 +19,7 @@ interface SearchParams {
 export default async function MemberSchedulePage({
   searchParams,
 }: {
-  searchParams: SearchParams;
+  searchParams: Promise<SearchParams>;
 }) {
   // 1. Verify authentication and role
   const session = await auth();
@@ -32,7 +32,8 @@ export default async function MemberSchedulePage({
   }
 
   // 2. Get current week or week from query param
-  const weekParam = searchParams.week;
+  const resolvedParams = await searchParams;
+  const weekParam = resolvedParams.week;
   const targetDate = weekParam ? new Date(weekParam) : new Date();
   const weekStart = getWeekStart(targetDate);
 
@@ -43,7 +44,6 @@ export default async function MemberSchedulePage({
     <ScheduleClient
       sessions={sessions}
       weekStart={weekStart}
-      userId={session.user.id}
     />
   );
 }

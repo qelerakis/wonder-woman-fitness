@@ -23,7 +23,6 @@ type SessionWithDetails = Session & {
 interface SessionDetailClientProps {
   sessionData: SessionWithDetails;
   isMember: boolean;
-  userId: string;
 }
 
 export function SessionDetailClient({

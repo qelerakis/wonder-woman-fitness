@@ -20,7 +20,6 @@ type SessionWithDetails = Session & {
 interface ScheduleClientProps {
   sessions: SessionWithDetails[];
   weekStart: Date;
-  userId: string;
 }
 
 export function ScheduleClient({ sessions, weekStart }: ScheduleClientProps) {
