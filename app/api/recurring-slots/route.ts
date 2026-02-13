@@ -10,6 +10,9 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { RecurringSlotSchema } from "@/types";
 import { z } from "zod";
+import { getWeekStart } from "@/lib/session-generation";
+import { dispatchNotificationToMany } from "@/lib/notifications";
+import { DAY_NAMES } from "@/lib/constants";
 
 export async function GET(): Promise<Response> {
   try {
@@ -94,6 +97,7 @@ export async function POST(req: Request): Promise<Response> {
 
 const DeleteSchema = z.object({
   id: z.string().min(1, "Slot ID is required"),
+  deleteFutureSessions: z.boolean().default(false),
 });
 
 export async function DELETE(req: Request): Promise<Response> {
@@ -117,7 +121,7 @@ export async function DELETE(req: Request): Promise<Response> {
       );
     }
 
-    const { id } = parsed.data;
+    const { id, deleteFutureSessions } = parsed.data;
 
     const existing = await prisma.recurringSlot.findUnique({
       where: { id },
@@ -130,10 +134,55 @@ export async function DELETE(req: Request): Promise<Response> {
       );
     }
 
-    // Delete the slot — this doesn't affect existing sessions (no cascade)
-    await prisma.recurringSlot.delete({ where: { id } });
+    let deletedSessionsCount = 0;
 
-    return Response.json({ data: { success: true } });
+    if (deleteFutureSessions) {
+      const currentWeekStart = getWeekStart(new Date());
+
+      // Find all sessions from current week onward for this slot
+      const futureSessions = await prisma.session.findMany({
+        where: {
+          recurringSlotId: id,
+          weekDate: { gte: currentWeekStart },
+        },
+        include: {
+          members: {
+            include: {
+              user: { select: { id: true } },
+            },
+          },
+        },
+      });
+
+      // Notify members and delete sessions within a transaction
+      await prisma.$transaction(async (tx) => {
+        const dayName = DAY_NAMES[existing.dayOfWeek] || "Unknown";
+        for (const sess of futureSessions) {
+          const memberIds = sess.members.map((m: { user: { id: string } }) => m.user.id);
+          if (memberIds.length > 0) {
+            await dispatchNotificationToMany(
+              memberIds,
+              "SESSION_DELETED",
+              `${dayName} ${existing.startHour}:00 class removed`,
+              `The ${dayName} ${existing.startHour}:00 recurring class has been permanently removed from the schedule.`
+            );
+          }
+          // Cascade delete handles votes, session_members, session_trainers
+          await tx.session.delete({ where: { id: sess.id } });
+        }
+
+        await tx.recurringSlot.delete({ where: { id } });
+      });
+
+      deletedSessionsCount = futureSessions.length;
+    } else {
+      // Delete the slot only — existing sessions are not affected
+      await prisma.recurringSlot.delete({ where: { id } });
+    }
+
+    return Response.json({
+      data: { deletedSlot: true, deletedSessionsCount },
+    });
   } catch (error) {
     console.error("DELETE /api/recurring-slots error:", error);
     return Response.json(
