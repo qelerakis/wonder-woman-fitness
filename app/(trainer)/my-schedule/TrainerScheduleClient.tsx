@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { addDays } from "date-fns";
 import { WeeklyCalendar } from "@/components/schedule/WeeklyCalendar";
 import { CreateSessionModal } from "@/components/schedule/CreateSessionModal";
-import type { SlotInfo } from "@/components/schedule/CreateSessionModal";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import type { SessionWithDetails } from "@/lib/session-generation";
@@ -12,48 +11,60 @@ import type { SessionWithDetails } from "@/lib/session-generation";
 interface TrainerScheduleClientProps {
   initialWeekStart: string;
   userId: string;
-  recurringSlots: SlotInfo[];
 }
 
 export function TrainerScheduleClient({
   initialWeekStart,
   userId,
-  recurringSlots,
 }: TrainerScheduleClientProps): React.ReactElement {
   const [weekStart, setWeekStart] = useState(new Date(initialWeekStart));
   const [sessions, setSessions] = useState<SessionWithDetails[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // only for initial load
   const [showCreateModal, setShowCreateModal] = useState(false);
   const { addToast } = useToast();
+  const abortRef = useRef<AbortController | null>(null);
 
-  const existingSlotIds = sessions
-    .filter((s) => s.recurringSlotId != null)
-    .map((s) => s.recurringSlotId as string);
+  const fetchSessions = useCallback(async (showLoader = false): Promise<void> => {
+    // Abort any in-flight request
+    if (abortRef.current) {
+      abortRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortRef.current = controller;
 
-  const fetchSessions = useCallback(async () => {
-    setLoading(true);
+    if (showLoader) {
+      setLoading(true);
+    }
     try {
       const weekDate = weekStart.toISOString().split("T")[0];
-      const res = await fetch(`/api/sessions?weekDate=${weekDate}`);
+      const res = await fetch(`/api/sessions?weekDate=${weekDate}`, {
+        signal: controller.signal,
+      });
       if (res.ok) {
         const data: { data: SessionWithDetails[] } = await res.json();
-        // Filter for sessions assigned to this trainer
-        const mySessions = data.data.filter((s) =>
-          s.trainers.some((t) => t.userId === userId)
-        );
-        setSessions(mySessions);
+        // Show all sessions — isAssigned flag from server distinguishes assigned vs unassigned
+        setSessions(data.data);
       } else {
         addToast({ type: "error", title: "Failed to load sessions" });
       }
-    } catch {
+    } catch (err: unknown) {
+      // Don't show error toast for aborted requests
+      if (err instanceof DOMException && err.name === "AbortError") {
+        return;
+      }
       addToast({ type: "error", title: "Network error" });
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
-  }, [weekStart, userId, addToast]);
+  }, [weekStart, addToast]);
 
   useEffect(() => {
-    void fetchSessions();
+    void fetchSessions(true); // show loader on initial load and week change
+    return () => {
+      abortRef.current?.abort();
+    };
   }, [fetchSessions]);
 
   function handleWeekChange(direction: "prev" | "next"): void {
@@ -90,6 +101,7 @@ export function TrainerScheduleClient({
           sessions={sessions}
           basePath="/trainer/session"
           showVotingIndicator
+          currentUserId={userId}
           onWeekChange={handleWeekChange}
         />
       )}
@@ -99,11 +111,9 @@ export function TrainerScheduleClient({
         onClose={() => setShowCreateModal(false)}
         onCreated={() => {
           setShowCreateModal(false);
-          fetchSessions();
+          void fetchSessions(false); // silent refresh — don't hide the calendar
         }}
         weekStart={weekStart}
-        recurringSlots={recurringSlots}
-        existingSlotIds={existingSlotIds}
       />
     </div>
   );

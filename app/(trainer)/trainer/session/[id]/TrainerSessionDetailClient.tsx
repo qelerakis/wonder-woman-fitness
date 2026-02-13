@@ -9,7 +9,8 @@ import { WorkoutEditor } from "@/components/schedule/WorkoutEditor";
 import { WorkoutDisplay } from "@/components/schedule/WorkoutDisplay";
 import { VoteSummary } from "@/components/schedule/VoteSummary";
 import { useToast } from "@/components/ui/Toast";
-import { DAY_NAMES } from "@/lib/constants";
+import { AssignmentToggleList } from "@/components/schedule/AssignmentToggleList";
+import { DAY_NAMES, MAX_CLASS_SIZE } from "@/lib/constants";
 import { formatTime } from "@/components/schedule/SessionCard";
 import type { VoteMember } from "@/components/schedule/VoteSummary";
 
@@ -42,15 +43,20 @@ interface SessionData {
 interface TrainerSessionDetailClientProps {
   session: SessionData;
   voteMembers: VoteMember[];
+  allMembers: Array<{ id: string; name: string }>;
 }
 
 export function TrainerSessionDetailClient({
   session,
   voteMembers,
+  allMembers,
 }: TrainerSessionDetailClientProps): React.ReactElement {
   const router = useRouter();
   const { addToast } = useToast();
   const [editingWorkout, setEditingWorkout] = useState(false);
+  const [currentMemberIds, setCurrentMemberIds] = useState<string[]>(
+    session.members.map((m) => m.userId)
+  );
 
   const dayOfWeek = session.recurringSlot?.dayOfWeek ?? session.customDay ?? 1;
   const startHour = session.recurringSlot?.startHour ?? session.customStartHour ?? 0;
@@ -101,6 +107,49 @@ export function TrainerSessionDetailClient({
       }
     } finally {
       clearTimeout(timeoutId);
+    }
+  }
+
+  async function handleToggleVoting(): Promise<void> {
+    try {
+      const res = await fetch(`/api/sessions/${session.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ votingEnabled: !session.votingEnabled }),
+      });
+      if (res.ok) {
+        addToast({
+          type: "success",
+          title: session.votingEnabled ? "Voting disabled" : "Voting enabled",
+        });
+        router.refresh();
+      } else {
+        addToast({ type: "error", title: "Failed to update voting" });
+      }
+    } catch {
+      addToast({ type: "error", title: "Network error" });
+    }
+  }
+
+  async function handleToggleMember(userId: string, currentlyAssigned: boolean): Promise<void> {
+    const action = currentlyAssigned ? "remove" : "add";
+    try {
+      const res = await fetch(`/api/sessions/${session.id}/members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, action }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentMemberIds(data.data.map((m: { userId: string }) => m.userId));
+        addToast({ type: "success", title: currentlyAssigned ? "Member removed" : "Member assigned" });
+        router.refresh();
+      } else {
+        const err = await res.json();
+        addToast({ type: "error", title: err.error || "Failed to update" });
+      }
+    } catch {
+      addToast({ type: "error", title: "Network error" });
     }
   }
 
@@ -167,47 +216,22 @@ export function TrainerSessionDetailClient({
           </Card>
 
           {/* Members */}
-          <Card>
-            <CardHeader
-              title="Members"
-              description={`${session.members.length} assigned`}
-            />
-            {session.members.length === 0 ? (
-              <p className="mt-4 text-sm text-surface-500">
-                No members assigned
-              </p>
-            ) : (
-              <div className="mt-4 space-y-2">
-                {session.members.map((member) => (
-                  <div
-                    key={member.userId}
-                    className="flex items-center justify-between rounded-lg bg-surface-900/50 px-3 py-2"
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-surface-200">
-                        {member.name}
-                      </p>
-                      <p className="text-xs text-surface-400">
-                        {member.email}
-                      </p>
-                    </div>
-                    <Badge
-                      variant={
-                        member.status === "ACTIVE"
-                          ? "success"
-                          : member.status === "TRIAL"
-                            ? "info"
-                            : "default"
-                      }
-                      size="sm"
-                    >
-                      {member.status}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
+          <AssignmentToggleList
+            title="Members"
+            people={allMembers}
+            assignedIds={currentMemberIds}
+            onToggle={handleToggleMember}
+            disabled={isCancelled}
+            maxCapacity={MAX_CLASS_SIZE}
+            currentCount={currentMemberIds.length}
+          />
+
+          {/* Toggle voting */}
+          {!isCancelled && (
+            <Button variant="ghost" size="sm" onClick={handleToggleVoting}>
+              {session.votingEnabled ? "Disable Voting" : "Enable Voting"}
+            </Button>
+          )}
         </div>
 
         {/* Right column */}

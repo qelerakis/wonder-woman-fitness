@@ -1,8 +1,8 @@
 /**
  * Private Sessions API — GET list, POST create
  *
- * GET /api/private-sessions — List private sessions (Owner only)
- * POST /api/private-sessions — Create a private session (Owner only)
+ * GET /api/private-sessions — List private sessions (Owner sees all, Trainer sees own)
+ * POST /api/private-sessions — Create a private session (Owner or Trainer)
  */
 
 import { auth } from "@/lib/auth";
@@ -16,7 +16,8 @@ export async function GET(req: Request): Promise<Response> {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if ((session.user.role as string) !== "OWNER") {
+    const role = session.user.role as string;
+    if (role !== "OWNER" && role !== "TRAINER") {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -25,6 +26,11 @@ export async function GET(req: Request): Promise<Response> {
     const endDate = url.searchParams.get("endDate");
 
     const where: Record<string, unknown> = {};
+
+    // Trainers only see their own private sessions
+    if (role === "TRAINER") {
+      where.createdById = session.user.id;
+    }
 
     if (startDate || endDate) {
       where.scheduledAt = {};
@@ -71,7 +77,8 @@ export async function POST(req: Request): Promise<Response> {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if ((session.user.role as string) !== "OWNER") {
+    const role = session.user.role as string;
+    if (role !== "OWNER" && role !== "TRAINER") {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 

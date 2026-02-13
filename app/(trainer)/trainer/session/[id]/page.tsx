@@ -68,6 +68,12 @@ export default async function TrainerSessionDetailPage({
     notFound();
   }
 
+  const allMembers = await prisma.user.findMany({
+    where: { role: "MEMBER", status: { not: "DEPARTED" } },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+
   // Build vote members list
   const voteMembers = session.members.map((sm) => {
     const vote = session.votes.find((v) => v.userId === sm.userId);
@@ -106,6 +112,7 @@ export default async function TrainerSessionDetailPage({
         })),
       }}
       voteMembers={voteMembers}
+      allMembers={allMembers}
     />
   );
 }

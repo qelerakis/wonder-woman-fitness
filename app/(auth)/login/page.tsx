@@ -31,7 +31,10 @@ export default function LoginPage() {
       }
 
       // Fetch session to determine role-based redirect
-      const res = await fetch("/api/auth/session");
+      // credentials: "include" ensures auth cookies are sent with the request
+      const res = await fetch("/api/auth/session", {
+        credentials: "include",
+      });
       const session = await res.json();
 
       if (session?.user?.role === "OWNER") {

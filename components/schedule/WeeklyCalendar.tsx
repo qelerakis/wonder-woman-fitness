@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { addDays, format } from "date-fns";
 import { SessionCard } from "./SessionCard";
 import { DAY_NAMES } from "@/lib/constants";
@@ -51,8 +52,12 @@ export function WeeklyCalendar({
 }: WeeklyCalendarProps): React.ReactElement {
   const grouped = groupSessionsByDay(sessions);
 
-  // Memoize today string to avoid recalculating per-iteration and midnight boundary issues
-  const todayStr = format(new Date(), "yyyy-MM-dd");
+  // Use state + effect for today's date to avoid hydration mismatch
+  // (new Date() differs between server render and client hydrate)
+  const [todayStr, setTodayStr] = useState<string>("");
+  useEffect(() => {
+    setTodayStr(format(new Date(), "yyyy-MM-dd"));
+  }, []);
 
   // Generate array for days 1-7 (Mon-Sun)
   const days = Array.from({ length: 7 }, (_, i) => {
@@ -139,6 +144,7 @@ export function WeeklyCalendar({
                   basePath={basePath}
                   showVotingIndicator={showVotingIndicator}
                   currentUserId={currentUserId}
+                  isAssigned={session.isAssigned}
                 />
               ))}
               {!grouped.has(dayNumber) && (
@@ -192,6 +198,7 @@ export function WeeklyCalendar({
                     basePath={basePath}
                     showVotingIndicator={showVotingIndicator}
                     currentUserId={currentUserId}
+                    isAssigned={session.isAssigned}
                   />
                 ))}
               </div>

@@ -9,22 +9,13 @@ import { useToast } from "@/components/ui/Toast";
 import { DAY_NAMES, SLOT_START_HOUR, SLOT_END_HOUR } from "@/lib/constants";
 import { formatTime } from "@/components/schedule/SessionCard";
 
-type TabMode = "existing" | "oneoff" | "recurring";
-
-interface SlotInfo {
-  id: string;
-  dayOfWeek: number;
-  startHour: number;
-  trainerName: string | null;
-}
+type TabMode = "oneoff" | "recurring";
 
 interface CreateSessionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreated: () => void;
   weekStart: Date;
-  recurringSlots: SlotInfo[];
-  existingSlotIds: string[];
 }
 
 const DAY_OPTIONS = Array.from({ length: 7 }, (_, i) => ({
@@ -45,26 +36,14 @@ export function CreateSessionModal({
   onClose,
   onCreated,
   weekStart,
-  recurringSlots,
-  existingSlotIds,
 }: CreateSessionModalProps): React.ReactElement | null {
-  const [tab, setTab] = useState<TabMode>("existing");
-  const [selectedSlotId, setSelectedSlotId] = useState("");
+  const [tab, setTab] = useState<TabMode>("oneoff");
   const [selectedDay, setSelectedDay] = useState("");
   const [selectedHour, setSelectedHour] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const { addToast } = useToast();
 
-  const slotOptions = recurringSlots.map((slot) => ({
-    value: slot.id,
-    label: `${DAY_NAMES[slot.dayOfWeek]} ${formatTime(slot.startHour)}${
-      slot.trainerName ? ` — ${slot.trainerName}` : ""
-    }`,
-    disabled: existingSlotIds.includes(slot.id),
-  }));
-
   function resetForm(): void {
-    setSelectedSlotId("");
     setSelectedDay("");
     setSelectedHour("");
   }
@@ -72,7 +51,7 @@ export function CreateSessionModal({
   function handleClose(): void {
     if (!submitting) {
       resetForm();
-      setTab("existing");
+      setTab("oneoff");
       onClose();
     }
   }
@@ -84,10 +63,7 @@ export function CreateSessionModal({
     }
   }
 
-  const canSubmit =
-    tab === "existing"
-      ? !!selectedSlotId
-      : !!selectedDay && !!selectedHour;
+  const canSubmit = !!selectedDay && !!selectedHour;
 
   async function handleSubmit(): Promise<void> {
     if (!canSubmit) return;
@@ -96,34 +72,7 @@ export function CreateSessionModal({
     try {
       const weekDate = format(weekStart, "yyyy-MM-dd");
 
-      if (tab === "existing") {
-        // Recurring: existing slot
-        const res = await fetch("/api/sessions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ recurringSlotId: selectedSlotId, weekDate }),
-        });
-
-        if (res.status === 201) {
-          addToast({ type: "success", title: "Session created" });
-          resetForm();
-          onCreated();
-        } else if (res.status === 409) {
-          addToast({
-            type: "error",
-            title: "Session already exists",
-            message: "A session for this slot and week already exists.",
-          });
-        } else if (res.status === 404) {
-          addToast({
-            type: "error",
-            title: "Slot not found",
-            message: "The selected recurring slot no longer exists.",
-          });
-        } else {
-          addToast({ type: "error", title: "Failed to create session" });
-        }
-      } else if (tab === "oneoff") {
+      if (tab === "oneoff") {
         // One-off session
         const res = await fetch("/api/sessions", {
           method: "POST",
@@ -164,7 +113,7 @@ export function CreateSessionModal({
           addToast({
             type: "error",
             title: "Slot already exists",
-            message: "A recurring slot already exists at this day and time. Use the 'Existing Slot' tab.",
+            message: "A recurring slot already exists at this day and time.",
           });
           return;
         }
@@ -198,7 +147,7 @@ export function CreateSessionModal({
           addToast({
             type: "error",
             title: "Slot created but session failed",
-            message: "The recurring slot was created. Try adding the session from the 'Existing Slot' tab.",
+            message: "The recurring slot was created. Try generating the week to create the session.",
           });
         }
       }
@@ -210,7 +159,6 @@ export function CreateSessionModal({
   }
 
   const TABS: Array<{ key: TabMode; label: string }> = [
-    { key: "existing", label: "Existing Slot" },
     { key: "oneoff", label: "One-Off" },
     { key: "recurring", label: "New Recurring" },
   ];
@@ -252,22 +200,6 @@ export function CreateSessionModal({
         </div>
 
         {/* Tab content */}
-        {tab === "existing" && (
-          <Select
-            label="Time Slot"
-            placeholder="Select a time slot"
-            options={slotOptions}
-            value={selectedSlotId}
-            onChange={(e) => setSelectedSlotId(e.target.value)}
-            disabled={submitting}
-            helpText={
-              existingSlotIds.length > 0
-                ? "Slots with existing sessions are disabled."
-                : undefined
-            }
-          />
-        )}
-
         {tab === "oneoff" && (
           <div className="space-y-3">
             <p className="text-xs text-surface-400">
@@ -341,4 +273,4 @@ export function CreateSessionModal({
   );
 }
 
-export type { CreateSessionModalProps, SlotInfo };
+export type { CreateSessionModalProps };

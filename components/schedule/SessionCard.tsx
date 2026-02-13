@@ -8,6 +8,7 @@ interface SessionCardProps {
   basePath: string;
   showVotingIndicator?: boolean;
   currentUserId?: string;
+  isAssigned?: boolean;
 }
 
 function formatTime(hour: number): string {
@@ -21,11 +22,13 @@ export function SessionCard({
   basePath,
   showVotingIndicator = false,
   currentUserId,
+  isAssigned,
 }: SessionCardProps): React.ReactElement {
   const time = formatTime(session.recurringSlot?.startHour ?? session.customStartHour ?? 0);
   const memberCount = session.members.length;
   const trainerNames = session.trainers.map((t) => t.user.name).join(", ");
   const isCancelled = session.status === "CANCELLED";
+  const isUnassigned = isAssigned === false;
 
   // Voting status for current user
   const userVote = currentUserId
@@ -43,7 +46,9 @@ export function SessionCard({
         ${
           isCancelled
             ? "border-surface-700 bg-surface-800/50 opacity-60"
-            : "border-surface-700 bg-surface-800 hover:border-primary-600/50 hover:bg-surface-700"
+            : isUnassigned
+              ? "border-dashed border-surface-600 bg-surface-800/30 opacity-75 hover:border-surface-500 hover:bg-surface-800/50 hover:opacity-100"
+              : "border-surface-700 bg-surface-800 hover:border-primary-600/50 hover:bg-surface-700"
         }
       `}
     >
@@ -58,6 +63,11 @@ export function SessionCard({
         {!isCancelled && session.votingEnabled && showVotingIndicator && (
           <Badge variant="primary" size="sm">
             Voting
+          </Badge>
+        )}
+        {isUnassigned && session.votingEnabled && !isCancelled && (
+          <Badge variant="info" size="sm">
+            Open
           </Badge>
         )}
       </div>

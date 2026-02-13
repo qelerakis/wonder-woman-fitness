@@ -4,12 +4,16 @@
  * PATCH /api/private-sessions/[id] — Update a private session
  * DELETE /api/private-sessions/[id] — Delete a private session
  *
- * Owner only.
+ * Owner or Trainer (trainers can only modify/delete their own).
  */
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import {
+  MAX_PRIVATE_SESSION_EXERCISE_LENGTH,
+  MAX_PRIVATE_SESSION_NOTES_LENGTH,
+} from "@/lib/constants";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -20,8 +24,8 @@ const PrivateSessionUpdateSchema = z.object({
   scheduledAt: z.string().datetime().optional(),
   paid: z.boolean().optional(),
   amount: z.number().positive().optional(),
-  exerciseDetails: z.string().optional(),
-  notes: z.string().optional(),
+  exerciseDetails: z.string().max(MAX_PRIVATE_SESSION_EXERCISE_LENGTH, "Exercise details too long").optional(),
+  notes: z.string().max(MAX_PRIVATE_SESSION_NOTES_LENGTH, "Notes too long").optional(),
 });
 
 export async function PATCH(
@@ -34,7 +38,8 @@ export async function PATCH(
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if ((session.user.role as string) !== "OWNER") {
+    const role = session.user.role as string;
+    if (role !== "OWNER" && role !== "TRAINER") {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -51,7 +56,7 @@ export async function PATCH(
 
     const existing = await prisma.privateSession.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, createdById: true },
     });
 
     if (!existing) {
@@ -59,6 +64,11 @@ export async function PATCH(
         { error: "Private session not found" },
         { status: 404 }
       );
+    }
+
+    // Trainers can only modify their own private sessions
+    if (role === "TRAINER" && existing.createdById !== session.user.id) {
+      return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const updateData: Record<string, unknown> = {};
@@ -104,7 +114,8 @@ export async function DELETE(
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if ((session.user.role as string) !== "OWNER") {
+    const role = session.user.role as string;
+    if (role !== "OWNER" && role !== "TRAINER") {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -112,7 +123,7 @@ export async function DELETE(
 
     const existing = await prisma.privateSession.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, createdById: true },
     });
 
     if (!existing) {
@@ -120,6 +131,11 @@ export async function DELETE(
         { error: "Private session not found" },
         { status: 404 }
       );
+    }
+
+    // Trainers can only delete their own private sessions
+    if (role === "TRAINER" && existing.createdById !== session.user.id) {
+      return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 
     await prisma.privateSession.delete({ where: { id } });

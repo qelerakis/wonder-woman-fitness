@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { addDays } from "date-fns";
 import { WeeklyCalendar } from "@/components/schedule/WeeklyCalendar";
 import { CreateSessionModal } from "@/components/schedule/CreateSessionModal";
-import type { SlotInfo } from "@/components/schedule/CreateSessionModal";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import type { SessionWithDetails } from "@/lib/session-generation";
@@ -15,9 +14,15 @@ interface PersonInfo {
   email: string;
 }
 
+interface RecurringSlotInfo {
+  id: string;
+  dayOfWeek: number;
+  startHour: number;
+}
+
 interface ScheduleClientProps {
   initialWeekStart: string;
-  recurringSlots: SlotInfo[];
+  recurringSlots: RecurringSlotInfo[];
   trainers: PersonInfo[];
   members: PersonInfo[];
 }
@@ -30,20 +35,28 @@ export function ScheduleClient({
 }: ScheduleClientProps): React.ReactElement {
   const [weekStart, setWeekStart] = useState(new Date(initialWeekStart));
   const [sessions, setSessions] = useState<SessionWithDetails[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // only for initial load
   const [generating, setGenerating] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const { addToast } = useToast();
+  const abortRef = useRef<AbortController | null>(null);
 
-  const existingSlotIds = sessions
-    .filter((s) => s.recurringSlotId != null)
-    .map((s) => s.recurringSlotId as string);
+  const fetchSessions = useCallback(async (showLoader = false): Promise<void> => {
+    // Abort any in-flight request
+    if (abortRef.current) {
+      abortRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortRef.current = controller;
 
-  const fetchSessions = useCallback(async () => {
-    setLoading(true);
+    if (showLoader) {
+      setLoading(true);
+    }
     try {
       const weekDate = weekStart.toISOString().split("T")[0];
-      const res = await fetch(`/api/sessions?weekDate=${weekDate}`);
+      const res = await fetch(`/api/sessions?weekDate=${weekDate}`, {
+        signal: controller.signal,
+      });
       if (res.ok) {
         const data: { data: SessionWithDetails[] } = await res.json();
         setSessions(data.data);
@@ -53,18 +66,27 @@ export function ScheduleClient({
           title: "Failed to load sessions",
         });
       }
-    } catch {
+    } catch (err: unknown) {
+      // Don't show error toast for aborted requests
+      if (err instanceof DOMException && err.name === "AbortError") {
+        return;
+      }
       addToast({
         type: "error",
         title: "Network error loading sessions",
       });
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
   }, [weekStart, addToast]);
 
   useEffect(() => {
-    fetchSessions();
+    void fetchSessions(true); // show loader on initial load and week change
+    return () => {
+      abortRef.current?.abort();
+    };
   }, [fetchSessions]);
 
   function handleWeekChange(direction: "prev" | "next"): void {
@@ -89,7 +111,7 @@ export function ScheduleClient({
           title: "Sessions generated",
           message: "Weekly sessions have been created from recurring slots.",
         });
-        await fetchSessions();
+        await fetchSessions(false); // silent refresh — don't hide the calendar
       } else {
         const errorData: { error: string } = await res.json();
         addToast({
@@ -180,11 +202,9 @@ export function ScheduleClient({
         onClose={() => setShowCreateModal(false)}
         onCreated={() => {
           setShowCreateModal(false);
-          fetchSessions();
+          void fetchSessions(false); // silent refresh — don't hide the calendar
         }}
         weekStart={weekStart}
-        recurringSlots={recurringSlots}
-        existingSlotIds={existingSlotIds}
       />
     </div>
   );

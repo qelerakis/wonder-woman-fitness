@@ -14,7 +14,7 @@ export default async function OwnerSchedulePage(): Promise<React.ReactElement> {
     redirect("/login");
   }
 
-  // Get recurring slots for the create modal
+  // Get recurring slots for the quick stats display
   const recurringSlots = await prisma.recurringSlot.findMany({
     orderBy: [{ dayOfWeek: "asc" }, { startHour: "asc" }],
   });
@@ -42,7 +42,6 @@ export default async function OwnerSchedulePage(): Promise<React.ReactElement> {
         id: s.id,
         dayOfWeek: s.dayOfWeek,
         startHour: s.startHour,
-        trainerName: null,
       }))}
       trainers={trainers}
       members={members}

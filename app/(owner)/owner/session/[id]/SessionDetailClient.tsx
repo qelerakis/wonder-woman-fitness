@@ -9,7 +9,8 @@ import { WorkoutEditor } from "@/components/schedule/WorkoutEditor";
 import { WorkoutDisplay } from "@/components/schedule/WorkoutDisplay";
 import { VoteSummary } from "@/components/schedule/VoteSummary";
 import { useToast } from "@/components/ui/Toast";
-import { DAY_NAMES } from "@/lib/constants";
+import { AssignmentToggleList } from "@/components/schedule/AssignmentToggleList";
+import { DAY_NAMES, MAX_CLASS_SIZE } from "@/lib/constants";
 import { formatTime } from "@/components/schedule/SessionCard";
 import type { VoteMember } from "@/components/schedule/VoteSummary";
 
@@ -57,6 +58,12 @@ export function SessionDetailClient({
   const [editingWorkout, setEditingWorkout] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [currentTrainerIds, setCurrentTrainerIds] = useState<string[]>(
+    session.trainers.map((t) => t.userId)
+  );
+  const [currentMemberIds, setCurrentMemberIds] = useState<string[]>(
+    session.members.map((m) => m.userId)
+  );
 
   const dayOfWeek = session.recurringSlot?.dayOfWeek ?? session.customDay ?? 1;
   const startHour = session.recurringSlot?.startHour ?? session.customStartHour ?? 0;
@@ -163,6 +170,50 @@ export function SessionDetailClient({
     }
   }
 
+  async function handleToggleTrainer(userId: string, currentlyAssigned: boolean): Promise<void> {
+    const action = currentlyAssigned ? "remove" : "add";
+    try {
+      const res = await fetch(`/api/sessions/${session.id}/trainers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, action }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentTrainerIds(data.data.map((t: { userId: string }) => t.userId));
+        addToast({ type: "success", title: currentlyAssigned ? "Trainer removed" : "Trainer assigned" });
+        router.refresh();
+      } else {
+        const err = await res.json();
+        addToast({ type: "error", title: err.error || "Failed to update" });
+      }
+    } catch {
+      addToast({ type: "error", title: "Network error" });
+    }
+  }
+
+  async function handleToggleMember(userId: string, currentlyAssigned: boolean): Promise<void> {
+    const action = currentlyAssigned ? "remove" : "add";
+    try {
+      const res = await fetch(`/api/sessions/${session.id}/members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, action }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentMemberIds(data.data.map((m: { userId: string }) => m.userId));
+        addToast({ type: "success", title: currentlyAssigned ? "Member removed" : "Member assigned" });
+        router.refresh();
+      } else {
+        const err = await res.json();
+        addToast({ type: "error", title: err.error || "Failed to update" });
+      }
+    } catch {
+      addToast({ type: "error", title: "Network error" });
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -265,67 +316,23 @@ export function SessionDetailClient({
 
         {/* Right column */}
         <div className="space-y-6">
-          {/* Trainers */}
-          <Card>
-            <CardHeader
-              title="Trainers"
-              description={`${session.trainers.length} assigned`}
-            />
-            <div className="mt-3 space-y-2">
-              {session.trainers.length === 0 && (
-                <p className="text-sm text-surface-500">
-                  No trainers assigned
-                </p>
-              )}
-              {session.trainers.map((t) => (
-                <div
-                  key={t.userId}
-                  className="flex items-center justify-between rounded-lg bg-surface-900/50 px-3 py-2"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-surface-200">
-                      {t.name}
-                    </p>
-                    <p className="text-xs text-surface-500">{t.email}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
+          <AssignmentToggleList
+            title="Trainers"
+            people={allTrainers}
+            assignedIds={currentTrainerIds}
+            onToggle={handleToggleTrainer}
+            disabled={isCancelled}
+          />
 
-          {/* Members */}
-          <Card>
-            <CardHeader
-              title="Members"
-              description={`${session.members.length} assigned`}
-            />
-            <div className="mt-3 space-y-2">
-              {session.members.length === 0 && (
-                <p className="text-sm text-surface-500">
-                  No members assigned
-                </p>
-              )}
-              {session.members.map((m) => (
-                <div
-                  key={m.userId}
-                  className="flex items-center justify-between rounded-lg bg-surface-900/50 px-3 py-2"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-surface-200">
-                      {m.name}
-                    </p>
-                    <p className="text-xs text-surface-500">{m.email}</p>
-                  </div>
-                  <Badge
-                    variant={m.status === "TRIAL" ? "info" : "default"}
-                    size="sm"
-                  >
-                    {m.status}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </Card>
+          <AssignmentToggleList
+            title="Members"
+            people={allMembers}
+            assignedIds={currentMemberIds}
+            onToggle={handleToggleMember}
+            disabled={isCancelled}
+            maxCapacity={MAX_CLASS_SIZE}
+            currentCount={currentMemberIds.length}
+          />
         </div>
       </div>
     </div>

@@ -66,7 +66,7 @@ export default async function OwnerSessionDetailPage({
   // Get all trainers and members for assignment modals
   const [allTrainers, allMembers] = await Promise.all([
     prisma.user.findMany({
-      where: { role: "TRAINER" },
+      where: { role: "TRAINER", status: { not: "DEPARTED" } },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),

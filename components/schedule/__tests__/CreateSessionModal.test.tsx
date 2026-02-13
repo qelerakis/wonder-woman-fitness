@@ -1,7 +1,7 @@
 /**
  * CreateSessionModal Unit Tests
  *
- * Tests rendering, slot selection, form submission, error handling,
+ * Tests rendering, form submission, error handling,
  * and loading states for the manual session creation modal.
  */
 
@@ -22,20 +22,11 @@ global.fetch = mockFetch;
 
 // ===== Test Data =====
 
-const defaultSlots = [
-  { id: "slot-1", dayOfWeek: 1, startHour: 9, trainerName: null },
-  { id: "slot-2", dayOfWeek: 1, startHour: 18, trainerName: "Elena" },
-  { id: "slot-3", dayOfWeek: 3, startHour: 9, trainerName: null },
-  { id: "slot-4", dayOfWeek: 5, startHour: 18, trainerName: "Marko" },
-];
-
 const defaultProps = {
   isOpen: true,
   onClose: vi.fn(),
   onCreated: vi.fn(),
   weekStart: new Date("2026-02-09T00:00:00.000Z"), // Monday
-  recurringSlots: defaultSlots,
-  existingSlotIds: [] as string[],
 };
 
 // ===== Tests =====
@@ -57,7 +48,7 @@ describe("CreateSessionModal", () => {
     expect(container.innerHTML).toBe("");
   });
 
-  it("renders modal with title and slot select when open", async () => {
+  it("renders modal with title and day/time selects when open", async () => {
     const { CreateSessionModal } = await import(
       "@/components/schedule/CreateSessionModal"
     );
@@ -65,7 +56,8 @@ describe("CreateSessionModal", () => {
     render(<CreateSessionModal {...defaultProps} />);
 
     expect(screen.getByText("Add Session")).toBeTruthy();
-    expect(screen.getByText("Time Slot")).toBeTruthy();
+    expect(screen.getByText("Day")).toBeTruthy();
+    expect(screen.getByText("Time")).toBeTruthy();
     expect(screen.getByText("Create Session")).toBeTruthy();
     expect(screen.getByText("Cancel")).toBeTruthy();
   });
@@ -82,88 +74,29 @@ describe("CreateSessionModal", () => {
     expect(screen.getByText(/Feb 15, 2026/)).toBeTruthy();
   });
 
-  it("populates slot options from recurringSlots prop", async () => {
+  it("defaults to One-Off tab", async () => {
     const { CreateSessionModal } = await import(
       "@/components/schedule/CreateSessionModal"
     );
 
     render(<CreateSessionModal {...defaultProps} />);
 
-    const select = screen.getByRole("combobox");
-    const options = Array.from(
-      (select as HTMLSelectElement).querySelectorAll("option")
-    );
-
-    // First option is the placeholder
-    expect(options[0].textContent).toBe("Select a time slot");
-
-    // Slot options should be formatted as "Day Time"
-    expect(options[1].textContent).toContain("Monday");
-    expect(options[1].textContent).toContain("9:00 AM");
-
-    // Slot with trainer name should include it
-    expect(options[2].textContent).toContain("Monday");
-    expect(options[2].textContent).toContain("6:00 PM");
-    expect(options[2].textContent).toContain("Elena");
-
-    expect(options[3].textContent).toContain("Wednesday");
-    expect(options[4].textContent).toContain("Friday");
-    expect(options[4].textContent).toContain("Marko");
+    const oneOffTab = screen.getByRole("tab", { name: "One-Off" });
+    expect(oneOffTab.getAttribute("aria-selected")).toBe("true");
   });
 
-  it("disables slots that already have sessions", async () => {
+  it("shows two tabs: One-Off and New Recurring", async () => {
     const { CreateSessionModal } = await import(
       "@/components/schedule/CreateSessionModal"
     );
 
-    render(
-      <CreateSessionModal
-        {...defaultProps}
-        existingSlotIds={["slot-1", "slot-3"]}
-      />
-    );
+    render(<CreateSessionModal {...defaultProps} />);
 
-    const select = screen.getByRole("combobox");
-    const options = Array.from(
-      (select as HTMLSelectElement).querySelectorAll("option")
-    );
-
-    // slot-1 (index 1) and slot-3 (index 3) should be disabled
-    expect(options[1].disabled).toBe(true);
-    expect(options[2].disabled).toBe(false);
-    expect(options[3].disabled).toBe(true);
-    expect(options[4].disabled).toBe(false);
+    expect(screen.getByRole("tab", { name: "One-Off" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "New Recurring" })).toBeTruthy();
   });
 
-  it("shows help text when there are existing slots", async () => {
-    const { CreateSessionModal } = await import(
-      "@/components/schedule/CreateSessionModal"
-    );
-
-    render(
-      <CreateSessionModal {...defaultProps} existingSlotIds={["slot-1"]} />
-    );
-
-    expect(
-      screen.getByText("Slots with existing sessions are disabled.")
-    ).toBeTruthy();
-  });
-
-  it("does not show help text when no existing slots", async () => {
-    const { CreateSessionModal } = await import(
-      "@/components/schedule/CreateSessionModal"
-    );
-
-    render(
-      <CreateSessionModal {...defaultProps} existingSlotIds={[]} />
-    );
-
-    expect(
-      screen.queryByText("Slots with existing sessions are disabled.")
-    ).toBeNull();
-  });
-
-  it("Create Session button is disabled when no slot selected", async () => {
+  it("Create Session button is disabled when no day/time selected", async () => {
     const { CreateSessionModal } = await import(
       "@/components/schedule/CreateSessionModal"
     );
@@ -174,21 +107,23 @@ describe("CreateSessionModal", () => {
     expect(createButton.hasAttribute("disabled")).toBe(true);
   });
 
-  it("Create Session button is enabled after selecting a slot", async () => {
+  it("Create Session button is enabled after selecting day and time", async () => {
     const { CreateSessionModal } = await import(
       "@/components/schedule/CreateSessionModal"
     );
 
     render(<CreateSessionModal {...defaultProps} />);
 
-    const select = screen.getByRole("combobox");
-    fireEvent.change(select, { target: { value: "slot-2" } });
+    const selects = screen.getAllByRole("combobox");
+    // First select is Day, second is Time
+    fireEvent.change(selects[0], { target: { value: "1" } });
+    fireEvent.change(selects[1], { target: { value: "9" } });
 
     const createButton = screen.getByRole("button", { name: "Create Session" });
     expect(createButton.hasAttribute("disabled")).toBe(false);
   });
 
-  it("calls POST /api/sessions with correct payload on submit", async () => {
+  it("calls POST /api/sessions with one-off payload on submit", async () => {
     mockFetch.mockResolvedValue({
       status: 201,
       ok: true,
@@ -201,8 +136,9 @@ describe("CreateSessionModal", () => {
 
     render(<CreateSessionModal {...defaultProps} />);
 
-    const select = screen.getByRole("combobox");
-    fireEvent.change(select, { target: { value: "slot-2" } });
+    const selects = screen.getAllByRole("combobox");
+    fireEvent.change(selects[0], { target: { value: "1" } });
+    fireEvent.change(selects[1], { target: { value: "9" } });
 
     const createButton = screen.getByRole("button", { name: "Create Session" });
     fireEvent.click(createButton);
@@ -212,14 +148,15 @@ describe("CreateSessionModal", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          recurringSlotId: "slot-2",
+          customDay: 1,
+          customStartHour: 9,
           weekDate: "2026-02-09",
         }),
       });
     });
   });
 
-  it("calls onCreated on successful creation (201)", async () => {
+  it("calls onCreated on successful one-off creation (201)", async () => {
     mockFetch.mockResolvedValue({
       status: 201,
       ok: true,
@@ -235,8 +172,9 @@ describe("CreateSessionModal", () => {
       <CreateSessionModal {...defaultProps} onCreated={onCreated} />
     );
 
-    const select = screen.getByRole("combobox");
-    fireEvent.change(select, { target: { value: "slot-1" } });
+    const selects = screen.getAllByRole("combobox");
+    fireEvent.change(selects[0], { target: { value: "1" } });
+    fireEvent.change(selects[1], { target: { value: "9" } });
 
     const createButton = screen.getByRole("button", { name: "Create Session" });
     fireEvent.click(createButton);
@@ -246,15 +184,15 @@ describe("CreateSessionModal", () => {
     });
 
     expect(mockAddToast).toHaveBeenCalledWith(
-      expect.objectContaining({ type: "success", title: "Session created" })
+      expect.objectContaining({ type: "success", title: "One-off session created" })
     );
   });
 
-  it("shows error toast on 409 (duplicate session)", async () => {
+  it("shows error toast on 409 (time conflict)", async () => {
     mockFetch.mockResolvedValue({
       status: 409,
       ok: false,
-      json: async () => ({ error: "Session already exists for this slot and week" }),
+      json: async () => ({ error: "Session already exists" }),
     });
 
     const { CreateSessionModal } = await import(
@@ -263,8 +201,9 @@ describe("CreateSessionModal", () => {
 
     render(<CreateSessionModal {...defaultProps} />);
 
-    const select = screen.getByRole("combobox");
-    fireEvent.change(select, { target: { value: "slot-1" } });
+    const selects = screen.getAllByRole("combobox");
+    fireEvent.change(selects[0], { target: { value: "1" } });
+    fireEvent.change(selects[1], { target: { value: "9" } });
 
     const createButton = screen.getByRole("button", { name: "Create Session" });
     fireEvent.click(createButton);
@@ -273,36 +212,7 @@ describe("CreateSessionModal", () => {
       expect(mockAddToast).toHaveBeenCalledWith(
         expect.objectContaining({
           type: "error",
-          title: "Session already exists",
-        })
-      );
-    });
-  });
-
-  it("shows error toast on 404 (slot not found)", async () => {
-    mockFetch.mockResolvedValue({
-      status: 404,
-      ok: false,
-      json: async () => ({ error: "Recurring slot not found" }),
-    });
-
-    const { CreateSessionModal } = await import(
-      "@/components/schedule/CreateSessionModal"
-    );
-
-    render(<CreateSessionModal {...defaultProps} />);
-
-    const select = screen.getByRole("combobox");
-    fireEvent.change(select, { target: { value: "slot-1" } });
-
-    const createButton = screen.getByRole("button", { name: "Create Session" });
-    fireEvent.click(createButton);
-
-    await waitFor(() => {
-      expect(mockAddToast).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: "error",
-          title: "Slot not found",
+          title: "Time conflict",
         })
       );
     });
@@ -317,8 +227,9 @@ describe("CreateSessionModal", () => {
 
     render(<CreateSessionModal {...defaultProps} />);
 
-    const select = screen.getByRole("combobox");
-    fireEvent.change(select, { target: { value: "slot-1" } });
+    const selects = screen.getAllByRole("combobox");
+    fireEvent.change(selects[0], { target: { value: "1" } });
+    fireEvent.change(selects[1], { target: { value: "9" } });
 
     const createButton = screen.getByRole("button", { name: "Create Session" });
     fireEvent.click(createButton);
@@ -346,8 +257,9 @@ describe("CreateSessionModal", () => {
 
     render(<CreateSessionModal {...defaultProps} />);
 
-    const select = screen.getByRole("combobox");
-    fireEvent.change(select, { target: { value: "slot-1" } });
+    const selects = screen.getAllByRole("combobox");
+    fireEvent.change(selects[0], { target: { value: "1" } });
+    fireEvent.change(selects[1], { target: { value: "9" } });
 
     const createButton = screen.getByRole("button", { name: "Create Session" });
     fireEvent.click(createButton);
@@ -362,7 +274,7 @@ describe("CreateSessionModal", () => {
     });
   });
 
-  it("disables select and buttons during submission", async () => {
+  it("disables selects and buttons during submission", async () => {
     // Create a fetch that never resolves immediately
     let resolveFetch: ((value: unknown) => void) | undefined;
     mockFetch.mockImplementation(
@@ -378,15 +290,17 @@ describe("CreateSessionModal", () => {
 
     render(<CreateSessionModal {...defaultProps} />);
 
-    const select = screen.getByRole("combobox");
-    fireEvent.change(select, { target: { value: "slot-1" } });
+    const selects = screen.getAllByRole("combobox");
+    fireEvent.change(selects[0], { target: { value: "1" } });
+    fireEvent.change(selects[1], { target: { value: "9" } });
 
     const createButton = screen.getByRole("button", { name: "Create Session" });
     fireEvent.click(createButton);
 
-    // While submitting, select and button should be disabled
+    // While submitting, selects and button should be disabled
     await waitFor(() => {
-      expect(select.hasAttribute("disabled")).toBe(true);
+      expect(selects[0].hasAttribute("disabled")).toBe(true);
+      expect(selects[1].hasAttribute("disabled")).toBe(true);
       expect(createButton.hasAttribute("disabled")).toBe(true);
     });
 
@@ -412,15 +326,16 @@ describe("CreateSessionModal", () => {
       <CreateSessionModal {...defaultProps} onClose={onClose} />
     );
 
-    const select = screen.getByRole("combobox");
-    fireEvent.change(select, { target: { value: "slot-1" } });
+    const selects = screen.getAllByRole("combobox");
+    fireEvent.change(selects[0], { target: { value: "1" } });
+    fireEvent.change(selects[1], { target: { value: "9" } });
 
     const createButton = screen.getByRole("button", { name: "Create Session" });
     fireEvent.click(createButton);
 
     // Wait for submission to start
     await waitFor(() => {
-      expect(select.hasAttribute("disabled")).toBe(true);
+      expect(selects[0].hasAttribute("disabled")).toBe(true);
     });
 
     // Try to close — should not work during submission
@@ -433,32 +348,7 @@ describe("CreateSessionModal", () => {
     resolveFetch?.({ status: 201, ok: true, json: async () => ({ data: {} }) });
   });
 
-  it("resets selected slot after successful creation", async () => {
-    mockFetch.mockResolvedValue({
-      status: 201,
-      ok: true,
-      json: async () => ({ data: { id: "new-session" } }),
-    });
-
-    const { CreateSessionModal } = await import(
-      "@/components/schedule/CreateSessionModal"
-    );
-
-    render(<CreateSessionModal {...defaultProps} />);
-
-    const select = screen.getByRole("combobox") as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: "slot-2" } });
-    expect(select.value).toBe("slot-2");
-
-    const createButton = screen.getByRole("button", { name: "Create Session" });
-    fireEvent.click(createButton);
-
-    await waitFor(() => {
-      expect(defaultProps.onCreated).toHaveBeenCalled();
-    });
-  });
-
-  it("does not submit when no slot is selected", async () => {
+  it("does not submit when no day/time is selected", async () => {
     const { CreateSessionModal } = await import(
       "@/components/schedule/CreateSessionModal"
     );

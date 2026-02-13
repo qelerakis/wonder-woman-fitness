@@ -11,7 +11,7 @@ import {
   addDays,
 } from 'date-fns';
 import { prisma } from './prisma';
-import { VOTING_DEADLINE_HOURS_BEFORE } from './constants';
+import { VOTING_DEADLINE_HOURS_BEFORE, MAX_CLASS_SIZE } from './constants';
 import type { Session, RecurringSlot } from '@/generated/prisma/client';
 import type { UserRole } from './constants';
 
@@ -96,6 +96,7 @@ export async function generateSessionsForWeek(
   weekStartDate: Date
 ): Promise<Session[]> {
   const weekDate = getWeekStart(weekStartDate);
+  const previousWeekDate = addDays(weekDate, -7);
 
   // Fetch all recurring slots
   const slots = await prisma.recurringSlot.findMany({
@@ -124,6 +125,9 @@ export async function generateSessionsForWeek(
         },
       });
 
+      // Carry forward trainer/member assignments from previous week
+      await copyAssignmentsFromPreviousWeek(session.id, slot.id, previousWeekDate);
+
       createdSessions.push(session);
     } catch (error) {
       // P2002 = Unique constraint violation (session already exists for this slot+week)
@@ -137,6 +141,66 @@ export async function generateSessionsForWeek(
   }
 
   return createdSessions;
+}
+
+/**
+ * Copy trainer and member assignments from the previous week's session
+ * for the same recurring slot to a newly created session.
+ *
+ * - Departed members are skipped.
+ * - Member count is capped at MAX_CLASS_SIZE.
+ * - If no previous session exists, this is a no-op.
+ */
+async function copyAssignmentsFromPreviousWeek(
+  newSessionId: string,
+  recurringSlotId: string,
+  previousWeekDate: Date
+): Promise<void> {
+  // Find previous week's session for the same slot
+  const previousSession = await prisma.session.findUnique({
+    where: {
+      recurringSlotId_weekDate: {
+        recurringSlotId,
+        weekDate: previousWeekDate,
+      },
+    },
+    include: {
+      trainers: { select: { userId: true } },
+      members: {
+        include: {
+          user: { select: { id: true, status: true } },
+        },
+      },
+    },
+  });
+
+  if (!previousSession) {
+    return;
+  }
+
+  // Copy trainers
+  if (previousSession.trainers.length > 0) {
+    await prisma.sessionTrainer.createMany({
+      data: previousSession.trainers.map((t) => ({
+        sessionId: newSessionId,
+        userId: t.userId,
+      })),
+    });
+  }
+
+  // Copy members (skip departed, respect capacity)
+  const activeMembers = previousSession.members
+    .filter((m) => m.user.status !== 'DEPARTED')
+    .slice(0, MAX_CLASS_SIZE);
+
+  if (activeMembers.length > 0) {
+    await prisma.sessionMember.createMany({
+      data: activeMembers.map((m) => ({
+        sessionId: newSessionId,
+        userId: m.userId,
+      })),
+    });
+  }
 }
 
 /**
@@ -169,14 +233,7 @@ export async function getSessionsForWeek(
   const sessions = await prisma.session.findMany({
     where: {
       weekDate: normalizedWeekDate,
-      // If member, only show sessions they're assigned to
-      ...(role === 'MEMBER' && userId
-        ? { members: { some: { userId } } }
-        : {}),
-      // If trainer, only show sessions they're assigned to
-      ...(role === 'TRAINER' && userId
-        ? { trainers: { some: { userId } } }
-        : {}),
+      // All roles see ALL sessions; isAssigned flag distinguishes assigned vs unassigned
     },
     include: {
       recurringSlot: true,
@@ -227,7 +284,19 @@ export async function getSessionsForWeek(
     return hourA - hourB;
   });
 
-  return sessions as SessionWithDetails[];
+  // Add isAssigned flag for member and trainer roles
+  const result = sessions as SessionWithDetails[];
+  if ((role === 'MEMBER' || role === 'TRAINER') && userId) {
+    for (const s of result) {
+      if (role === 'MEMBER') {
+        s.isAssigned = s.members.some(m => m.userId === userId);
+      } else {
+        s.isAssigned = s.trainers.some(t => t.userId === userId);
+      }
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -272,4 +341,5 @@ export type SessionWithDetails = {
     attending: boolean;
     votedAt: Date;
   }>;
+  isAssigned?: boolean;
 };

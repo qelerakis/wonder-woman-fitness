@@ -102,6 +102,22 @@ export const VoteSchema = z.object({
 
 export type VoteInput = z.infer<typeof VoteSchema>;
 
+// ===== SESSION ASSIGNMENT SCHEMAS =====
+
+export const SessionTrainerAssignmentSchema = z.object({
+  userId: z.string().cuid('Invalid user ID'),
+  action: z.enum(['add', 'remove']),
+});
+
+export type SessionTrainerAssignmentInput = z.infer<typeof SessionTrainerAssignmentSchema>;
+
+export const SessionMemberAssignmentSchema = z.object({
+  userId: z.string().cuid('Invalid user ID'),
+  action: z.enum(['add', 'remove']),
+});
+
+export type SessionMemberAssignmentInput = z.infer<typeof SessionMemberAssignmentSchema>;
+
 // ===== MEMBER SCHEMAS =====
 
 export const MemberUpdateSchema = z.object({
