@@ -35,7 +35,9 @@ export function ScheduleClient({
   const [showCreateModal, setShowCreateModal] = useState(false);
   const { addToast } = useToast();
 
-  const existingSlotIds = sessions.map((s) => s.recurringSlotId);
+  const existingSlotIds = sessions
+    .filter((s) => s.recurringSlotId != null)
+    .map((s) => s.recurringSlotId as string);
 
   const fetchSessions = useCallback(async () => {
     setLoading(true);

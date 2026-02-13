@@ -23,7 +23,9 @@ interface SessionData {
   recurringSlot: {
     dayOfWeek: number;
     startHour: number;
-  };
+  } | null;
+  customDay: number | null;
+  customStartHour: number | null;
   members: Array<{
     userId: string;
     name: string;
@@ -56,8 +58,10 @@ export function SessionDetailClient({
   const [cancelling, setCancelling] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const dayName = DAY_NAMES[session.recurringSlot.dayOfWeek] || "Unknown";
-  const time = formatTime(session.recurringSlot.startHour);
+  const dayOfWeek = session.recurringSlot?.dayOfWeek ?? session.customDay ?? 1;
+  const startHour = session.recurringSlot?.startHour ?? session.customStartHour ?? 0;
+  const dayName = DAY_NAMES[dayOfWeek] || "Unknown";
+  const time = formatTime(startHour);
   const isCancelled = session.status === "CANCELLED";
 
   async function handleSaveWorkout(
@@ -65,17 +69,30 @@ export function SessionDetailClient({
     title: string,
     details: string
   ): Promise<void> {
-    const res = await fetch(`/api/sessions/${session.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workoutTitle: title, workoutDetails: details }),
-    });
-    if (res.ok) {
-      addToast({ type: "success", title: "Workout updated" });
-      setEditingWorkout(false);
-      router.refresh();
-    } else {
-      throw new Error("Failed to save workout");
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15_000);
+
+    try {
+      const res = await fetch(`/api/sessions/${session.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workoutTitle: title, workoutDetails: details }),
+        signal: controller.signal,
+      });
+      if (res.ok) {
+        addToast({ type: "success", title: "Workout updated" });
+        setEditingWorkout(false);
+        router.refresh();
+      } else {
+        throw new Error("Failed to save workout");
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        throw new Error("Request timed out. Please try again.");
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 

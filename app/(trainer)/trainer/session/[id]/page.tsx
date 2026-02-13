@@ -87,10 +87,12 @@ export default async function TrainerSessionDetailPage({
         workoutTitle: session.workoutTitle,
         workoutDetails: session.workoutDetails,
         votingEnabled: session.votingEnabled,
-        recurringSlot: {
+        recurringSlot: session.recurringSlot ? {
           dayOfWeek: session.recurringSlot.dayOfWeek,
           startHour: session.recurringSlot.startHour,
-        },
+        } : null,
+        customDay: session.customDay,
+        customStartHour: session.customStartHour,
         members: session.members.map((m) => ({
           userId: m.userId,
           name: m.user.name,

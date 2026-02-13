@@ -21,7 +21,9 @@ interface SessionData {
   recurringSlot: {
     dayOfWeek: number;
     startHour: number;
-  };
+  } | null;
+  customDay: number | null;
+  customStartHour: number | null;
   memberNames: string[];
   trainerNames: string[];
   totalMembers: number;
@@ -46,8 +48,10 @@ export function MemberSessionDetailClient(
   const [voting, setVoting] = useState(false);
   const [currentVote, setCurrentVote] = useState<boolean | null>(myVote);
 
-  const dayName = DAY_NAMES[session.recurringSlot.dayOfWeek] || "Unknown";
-  const time = formatTime(session.recurringSlot.startHour);
+  const dayOfWeek = session.recurringSlot?.dayOfWeek ?? session.customDay ?? 1;
+  const startHour = session.recurringSlot?.startHour ?? session.customStartHour ?? 0;
+  const dayName = DAY_NAMES[dayOfWeek] || "Unknown";
+  const time = formatTime(startHour);
   const isCancelled = session.status === "CANCELLED";
   const deadlinePassed = new Date(session.votingDeadline) <= new Date();
   const canVote = session.votingEnabled && !deadlinePassed && !isCancelled;

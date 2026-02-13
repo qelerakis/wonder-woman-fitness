@@ -72,6 +72,7 @@ model User {
   recordedPayments Payment[]        @relation("RecorderPayments")
   privateSessions  PrivateSession[]
   notifications    Notification[]
+  createdSessions  Session[]        @relation("CreatedSessions")
 
   @@map("users")
 }
@@ -91,22 +92,27 @@ model RecurringSlot {
 
 model Session {
   id              String        @id @default(cuid())
-  recurringSlotId String
+  recurringSlotId String?
+  customDay       Int?
+  customStartHour Int?
   weekDate        DateTime // Always the Monday of the week
   workoutTitle    String?
   workoutDetails  String?
   votingEnabled   Boolean       @default(false)
   votingDeadline  DateTime?
   status          SessionStatus @default(SCHEDULED)
+  createdById     String?
   createdAt       DateTime      @default(now())
 
   // Relations
-  recurringSlot RecurringSlot    @relation(fields: [recurringSlotId], references: [id])
+  recurringSlot RecurringSlot?   @relation(fields: [recurringSlotId], references: [id])
+  createdBy     User?            @relation("CreatedSessions", fields: [createdById], references: [id])
   members       SessionMember[]
   trainers      SessionTrainer[]
   votes         Vote[]
 
   @@unique([recurringSlotId, weekDate])
+  @@unique([weekDate, customDay, customStartHour])
   @@map("sessions")
 }
 

@@ -1,11 +1,9 @@
 /**
  * Recurring Slots API — GET list, POST create, DELETE
  *
- * GET /api/recurring-slots — List all recurring time slots
- * POST /api/recurring-slots — Create a new slot
- * DELETE /api/recurring-slots — Delete a slot by ID (body: { id })
- *
- * Owner only.
+ * GET /api/recurring-slots — List all recurring time slots (Owner + Trainer)
+ * POST /api/recurring-slots — Create a new slot (Owner + Trainer)
+ * DELETE /api/recurring-slots — Delete a slot by ID (body: { id }) (Owner only)
  */
 
 import { auth } from "@/lib/auth";
@@ -20,7 +18,8 @@ export async function GET(): Promise<Response> {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if ((session.user.role as string) !== "OWNER") {
+    const role = session.user.role as string;
+    if (role !== "OWNER" && role !== "TRAINER") {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -50,7 +49,8 @@ export async function POST(req: Request): Promise<Response> {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if ((session.user.role as string) !== "OWNER") {
+    const role = session.user.role as string;
+    if (role !== "OWNER" && role !== "TRAINER") {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 

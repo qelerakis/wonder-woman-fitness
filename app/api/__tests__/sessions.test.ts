@@ -25,9 +25,25 @@ const mockGetWeekStart = vi.fn((d: Date) => {
   return date;
 });
 
+const mockGetSessionDateTime = vi.fn(
+  (weekDate: Date, dayOfWeek: number, startHour: number) => {
+    const d = new Date(weekDate);
+    d.setUTCDate(d.getUTCDate() + dayOfWeek - 1);
+    d.setUTCHours(startHour, 0, 0, 0);
+    return d;
+  }
+);
+const mockCalculateVotingDeadline = vi.fn(
+  (sessionDateTime: Date) =>
+    new Date(sessionDateTime.getTime() - 24 * 60 * 60 * 1000)
+);
+
 vi.mock("@/lib/session-generation", () => ({
   getSessionsForWeek: (...args: unknown[]) => mockGetSessionsForWeek(...args),
   getWeekStart: (d: Date) => mockGetWeekStart(d),
+  getSessionDateTime: (weekDate: Date, dayOfWeek: number, startHour: number) => mockGetSessionDateTime(weekDate, dayOfWeek, startHour),
+  calculateVotingDeadline: (sessionDateTime: Date) =>
+    mockCalculateVotingDeadline(sessionDateTime),
 }));
 
 const mockPrisma = {
@@ -36,10 +52,16 @@ const mockPrisma = {
   },
   session: {
     findUnique: vi.fn(),
+    findFirst: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
   },
+  sessionTrainer: {
+    create: vi.fn(),
+  },
+  // Interactive transaction: execute callback with same mock objects
+  $transaction: vi.fn(async (fn: (tx: typeof mockPrisma) => Promise<unknown>) => fn(mockPrisma)),
 };
 vi.mock("@/lib/prisma", () => ({
   prisma: mockPrisma,
@@ -145,15 +167,15 @@ describe("POST /api/sessions", () => {
     expect(response.status).toBe(401);
   });
 
-  it("returns 403 when non-OWNER tries to create", async () => {
-    mockAuth.mockResolvedValue(trainerSession());
+  it("returns 403 when MEMBER tries to create", async () => {
+    mockAuth.mockResolvedValue(memberSession());
 
     const { POST } = await import("@/app/api/sessions/route");
     const response = await POST(
       new Request("http://localhost/api/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recurringSlotId: "slot-1", weekDate: "2025-03-10" }),
+        body: JSON.stringify({ recurringSlotId: "cm1234567890abcdef", weekDate: "2025-03-10" }),
       })
     );
 
@@ -721,5 +743,402 @@ describe("PATCH /api/sessions/[id] — edge cases", () => {
     expect(response.status).toBe(500);
     const body = await response.json();
     expect(body.error).toBe("Internal server error");
+  });
+});
+
+// ===== POST /api/sessions — One-Off Sessions =====
+
+describe("POST /api/sessions — one-off sessions", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("creates one-off session with customDay and customStartHour", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findFirst.mockResolvedValue(null);
+    mockPrisma.session.create.mockResolvedValue({
+      id: "oneoff-1",
+      recurringSlotId: null,
+      customDay: 3,
+      customStartHour: 14,
+      status: "SCHEDULED",
+      votingEnabled: false,
+      createdById: "owner-1",
+    });
+
+    const { POST } = await import("@/app/api/sessions/route");
+    const response = await POST(
+      new Request("http://localhost/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customDay: 3,
+          customStartHour: 14,
+          weekDate: "2025-03-10",
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(body.data.customDay).toBe(3);
+    expect(body.data.customStartHour).toBe(14);
+    expect(body.data.recurringSlotId).toBeNull();
+  });
+
+  it("returns 409 when one-off session already exists at same day/hour/week", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findFirst.mockResolvedValue({ id: "existing-oneoff" });
+
+    const { POST } = await import("@/app/api/sessions/route");
+    const response = await POST(
+      new Request("http://localhost/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customDay: 3,
+          customStartHour: 14,
+          weekDate: "2025-03-10",
+        }),
+      })
+    );
+
+    expect(response.status).toBe(409);
+  });
+
+  it("returns 409 when one-off conflicts with recurring session at same day/hour/week", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findFirst.mockResolvedValue({
+      id: "existing-recurring",
+      recurringSlotId: "slot-1",
+    });
+
+    const { POST } = await import("@/app/api/sessions/route");
+    const response = await POST(
+      new Request("http://localhost/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customDay: 1,
+          customStartHour: 9,
+          weekDate: "2025-03-10",
+        }),
+      })
+    );
+
+    expect(response.status).toBe(409);
+  });
+
+  it("rejects customDay out of range", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+
+    const { POST } = await import("@/app/api/sessions/route");
+    const response = await POST(
+      new Request("http://localhost/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customDay: 8,
+          customStartHour: 14,
+          weekDate: "2025-03-10",
+        }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it("rejects customStartHour out of range", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+
+    const { POST } = await import("@/app/api/sessions/route");
+    const response = await POST(
+      new Request("http://localhost/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customDay: 3,
+          customStartHour: 23,
+          weekDate: "2025-03-10",
+        }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it("rejects body with both recurringSlotId AND custom fields", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+
+    const { POST } = await import("@/app/api/sessions/route");
+    const response = await POST(
+      new Request("http://localhost/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recurringSlotId: "cm1234567890abcdef",
+          customDay: 3,
+          customStartHour: 14,
+          weekDate: "2025-03-10",
+        }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it("rejects body with neither recurringSlotId nor custom fields", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+
+    const { POST } = await import("@/app/api/sessions/route");
+    const response = await POST(
+      new Request("http://localhost/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          weekDate: "2025-03-10",
+        }),
+      })
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it("sets createdById on one-off session", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findFirst.mockResolvedValue(null);
+    mockPrisma.session.create.mockResolvedValue({
+      id: "oneoff-2",
+      createdById: "owner-1",
+    });
+
+    const { POST } = await import("@/app/api/sessions/route");
+    await POST(
+      new Request("http://localhost/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customDay: 5,
+          customStartHour: 16,
+          weekDate: "2025-03-10",
+        }),
+      })
+    );
+
+    expect(mockPrisma.session.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          createdById: "owner-1",
+          customDay: 5,
+          customStartHour: 16,
+        }),
+      })
+    );
+  });
+
+  it("returns 500 on unexpected error in one-off creation", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findFirst.mockRejectedValue(new Error("DB crash"));
+
+    const { POST } = await import("@/app/api/sessions/route");
+    const response = await POST(
+      new Request("http://localhost/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customDay: 3,
+          customStartHour: 14,
+          weekDate: "2025-03-10",
+        }),
+      })
+    );
+
+    expect(response.status).toBe(500);
+  });
+});
+
+// ===== POST /api/sessions — Trainer Access =====
+
+describe("POST /api/sessions — trainer access", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("allows TRAINER to create a recurring session", async () => {
+    mockAuth.mockResolvedValue(trainerSession());
+    mockPrisma.recurringSlot.findUnique.mockResolvedValue({
+      id: "cm1234567890abcdef",
+      dayOfWeek: 1,
+      startHour: 9,
+    });
+    mockPrisma.session.findUnique.mockResolvedValue(null);
+    mockPrisma.session.create.mockResolvedValue({
+      id: "new-session",
+      recurringSlotId: "cm1234567890abcdef",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      createdById: "trainer-1",
+      recurringSlot: { id: "cm1234567890abcdef", dayOfWeek: 1, startHour: 9 },
+    });
+    mockPrisma.sessionTrainer.create.mockResolvedValue({});
+
+    const { POST } = await import("@/app/api/sessions/route");
+    const response = await POST(
+      new Request("http://localhost/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recurringSlotId: "cm1234567890abcdef",
+          weekDate: "2025-03-10",
+        }),
+      })
+    );
+
+    expect(response.status).toBe(201);
+  });
+
+  it("allows TRAINER to create a one-off session", async () => {
+    mockAuth.mockResolvedValue(trainerSession());
+    mockPrisma.session.findFirst.mockResolvedValue(null);
+    mockPrisma.session.create.mockResolvedValue({
+      id: "oneoff-trainer",
+      customDay: 5,
+      customStartHour: 16,
+      recurringSlotId: null,
+      status: "SCHEDULED",
+      createdById: "trainer-1",
+    });
+    mockPrisma.sessionTrainer.create.mockResolvedValue({});
+
+    const { POST } = await import("@/app/api/sessions/route");
+    const response = await POST(
+      new Request("http://localhost/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customDay: 5,
+          customStartHour: 16,
+          weekDate: "2025-03-10",
+        }),
+      })
+    );
+
+    expect(response.status).toBe(201);
+  });
+
+  it("auto-assigns trainer to session they create", async () => {
+    mockAuth.mockResolvedValue(trainerSession("trainer-1"));
+    mockPrisma.session.findFirst.mockResolvedValue(null);
+    mockPrisma.session.create.mockResolvedValue({
+      id: "oneoff-trainer",
+      customDay: 5,
+      customStartHour: 16,
+      recurringSlotId: null,
+      status: "SCHEDULED",
+      createdById: "trainer-1",
+    });
+    mockPrisma.sessionTrainer.create.mockResolvedValue({});
+
+    const { POST } = await import("@/app/api/sessions/route");
+    await POST(
+      new Request("http://localhost/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customDay: 5,
+          customStartHour: 16,
+          weekDate: "2025-03-10",
+        }),
+      })
+    );
+
+    expect(mockPrisma.sessionTrainer.create).toHaveBeenCalledWith({
+      data: {
+        sessionId: "oneoff-trainer",
+        userId: "trainer-1",
+      },
+    });
+  });
+
+  it("does NOT auto-assign owner as trainer", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findFirst.mockResolvedValue(null);
+    mockPrisma.session.create.mockResolvedValue({
+      id: "oneoff-owner",
+      customDay: 2,
+      customStartHour: 10,
+      createdById: "owner-1",
+    });
+
+    const { POST } = await import("@/app/api/sessions/route");
+    await POST(
+      new Request("http://localhost/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customDay: 2,
+          customStartHour: 10,
+          weekDate: "2025-03-10",
+        }),
+      })
+    );
+
+    expect(mockPrisma.sessionTrainer.create).not.toHaveBeenCalled();
+  });
+
+  it("still rejects MEMBER role for one-off sessions", async () => {
+    mockAuth.mockResolvedValue(memberSession());
+
+    const { POST } = await import("@/app/api/sessions/route");
+    const response = await POST(
+      new Request("http://localhost/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customDay: 3,
+          customStartHour: 14,
+          weekDate: "2025-03-10",
+        }),
+      })
+    );
+
+    expect(response.status).toBe(403);
+  });
+
+  it("auto-assigns trainer to recurring session they create", async () => {
+    mockAuth.mockResolvedValue(trainerSession("trainer-1"));
+    mockPrisma.recurringSlot.findUnique.mockResolvedValue({
+      id: "cm1234567890abcdef",
+      dayOfWeek: 1,
+      startHour: 9,
+    });
+    mockPrisma.session.findUnique.mockResolvedValue(null);
+    mockPrisma.session.create.mockResolvedValue({
+      id: "recurring-trainer",
+      recurringSlotId: "cm1234567890abcdef",
+      status: "SCHEDULED",
+      createdById: "trainer-1",
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+    });
+    mockPrisma.sessionTrainer.create.mockResolvedValue({});
+
+    const { POST } = await import("@/app/api/sessions/route");
+    await POST(
+      new Request("http://localhost/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recurringSlotId: "cm1234567890abcdef",
+          weekDate: "2025-03-10",
+        }),
+      })
+    );
+
+    expect(mockPrisma.sessionTrainer.create).toHaveBeenCalledWith({
+      data: {
+        sessionId: "recurring-trainer",
+        userId: "trainer-1",
+      },
+    });
   });
 });

@@ -75,10 +75,12 @@ export default async function MemberSessionDetailPage({
         workoutDetails: session.workoutDetails,
         votingEnabled: session.votingEnabled,
         votingDeadline: session.votingDeadline?.toISOString() || new Date().toISOString(),
-        recurringSlot: {
+        recurringSlot: session.recurringSlot ? {
           dayOfWeek: session.recurringSlot.dayOfWeek,
           startHour: session.recurringSlot.startHour,
-        },
+        } : null,
+        customDay: session.customDay,
+        customStartHour: session.customStartHour,
         memberNames: session.members.map((m) => m.user.name),
         trainerNames: session.trainers.map((t) => t.user.name),
         totalMembers: session.members.length,

@@ -71,6 +71,19 @@ export function calculateVotingDeadline(sessionDateTime: Date): Date {
 }
 
 /**
+ * Get the effective day and hour for a session,
+ * whether it's recurring (from slot) or one-off (custom fields).
+ */
+export function getSessionDayAndHour(
+  session: { recurringSlot?: { dayOfWeek: number; startHour: number } | null; customDay?: number | null; customStartHour?: number | null }
+): { day: number; hour: number } {
+  return {
+    day: session.recurringSlot?.dayOfWeek ?? session.customDay ?? 0,
+    hour: session.recurringSlot?.startHour ?? session.customStartHour ?? 0,
+  };
+}
+
+/**
  * Generate sessions for a given week from all recurring slots.
  *
  * This is idempotent — sessions that already exist (same slot + week)
@@ -199,10 +212,19 @@ export async function getSessionsForWeek(
         },
       },
     },
-    orderBy: [
-      { recurringSlot: { dayOfWeek: 'asc' } },
-      { recurringSlot: { startHour: 'asc' } },
-    ],
+    orderBy: { createdAt: 'asc' },
+  });
+
+  // Sort by day then hour (works for both recurring and one-off sessions)
+  sessions.sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
+    const slotA = a.recurringSlot as { dayOfWeek: number; startHour: number } | null;
+    const slotB = b.recurringSlot as { dayOfWeek: number; startHour: number } | null;
+    const dayA = slotA?.dayOfWeek ?? (a.customDay as number | null) ?? 0;
+    const dayB = slotB?.dayOfWeek ?? (b.customDay as number | null) ?? 0;
+    if (dayA !== dayB) return dayA - dayB;
+    const hourA = slotA?.startHour ?? (a.customStartHour as number | null) ?? 0;
+    const hourB = slotB?.startHour ?? (b.customStartHour as number | null) ?? 0;
+    return hourA - hourB;
   });
 
   return sessions as SessionWithDetails[];
@@ -211,8 +233,20 @@ export async function getSessionsForWeek(
 /**
  * Session with all related data included.
  */
-export type SessionWithDetails = Session & {
-  recurringSlot: RecurringSlot;
+export type SessionWithDetails = {
+  id: string;
+  recurringSlotId: string | null;
+  customDay: number | null;
+  customStartHour: number | null;
+  weekDate: Date;
+  workoutTitle: string | null;
+  workoutDetails: string | null;
+  votingEnabled: boolean;
+  votingDeadline: Date | null;
+  status: string;
+  createdById: string | null;
+  createdAt: Date;
+  recurringSlot: RecurringSlot | null;
   members: Array<{
     sessionId: string;
     userId: string;

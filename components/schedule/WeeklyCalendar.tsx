@@ -22,7 +22,7 @@ function groupSessionsByDay(
 ): Map<number, SessionWithDetails[]> {
   const grouped = new Map<number, SessionWithDetails[]>();
   for (const session of sessions) {
-    const day = session.recurringSlot.dayOfWeek;
+    const day = session.recurringSlot?.dayOfWeek ?? session.customDay ?? 1;
     const existing = grouped.get(day) || [];
     existing.push(session);
     grouped.set(day, existing);
@@ -31,7 +31,11 @@ function groupSessionsByDay(
   for (const [day, daySessions] of grouped) {
     grouped.set(
       day,
-      daySessions.sort((a, b) => a.recurringSlot.startHour - b.recurringSlot.startHour)
+      daySessions.sort((a, b) => {
+        const hourA = a.recurringSlot?.startHour ?? a.customStartHour ?? 0;
+        const hourB = b.recurringSlot?.startHour ?? b.customStartHour ?? 0;
+        return hourA - hourB;
+      })
     );
   }
   return grouped;

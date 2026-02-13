@@ -147,12 +147,14 @@ export async function PATCH(
       // Notify all members of cancellation
       const memberIds = existingSession.members.map((m) => m.user.id);
       if (memberIds.length > 0) {
-        const dayName = DAY_NAMES[existingSession.recurringSlot.dayOfWeek] || "Unknown";
+        const dayOfWeek = existingSession.recurringSlot?.dayOfWeek ?? existingSession.customDay ?? 0;
+        const startHour = existingSession.recurringSlot?.startHour ?? existingSession.customStartHour ?? 0;
+        const dayName = DAY_NAMES[dayOfWeek] || "Unknown";
         await dispatchNotificationToMany(
           memberIds,
           "CLASS_CANCELLED",
-          `${dayName} ${existingSession.recurringSlot.startHour}:00 class cancelled`,
-          `The ${dayName} ${existingSession.recurringSlot.startHour}:00 class has been cancelled. Please check the schedule for alternatives.`
+          `${dayName} ${startHour}:00 class cancelled`,
+          `The ${dayName} ${startHour}:00 class has been cancelled. Please check the schedule for alternatives.`
         );
       }
     } else if (parsed.data.status !== undefined) {
@@ -232,12 +234,14 @@ export async function DELETE(
     // Notify members before deleting
     const memberIds = existing.members.map((m) => m.user.id);
     if (memberIds.length > 0) {
-      const dayName = DAY_NAMES[existing.recurringSlot.dayOfWeek] || "Unknown";
+      const dayOfWeek = existing.recurringSlot?.dayOfWeek ?? existing.customDay ?? 0;
+      const startHour = existing.recurringSlot?.startHour ?? existing.customStartHour ?? 0;
+      const dayName = DAY_NAMES[dayOfWeek] || "Unknown";
       await dispatchNotificationToMany(
         memberIds,
         "SESSION_DELETED",
-        `${dayName} ${existing.recurringSlot.startHour}:00 class removed`,
-        `The ${dayName} ${existing.recurringSlot.startHour}:00 class has been removed from the schedule.`
+        `${dayName} ${startHour}:00 class removed`,
+        `The ${dayName} ${startHour}:00 class has been removed from the schedule.`
       );
     }
 

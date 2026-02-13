@@ -22,7 +22,7 @@ export function SessionCard({
   showVotingIndicator = false,
   currentUserId,
 }: SessionCardProps): React.ReactElement {
-  const time = formatTime(session.recurringSlot.startHour);
+  const time = formatTime(session.recurringSlot?.startHour ?? session.customStartHour ?? 0);
   const memberCount = session.members.length;
   const trainerNames = session.trainers.map((t) => t.user.name).join(", ");
   const isCancelled = session.status === "CANCELLED";

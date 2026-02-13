@@ -140,14 +140,18 @@ export async function POST(
     });
 
     // Send notifications (move is final, per CLAUDE.md section 6.3)
-    const sourceDayName = DAY_NAMES[sourceSession.recurringSlot.dayOfWeek] || "Unknown";
-    const targetDayName = DAY_NAMES[targetSession.recurringSlot.dayOfWeek] || "Unknown";
+    const sourceDayOfWeek = sourceSession.recurringSlot?.dayOfWeek ?? sourceSession.customDay ?? 0;
+    const sourceStartHour = sourceSession.recurringSlot?.startHour ?? sourceSession.customStartHour ?? 0;
+    const targetDayOfWeek = targetSession.recurringSlot?.dayOfWeek ?? targetSession.customDay ?? 0;
+    const targetStartHour = targetSession.recurringSlot?.startHour ?? targetSession.customStartHour ?? 0;
+    const sourceDayName = DAY_NAMES[sourceDayOfWeek] || "Unknown";
+    const targetDayName = DAY_NAMES[targetDayOfWeek] || "Unknown";
 
     await dispatchNotificationToMany(
       memberIds,
       "MEMBER_MOVED",
-      `You've been moved to ${targetDayName} ${targetSession.recurringSlot.startHour}:00`,
-      `Your ${sourceDayName} ${sourceSession.recurringSlot.startHour}:00 class has been changed. You are now in the ${targetDayName} ${targetSession.recurringSlot.startHour}:00 class. This change is final.`
+      `You've been moved to ${targetDayName} ${targetStartHour}:00`,
+      `Your ${sourceDayName} ${sourceStartHour}:00 class has been changed. You are now in the ${targetDayName} ${targetStartHour}:00 class. This change is final.`
     );
 
     return Response.json({

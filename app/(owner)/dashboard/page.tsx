@@ -126,7 +126,9 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
   );
 
   for (const s of scheduledSessions) {
-    const key = `${s.recurringSlot.dayOfWeek}-${s.recurringSlot.startHour}`;
+    const day = s.recurringSlot?.dayOfWeek ?? s.customDay ?? 0;
+    const hour = s.recurringSlot?.startHour ?? s.customStartHour ?? 0;
+    const key = `${day}-${hour}`;
     const existing = slotPerformance.get(key) || {
       total: 0,
       totalAttending: 0,

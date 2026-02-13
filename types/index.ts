@@ -85,6 +85,14 @@ export const SessionCreateSchema = z.object({
 
 export type SessionCreateInput = z.infer<typeof SessionCreateSchema>;
 
+export const OneOffSessionCreateSchema = z.object({
+  customDay: z.number().int().min(1).max(7, 'Day of week must be 1-7'),
+  customStartHour: z.number().int().min(7).max(22, 'Start hour must be 7-22'),
+  weekDate: z.string().date('Invalid date format'),
+});
+
+export type OneOffSessionCreateInput = z.infer<typeof OneOffSessionCreateSchema>;
+
 // ===== VOTE SCHEMA =====
 
 export const VoteSchema = z.object({

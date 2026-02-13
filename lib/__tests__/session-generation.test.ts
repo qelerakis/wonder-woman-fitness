@@ -11,6 +11,7 @@ import {
   getWeekStart,
   getSessionDateTime,
   calculateVotingDeadline,
+  getSessionDayAndHour,
 } from "../session-generation";
 
 // ===== getWeekStart =====
@@ -180,5 +181,50 @@ describe("calculateVotingDeadline", () => {
     const diff = sessionTime.getTime() - deadline.getTime();
 
     expect(diff).toBe(24 * 60 * 60 * 1000);
+  });
+});
+
+// ===== getSessionDayAndHour =====
+
+describe("getSessionDayAndHour", () => {
+  it("returns recurringSlot day/hour for recurring sessions", () => {
+    const session = {
+      recurringSlot: { dayOfWeek: 3, startHour: 14 },
+      customDay: null,
+      customStartHour: null,
+    };
+    expect(getSessionDayAndHour(session)).toEqual({ day: 3, hour: 14 });
+  });
+
+  it("returns customDay/customStartHour for one-off sessions", () => {
+    const session = {
+      recurringSlot: null,
+      customDay: 5,
+      customStartHour: 16,
+    };
+    expect(getSessionDayAndHour(session)).toEqual({ day: 5, hour: 16 });
+  });
+
+  it("falls back to 0/0 when no data", () => {
+    const session = {
+      recurringSlot: null,
+      customDay: null,
+      customStartHour: null,
+    };
+    expect(getSessionDayAndHour(session)).toEqual({ day: 0, hour: 0 });
+  });
+
+  it("prefers recurringSlot over custom fields when both present", () => {
+    const session = {
+      recurringSlot: { dayOfWeek: 2, startHour: 10 },
+      customDay: 5,
+      customStartHour: 16,
+    };
+    expect(getSessionDayAndHour(session)).toEqual({ day: 2, hour: 10 });
+  });
+
+  it("handles undefined fields gracefully", () => {
+    const session = {};
+    expect(getSessionDayAndHour(session)).toEqual({ day: 0, hour: 0 });
   });
 });

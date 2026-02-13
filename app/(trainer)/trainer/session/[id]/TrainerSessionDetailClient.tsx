@@ -23,7 +23,9 @@ interface SessionData {
   recurringSlot: {
     dayOfWeek: number;
     startHour: number;
-  };
+  } | null;
+  customDay: number | null;
+  customStartHour: number | null;
   members: Array<{
     userId: string;
     name: string;
@@ -50,8 +52,10 @@ export function TrainerSessionDetailClient({
   const { addToast } = useToast();
   const [editingWorkout, setEditingWorkout] = useState(false);
 
-  const dayName = DAY_NAMES[session.recurringSlot.dayOfWeek] || "Unknown";
-  const time = formatTime(session.recurringSlot.startHour);
+  const dayOfWeek = session.recurringSlot?.dayOfWeek ?? session.customDay ?? 1;
+  const startHour = session.recurringSlot?.startHour ?? session.customStartHour ?? 0;
+  const dayName = DAY_NAMES[dayOfWeek] || "Unknown";
+  const time = formatTime(startHour);
   const isCancelled = session.status === "CANCELLED";
 
   async function handleSaveWorkout(
@@ -59,6 +63,9 @@ export function TrainerSessionDetailClient({
     title: string,
     details: string
   ): Promise<void> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15_000);
+
     try {
       const res = await fetch(`/api/sessions/${session.id}`, {
         method: "PATCH",
@@ -67,6 +74,7 @@ export function TrainerSessionDetailClient({
           workoutTitle: title,
           workoutDetails: details,
         }),
+        signal: controller.signal,
       });
 
       if (res.ok) {
@@ -74,10 +82,25 @@ export function TrainerSessionDetailClient({
         setEditingWorkout(false);
         router.refresh();
       } else {
-        addToast({ type: "error", title: "Failed to save workout" });
+        const data = await res.json().catch(() => ({ error: "Unknown error" }));
+        addToast({
+          type: "error",
+          title: "Failed to save workout",
+          message: data.error || `Server returned ${res.status}`,
+        });
       }
-    } catch {
-      addToast({ type: "error", title: "Network error" });
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        addToast({
+          type: "error",
+          title: "Request timed out",
+          message: "The server took too long to respond. Please try again.",
+        });
+      } else {
+        addToast({ type: "error", title: "Network error" });
+      }
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 

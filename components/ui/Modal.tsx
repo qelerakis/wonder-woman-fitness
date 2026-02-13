@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useId } from "react";
+import { useEffect, useRef, useId } from "react";
 
 interface ModalProps {
   isOpen: boolean;
@@ -25,12 +25,36 @@ export function Modal({
 }: ModalProps): React.ReactElement | null {
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedElement = useRef<HTMLElement | null>(null);
+  const wasOpenRef = useRef(false);
+  const onCloseRef = useRef(onClose);
   const titleId = useId();
 
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
+  // Keep onClose ref current without triggering re-renders
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  // Focus management: only focus dialog on initial open, not on every re-render
+  useEffect(() => {
+    if (isOpen && !wasOpenRef.current) {
+      // Modal just opened — save previous focus and focus the dialog
+      previouslyFocusedElement.current = document.activeElement as HTMLElement;
+      dialogRef.current?.focus();
+      wasOpenRef.current = true;
+    } else if (!isOpen && wasOpenRef.current) {
+      // Modal just closed — restore previous focus
+      previouslyFocusedElement.current?.focus();
+      wasOpenRef.current = false;
+    }
+  }, [isOpen]);
+
+  // Keyboard handler: Escape to close + focus trap
+  useEffect(() => {
+    if (!isOpen) return;
+
+    function handleKeyDown(e: KeyboardEvent): void {
       if (e.key === "Escape") {
-        onClose();
+        onCloseRef.current();
         return;
       }
 
@@ -56,27 +80,16 @@ export function Modal({
           }
         }
       }
-    },
-    [onClose]
-  );
-
-  useEffect(() => {
-    if (isOpen) {
-      previouslyFocusedElement.current = document.activeElement as HTMLElement;
-      dialogRef.current?.focus();
-      document.addEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "hidden";
-    } else {
-      document.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "";
-      previouslyFocusedElement.current?.focus();
     }
+
+    document.addEventListener("keydown", handleKeyDown);
+    document.body.style.overflow = "hidden";
 
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "";
     };
-  }, [isOpen, handleKeyDown]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
