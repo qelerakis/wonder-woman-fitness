@@ -21,6 +21,7 @@ interface SessionData {
   workoutTitle: string | null;
   workoutDetails: string | null;
   votingEnabled: boolean;
+  recurringSlotId: string | null;
   recurringSlot: {
     dayOfWeek: number;
     startHour: number;

@@ -97,6 +97,7 @@ export default async function OwnerSessionDetailPage({
         workoutTitle: session.workoutTitle,
         workoutDetails: session.workoutDetails,
         votingEnabled: session.votingEnabled,
+        recurringSlotId: session.recurringSlotId,
         recurringSlot: session.recurringSlot ? {
           dayOfWeek: session.recurringSlot.dayOfWeek,
           startHour: session.recurringSlot.startHour,
