@@ -5,7 +5,6 @@ import { PaymentBanner } from "@/components/payment/PaymentBanner";
 import { prisma } from "@/lib/prisma";
 import { getPaymentStatus } from "@/lib/payment-logic";
 import type { PaymentRecord } from "@/lib/payment-logic";
-import { GRACE_PERIOD_DAYS } from "@/lib/constants";
 
 export default async function MemberLayout({
   children,
@@ -31,7 +30,7 @@ export default async function MemberLayout({
 
   // Compute payment status for MEMBER role to show banner
   let showGraceBanner = false;
-  let graceDaysLeft = 0;
+  let daysIntoGracePeriod = 0;
 
   if (role === "MEMBER") {
     const user = await prisma.user.findUnique({
@@ -75,7 +74,7 @@ export default async function MemberLayout({
 
       if (paymentStatus === "GRACE_PERIOD") {
         showGraceBanner = true;
-        // Calculate days remaining in grace period
+        // Calculate days into grace period (elapsed days)
         const now = new Date();
         let graceStart: Date;
         if (user.status === "TRIAL" && user.trialEndsAt) {
@@ -86,8 +85,7 @@ export default async function MemberLayout({
           graceStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
         }
         const msPerDay = 1000 * 60 * 60 * 24;
-        const daysSinceGraceStart = Math.floor((now.getTime() - graceStart.getTime()) / msPerDay) + 1;
-        graceDaysLeft = Math.max(0, GRACE_PERIOD_DAYS - daysSinceGraceStart);
+        daysIntoGracePeriod = Math.floor((now.getTime() - graceStart.getTime()) / msPerDay) + 1;
       }
     }
   }
@@ -102,7 +100,7 @@ export default async function MemberLayout({
       {showGraceBanner && (
         <PaymentBanner
           status="GRACE_PERIOD"
-          daysIntoGracePeriod={graceDaysLeft}
+          daysIntoGracePeriod={daysIntoGracePeriod}
         />
       )}
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">

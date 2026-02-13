@@ -18,7 +18,7 @@ export function PaymentBanner({
     return null;
   }
 
-  const daysRemaining = GRACE_PERIOD_DAYS - daysIntoGracePeriod;
+  const daysRemaining = Math.max(0, GRACE_PERIOD_DAYS - daysIntoGracePeriod);
 
   if (status === "GRACE_PERIOD") {
     return (
