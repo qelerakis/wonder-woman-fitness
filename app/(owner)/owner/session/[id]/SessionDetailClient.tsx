@@ -10,6 +10,7 @@ import { WorkoutDisplay } from "@/components/schedule/WorkoutDisplay";
 import { VoteSummary } from "@/components/schedule/VoteSummary";
 import { useToast } from "@/components/ui/Toast";
 import { AssignmentToggleList } from "@/components/schedule/AssignmentToggleList";
+import { DeleteRecurringSlotModal } from "@/components/schedule/DeleteRecurringSlotModal";
 import { DAY_NAMES, MAX_CLASS_SIZE } from "@/lib/constants";
 import { formatTime } from "@/components/schedule/SessionCard";
 import type { VoteMember } from "@/components/schedule/VoteSummary";
@@ -65,6 +66,7 @@ export function SessionDetailClient({
   const [currentMemberIds, setCurrentMemberIds] = useState<string[]>(
     session.members.map((m) => m.userId)
   );
+  const [showDeleteSlotModal, setShowDeleteSlotModal] = useState(false);
 
   const dayOfWeek = session.recurringSlot?.dayOfWeek ?? session.customDay ?? 1;
   const startHour = session.recurringSlot?.startHour ?? session.customStartHour ?? 0;
@@ -152,6 +154,12 @@ export function SessionDetailClient({
     } finally {
       setDeleting(false);
     }
+  }
+
+  function handleSlotDeleted(): void {
+    setShowDeleteSlotModal(false);
+    addToast({ type: "success", title: "Recurring slot deleted" });
+    router.push("/owner/schedule");
   }
 
   async function handleToggleVoting(): Promise<void> {
@@ -260,6 +268,15 @@ export function SessionDetailClient({
           >
             Delete Session
           </Button>
+          {session.recurringSlotId && session.recurringSlot && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowDeleteSlotModal(true)}
+            >
+              Delete Recurring Slot
+            </Button>
+          )}
         </div>
       </div>
 
@@ -336,6 +353,17 @@ export function SessionDetailClient({
           />
         </div>
       </div>
+
+      {session.recurringSlotId && session.recurringSlot && (
+        <DeleteRecurringSlotModal
+          isOpen={showDeleteSlotModal}
+          onClose={() => setShowDeleteSlotModal(false)}
+          slotId={session.recurringSlotId}
+          dayOfWeek={session.recurringSlot.dayOfWeek}
+          startHour={session.recurringSlot.startHour}
+          onDeleted={handleSlotDeleted}
+        />
+      )}
     </div>
   );
 }
