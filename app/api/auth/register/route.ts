@@ -1,17 +1,16 @@
-import { NextResponse } from "next/server";
 import bcrypt from "bcrypt";
 import { prisma } from "@/lib/prisma";
 import { addDays } from "date-fns";
 import { RegisterSchema } from "@/types";
 import { BCRYPT_ROUNDS, TRIAL_DAYS } from "@/lib/constants";
 
-export async function POST(req: Request): Promise<NextResponse> {
+export async function POST(req: Request): Promise<Response> {
   try {
     const body: unknown = await req.json();
     const parsed = RegisterSchema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json(
+      return Response.json(
         { error: parsed.error.flatten().fieldErrors },
         { status: 400 }
       );
@@ -26,7 +25,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     });
 
     if (existingUser) {
-      return NextResponse.json(
+      return Response.json(
         { error: "An account with this email already exists" },
         { status: 409 }
       );
@@ -57,10 +56,10 @@ export async function POST(req: Request): Promise<NextResponse> {
       },
     });
 
-    return NextResponse.json({ data: user }, { status: 201 });
+    return Response.json({ data: user }, { status: 201 });
   } catch (error) {
     console.error("Registration error:", error);
-    return NextResponse.json(
+    return Response.json(
       { error: "Internal server error" },
       { status: 500 }
     );

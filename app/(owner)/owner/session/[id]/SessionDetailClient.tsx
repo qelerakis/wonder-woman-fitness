@@ -54,6 +54,7 @@ export function SessionDetailClient({
   const { addToast } = useToast();
   const [editingWorkout, setEditingWorkout] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const dayName = DAY_NAMES[session.recurringSlot.dayOfWeek] || "Unknown";
   const time = formatTime(session.recurringSlot.startHour);
@@ -99,6 +100,32 @@ export function SessionDetailClient({
       addToast({ type: "error", title: "Network error" });
     } finally {
       setCancelling(false);
+    }
+  }
+
+  async function handleDeleteSession(): Promise<void> {
+    if (
+      !confirm(
+        "Are you sure you want to permanently delete this session? This cannot be undone."
+      )
+    ) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/sessions/${session.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        addToast({ type: "success", title: "Session deleted" });
+        router.push("/owner/schedule");
+      } else {
+        addToast({ type: "error", title: "Failed to delete session" });
+      }
+    } catch {
+      addToast({ type: "error", title: "Network error" });
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -156,6 +183,14 @@ export function SessionDetailClient({
               Cancel Session
             </Button>
           )}
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={handleDeleteSession}
+            loading={deleting}
+          >
+            Delete Session
+          </Button>
         </div>
       </div>
 

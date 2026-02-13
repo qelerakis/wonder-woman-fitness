@@ -10,7 +10,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { dispatchNotificationToMany } from "@/lib/notifications";
-import { MAX_CLASS_SIZE } from "@/lib/constants";
+import { MAX_CLASS_SIZE, DAY_NAMES } from "@/lib/constants";
 import { z } from "zod";
 
 interface RouteParams {
@@ -140,8 +140,8 @@ export async function POST(
     });
 
     // Send notifications (move is final, per CLAUDE.md section 6.3)
-    const sourceDayName = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][sourceSession.recurringSlot.dayOfWeek] || "Unknown";
-    const targetDayName = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][targetSession.recurringSlot.dayOfWeek] || "Unknown";
+    const sourceDayName = DAY_NAMES[sourceSession.recurringSlot.dayOfWeek] || "Unknown";
+    const targetDayName = DAY_NAMES[targetSession.recurringSlot.dayOfWeek] || "Unknown";
 
     await dispatchNotificationToMany(
       memberIds,

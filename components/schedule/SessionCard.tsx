@@ -36,7 +36,7 @@ export function SessionCard({
 
   return (
     <Link
-      href={`${basePath}/session/${session.id}`}
+      href={`${basePath}/${session.id}`}
       className={`
         group block rounded-lg border p-3
         transition-all duration-150

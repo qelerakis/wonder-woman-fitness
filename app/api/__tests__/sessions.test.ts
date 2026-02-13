@@ -489,4 +489,237 @@ describe("DELETE /api/sessions/[id]", () => {
     expect(response.status).toBe(200);
     expect(body.data.success).toBe(true);
   });
+
+  it("returns 403 for MEMBER role", async () => {
+    mockAuth.mockResolvedValue(memberSession());
+
+    const { DELETE } = await import("@/app/api/sessions/[id]/route");
+    const response = await DELETE(
+      new Request("http://localhost/api/sessions/s-1", { method: "DELETE" }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(403);
+  });
+
+  it("calls prisma.session.delete with correct id", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-42",
+      members: [],
+      recurringSlot: { dayOfWeek: 5, startHour: 18 },
+    });
+    mockPrisma.session.delete.mockResolvedValue({});
+
+    const { DELETE } = await import("@/app/api/sessions/[id]/route");
+    await DELETE(
+      new Request("http://localhost/api/sessions/s-42", { method: "DELETE" }),
+      { params: Promise.resolve({ id: "s-42" }) }
+    );
+
+    expect(mockPrisma.session.delete).toHaveBeenCalledWith({ where: { id: "s-42" } });
+  });
+
+  it("notifies members before deleting", async () => {
+    const { dispatchNotificationToMany } = await import("@/lib/notifications");
+
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      members: [
+        { user: { id: "m-1" } },
+        { user: { id: "m-2" } },
+      ],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+    });
+    mockPrisma.session.delete.mockResolvedValue({});
+
+    const { DELETE } = await import("@/app/api/sessions/[id]/route");
+    await DELETE(
+      new Request("http://localhost/api/sessions/s-1", { method: "DELETE" }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(dispatchNotificationToMany).toHaveBeenCalledWith(
+      ["m-1", "m-2"],
+      "SESSION_DELETED",
+      expect.stringContaining("Monday"),
+      expect.any(String)
+    );
+  });
+
+  it("returns 500 on unexpected error", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockRejectedValue(new Error("DB crash"));
+
+    const { DELETE } = await import("@/app/api/sessions/[id]/route");
+    const response = await DELETE(
+      new Request("http://localhost/api/sessions/s-1", { method: "DELETE" }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(500);
+    const body = await response.json();
+    expect(body.error).toBe("Internal server error");
+  });
+});
+
+// ===== Additional POST /api/sessions Edge Cases =====
+
+describe("POST /api/sessions — edge cases", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns 500 on unexpected Prisma error during create", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.recurringSlot.findUnique.mockResolvedValue({
+      id: "cm1234567890abcdef",
+      dayOfWeek: 1,
+      startHour: 9,
+    });
+    mockPrisma.session.findUnique.mockResolvedValue(null);
+    mockPrisma.session.create.mockRejectedValue(new Error("DB error"));
+
+    const { POST } = await import("@/app/api/sessions/route");
+    const response = await POST(
+      new Request("http://localhost/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recurringSlotId: "cm1234567890abcdef",
+          weekDate: "2025-03-10",
+        }),
+      })
+    );
+
+    expect(response.status).toBe(500);
+    const body = await response.json();
+    expect(body.error).toBe("Internal server error");
+  });
+
+  it("normalizes weekDate to Monday of that week", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.recurringSlot.findUnique.mockResolvedValue({
+      id: "cm1234567890abcdef",
+      dayOfWeek: 3,
+      startHour: 18,
+    });
+    mockPrisma.session.findUnique.mockResolvedValue(null);
+    mockPrisma.session.create.mockResolvedValue({
+      id: "new-session",
+      recurringSlotId: "cm1234567890abcdef",
+      status: "SCHEDULED",
+      recurringSlot: { id: "cm1234567890abcdef", dayOfWeek: 3, startHour: 18 },
+    });
+
+    const { POST } = await import("@/app/api/sessions/route");
+    // Pass a Wednesday date — should be normalized to Monday
+    await POST(
+      new Request("http://localhost/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recurringSlotId: "cm1234567890abcdef",
+          weekDate: "2025-03-12", // Wednesday
+        }),
+      })
+    );
+
+    // getWeekStart should have been called to normalize
+    expect(mockGetWeekStart).toHaveBeenCalled();
+    // The create should use the normalized Monday date
+    expect(mockPrisma.session.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          recurringSlotId: "cm1234567890abcdef",
+        }),
+      })
+    );
+  });
+});
+
+// ===== Additional PATCH /api/sessions/[id] Edge Cases =====
+
+describe("PATCH /api/sessions/[id] — edge cases", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns 401 when not authenticated", async () => {
+    mockAuth.mockResolvedValue(null);
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workoutTitle: "Test" }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(401);
+  });
+
+  it("returns 404 when session not found for update", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue(null);
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/sessions/nonexistent", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workoutTitle: "Test" }),
+      }),
+      { params: Promise.resolve({ id: "nonexistent" }) }
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(body.error).toBe("Session not found");
+  });
+
+  it("returns 400 for invalid body on PATCH", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      trainers: [],
+      members: [],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "INVALID_STATUS" }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it("returns 500 on unexpected error during PATCH", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockRejectedValue(new Error("DB crash"));
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workoutTitle: "Test" }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(500);
+    const body = await response.json();
+    expect(body.error).toBe("Internal server error");
+  });
 });

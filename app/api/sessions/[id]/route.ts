@@ -9,6 +9,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { dispatchNotificationToMany } from "@/lib/notifications";
+import { DAY_NAMES } from "@/lib/constants";
 import { z } from "zod";
 
 interface RouteParams {
@@ -146,7 +147,7 @@ export async function PATCH(
       // Notify all members of cancellation
       const memberIds = existingSession.members.map((m) => m.user.id);
       if (memberIds.length > 0) {
-        const dayName = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][existingSession.recurringSlot.dayOfWeek] || "Unknown";
+        const dayName = DAY_NAMES[existingSession.recurringSlot.dayOfWeek] || "Unknown";
         await dispatchNotificationToMany(
           memberIds,
           "CLASS_CANCELLED",
@@ -231,7 +232,7 @@ export async function DELETE(
     // Notify members before deleting
     const memberIds = existing.members.map((m) => m.user.id);
     if (memberIds.length > 0) {
-      const dayName = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][existing.recurringSlot.dayOfWeek] || "Unknown";
+      const dayName = DAY_NAMES[existing.recurringSlot.dayOfWeek] || "Unknown";
       await dispatchNotificationToMany(
         memberIds,
         "SESSION_DELETED",

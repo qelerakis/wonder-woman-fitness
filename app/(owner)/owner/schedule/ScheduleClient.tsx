@@ -3,16 +3,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { addDays } from "date-fns";
 import { WeeklyCalendar } from "@/components/schedule/WeeklyCalendar";
+import { CreateSessionModal } from "@/components/schedule/CreateSessionModal";
+import type { SlotInfo } from "@/components/schedule/CreateSessionModal";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import type { SessionWithDetails } from "@/lib/session-generation";
-
-interface SlotInfo {
-  id: string;
-  dayOfWeek: number;
-  startHour: number;
-  trainerName: string | null;
-}
 
 interface PersonInfo {
   id: string;
@@ -37,7 +32,10 @@ export function ScheduleClient({
   const [sessions, setSessions] = useState<SessionWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const { addToast } = useToast();
+
+  const existingSlotIds = sessions.map((s) => s.recurringSlotId);
 
   const fetchSessions = useCallback(async () => {
     setLoading(true);
@@ -127,6 +125,13 @@ export function ScheduleClient({
           >
             Generate Week
           </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setShowCreateModal(true)}
+          >
+            Add Session
+          </Button>
         </div>
       </div>
 
@@ -166,6 +171,19 @@ export function ScheduleClient({
           onWeekChange={handleWeekChange}
         />
       )}
+
+      {/* Create session modal */}
+      <CreateSessionModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreated={() => {
+          setShowCreateModal(false);
+          fetchSessions();
+        }}
+        weekStart={weekStart}
+        recurringSlots={recurringSlots}
+        existingSlotIds={existingSlotIds}
+      />
     </div>
   );
 }
