@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/payment-reminders",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/trial-expiration",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/voting-deadline",
+      "schedule": "0 * * * *"
+    }
+  ]
+}

@@ -1,0 +1,109 @@
+import { auth } from "@/lib/auth";
+import { redirect, notFound } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+import { TrainerSessionDetailClient } from "./TrainerSessionDetailClient";
+
+export const metadata = {
+  title: "Session Detail - Wonder Woman Fitness",
+};
+
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default async function TrainerSessionDetailPage({
+  params,
+}: PageProps): Promise<React.ReactElement> {
+  const authSession = await auth();
+  if (!authSession?.user) {
+    redirect("/login");
+  }
+
+  const role = authSession.user.role as string;
+  if (role !== "TRAINER" && role !== "OWNER") {
+    redirect("/login");
+  }
+
+  const { id } = await params;
+
+  const session = await prisma.session.findUnique({
+    where: { id },
+    include: {
+      recurringSlot: true,
+      members: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              status: true,
+            },
+          },
+        },
+      },
+      trainers: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      },
+      votes: {
+        select: {
+          id: true,
+          userId: true,
+          attending: true,
+          votedAt: true,
+        },
+      },
+    },
+  });
+
+  if (!session) {
+    notFound();
+  }
+
+  // Build vote members list
+  const voteMembers = session.members.map((sm) => {
+    const vote = session.votes.find((v) => v.userId === sm.userId);
+    return {
+      userId: sm.userId,
+      name: sm.user.name,
+      attending: vote ? vote.attending : null,
+    };
+  });
+
+  return (
+    <TrainerSessionDetailClient
+      session={{
+        id: session.id,
+        weekDate: session.weekDate.toISOString(),
+        status: session.status,
+        workoutTitle: session.workoutTitle,
+        workoutDetails: session.workoutDetails,
+        votingEnabled: session.votingEnabled,
+        recurringSlot: {
+          dayOfWeek: session.recurringSlot.dayOfWeek,
+          startHour: session.recurringSlot.startHour,
+        },
+        members: session.members.map((m) => ({
+          userId: m.userId,
+          name: m.user.name,
+          email: m.user.email,
+          status: m.user.status,
+        })),
+        trainers: session.trainers.map((t) => ({
+          userId: t.userId,
+          name: t.user.name,
+          email: t.user.email,
+        })),
+      }}
+      voteMembers={voteMembers}
+    />
+  );
+}

@@ -1,0 +1,50 @@
+{
+  "name": "wonder-woman-fitness",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.4.0",
+    "@prisma/client": "^7.4.0",
+    "@react-email/components": "^1.0.7",
+    "@tailwindcss/postcss": "^4.1.18",
+    "@types/node": "^25.2.3",
+    "@types/react-dom": "^19.2.3",
+    "bcrypt": "^6.0.0",
+    "cloudinary": "^2.9.0",
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
+    "next": "^15.5.12",
+    "next-auth": "^5.0.0-beta.30",
+    "postcss": "^8.5.6",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "recharts": "^3.7.0",
+    "resend": "^6.9.2",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.9.3",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.3",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/bcrypt": "^6.0.0",
+    "@types/react": "^19.2.14",
+    "@vitejs/plugin-react": "^5.1.4",
+    "dotenv": "^17.2.4",
+    "eslint": "^9.39.2",
+    "eslint-config-next": "^15.5.12",
+    "jsdom": "^28.0.0",
+    "prisma": "^7.4.0",
+    "tsx": "^4.21.0",
+    "vitest": "^4.0.18"
+  }
+}

@@ -1,0 +1,197 @@
+// Wonder Woman Fitness — Database Schema
+// Single source of truth for all data models
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ──────────────────────────────────────────────────────────
+
+enum UserRole {
+  OWNER
+  TRAINER
+  MEMBER
+}
+
+enum UserStatus {
+  TRIAL
+  ACTIVE
+  DEPARTED
+}
+
+enum SessionStatus {
+  SCHEDULED
+  CANCELLED
+}
+
+enum NotificationType {
+  WORKOUT_POSTED
+  VOTING_OPENED
+  CLASS_CANCELLED
+  MEMBER_MOVED
+  PAYMENT_REMINDER
+  LOCKOUT
+  MEMBER_DEPARTED
+  REJOIN_REQUEST
+  TRIAL_EXPIRING
+  TRIAL_EXPIRED
+  SESSION_DELETED
+  MANUAL_REMINDER
+}
+
+// ─── Models ─────────────────────────────────────────────────────────
+
+model User {
+  id             String     @id @default(cuid())
+  email          String     @unique
+  passwordHash   String
+  name           String
+  phone          String?
+  photo          String?
+  role           UserRole   @default(MEMBER)
+  status         UserStatus @default(TRIAL)
+  joinDate       DateTime   @default(now())
+  trialEndsAt    DateTime?
+  departedAt     DateTime?
+  departReason   String?
+  monthlyRate    Decimal?   @db.Decimal(10, 2)
+  overrideActive Boolean    @default(false)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  // Relations
+  sessionMembers   SessionMember[]
+  sessionTrainers  SessionTrainer[]
+  votes            Vote[]
+  payments         Payment[]        @relation("MemberPayments")
+  recordedPayments Payment[]        @relation("RecorderPayments")
+  privateSessions  PrivateSession[]
+  notifications    Notification[]
+
+  @@map("users")
+}
+
+model RecurringSlot {
+  id        String   @id @default(cuid())
+  dayOfWeek Int // 1=Monday, 2=Tuesday, ..., 7=Sunday
+  startHour Int // 7-22 (7 AM to 10 PM start; last class ends 11 PM)
+  createdAt DateTime @default(now())
+
+  // Relations
+  sessions Session[]
+
+  @@unique([dayOfWeek, startHour])
+  @@map("recurring_slots")
+}
+
+model Session {
+  id              String        @id @default(cuid())
+  recurringSlotId String
+  weekDate        DateTime // Always the Monday of the week
+  workoutTitle    String?
+  workoutDetails  String?
+  votingEnabled   Boolean       @default(false)
+  votingDeadline  DateTime?
+  status          SessionStatus @default(SCHEDULED)
+  createdAt       DateTime      @default(now())
+
+  // Relations
+  recurringSlot RecurringSlot    @relation(fields: [recurringSlotId], references: [id])
+  members       SessionMember[]
+  trainers      SessionTrainer[]
+  votes         Vote[]
+
+  @@unique([recurringSlotId, weekDate])
+  @@map("sessions")
+}
+
+model SessionMember {
+  sessionId String
+  userId    String
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([sessionId, userId])
+  @@map("session_members")
+}
+
+model SessionTrainer {
+  sessionId String
+  userId    String
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([sessionId, userId])
+  @@map("session_trainers")
+}
+
+model Vote {
+  id        String   @id @default(cuid())
+  sessionId String
+  userId    String
+  attending Boolean
+  votedAt   DateTime @default(now())
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, userId])
+  @@map("votes")
+}
+
+model Payment {
+  id           String   @id @default(cuid())
+  userId       String
+  amount       Decimal  @db.Decimal(10, 2)
+  paidAt       DateTime
+  periodStart  DateTime
+  periodEnd    DateTime
+  recordedById String
+  notes        String?
+  createdAt    DateTime @default(now())
+
+  user       User @relation("MemberPayments", fields: [userId], references: [id], onDelete: Cascade)
+  recordedBy User @relation("RecorderPayments", fields: [recordedById], references: [id])
+
+  @@map("payments")
+}
+
+model PrivateSession {
+  id              String   @id @default(cuid())
+  clientName      String
+  scheduledAt     DateTime
+  paid            Boolean  @default(false)
+  amount          Decimal? @db.Decimal(10, 2)
+  exerciseDetails String?
+  notes           String?
+  createdById     String
+  createdAt       DateTime @default(now())
+
+  createdBy User @relation(fields: [createdById], references: [id])
+
+  @@map("private_sessions")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  read      Boolean          @default(false)
+  emailSent Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}

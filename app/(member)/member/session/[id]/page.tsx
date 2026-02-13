@@ -1,63 +1,94 @@
-/**
- * Member Session Detail Page
- *
- * Shows:
- * - Full workout details
- * - Trainer info
- * - List of group members
- * - Voting buttons (if enabled)
- */
+import { auth } from "@/lib/auth";
+import { redirect, notFound } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+import { MemberSessionDetailClient } from "./MemberSessionDetailClient";
 
-import { auth } from '@/lib/auth';
-import { redirect } from 'next/navigation';
-import { prisma } from '@/lib/prisma';
-import { notFound } from 'next/navigation';
-import { SessionDetailClient } from './SessionDetailClient';
+export const metadata = {
+  title: "Session Detail - Wonder Woman Fitness",
+};
+
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
 
 export default async function MemberSessionDetailPage({
   params,
-}: {
-  params: { id: string };
-}) {
-  // 1. Verify authentication
-  const session = await auth();
-  if (!session) redirect('/login');
-  if (session.user.role !== 'MEMBER') redirect('/login');
+}: PageProps): Promise<React.ReactElement> {
+  const authSession = await auth();
+  if (!authSession?.user) {
+    redirect("/login");
+  }
 
-  // 2. Fetch session with details
-  const sessionData = await prisma.session.findUnique({
-    where: { id: params.id },
+  const { id } = await params;
+
+  const session = await prisma.session.findUnique({
+    where: { id },
     include: {
       recurringSlot: true,
       members: {
         include: {
           user: {
-            select: { id: true, name: true, photo: true },
+            select: {
+              id: true,
+              name: true,
+            },
           },
         },
       },
       trainers: {
         include: {
           user: {
-            select: { id: true, name: true, photo: true },
+            select: {
+              id: true,
+              name: true,
+            },
           },
         },
       },
       votes: {
-        where: { userId: session.user.id },
+        select: {
+          id: true,
+          userId: true,
+          attending: true,
+          votedAt: true,
+        },
       },
     },
   });
 
-  if (!sessionData) notFound();
+  if (!session) {
+    notFound();
+  }
 
-  // 3. Check if member is in this session
-  const isMember = sessionData.members.some((m) => m.user.id === session.user.id);
+  // Find this member's current vote
+  const myVote = session.votes.find(
+    (v) => v.userId === authSession.user.id
+  );
 
   return (
-    <SessionDetailClient
-      sessionData={sessionData}
-      isMember={isMember}
+    <MemberSessionDetailClient
+      session={{
+        id: session.id,
+        weekDate: session.weekDate.toISOString(),
+        status: session.status,
+        workoutTitle: session.workoutTitle,
+        workoutDetails: session.workoutDetails,
+        votingEnabled: session.votingEnabled,
+        votingDeadline: session.votingDeadline?.toISOString() || new Date().toISOString(),
+        recurringSlot: {
+          dayOfWeek: session.recurringSlot.dayOfWeek,
+          startHour: session.recurringSlot.startHour,
+        },
+        memberNames: session.members.map((m) => m.user.name),
+        trainerNames: session.trainers.map((t) => t.user.name),
+        totalMembers: session.members.length,
+        votesCount: {
+          coming: session.votes.filter((v) => v.attending).length,
+          notComing: session.votes.filter((v) => !v.attending).length,
+        },
+      }}
+      myVote={myVote ? myVote.attending : null}
+      userId={authSession.user.id}
     />
   );
 }

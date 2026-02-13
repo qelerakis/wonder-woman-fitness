@@ -23,9 +23,13 @@ export const RegisterSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z
     .string()
-    .min(MIN_PASSWORD_LENGTH, `Password must be at least ${MIN_PASSWORD_LENGTH} characters`),
-  name: z.string().min(1, 'Name is required'),
-  phone: z.string().min(1, 'Phone is required'),
+    .min(MIN_PASSWORD_LENGTH, `Password must be at least ${MIN_PASSWORD_LENGTH} characters`)
+    .regex(
+      /(?=.*[0-9])(?=.*[!@#$%^&*])/,
+      'Password must contain at least one number and one special character'
+    ),
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  phone: z.string().optional(),
 });
 
 export type RegisterInput = z.infer<typeof RegisterSchema>;
@@ -146,7 +150,7 @@ export type NotificationCreateInput = z.infer<typeof NotificationCreateSchema>;
 // ===== RECURRING SLOT SCHEMA =====
 
 export const RecurringSlotSchema = z.object({
-  dayOfWeek: z.number().int().min(0).max(6, 'Day of week must be 0-6'),
+  dayOfWeek: z.number().int().min(1).max(7, 'Day of week must be 1-7 (ISO: Mon=1, Sun=7)'),
   startHour: z.number().int().min(7).max(22, 'Start hour must be 7-22'),
 });
 

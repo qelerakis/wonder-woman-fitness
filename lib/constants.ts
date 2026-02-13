@@ -22,25 +22,26 @@ export const VOTING_DEADLINE_HOURS_BEFORE = 24;
 export const SLOT_START_HOUR = 7;  // 7 AM
 export const SLOT_END_HOUR = 22;   // 10 PM (last slot starts at 22:00)
 
-// Days of week (0 = Sunday, 6 = Saturday)
+// Days of week (ISO: 1 = Monday, 7 = Sunday — matches Prisma schema)
 export const DAYS_OF_WEEK = {
-  SUNDAY: 0,
   MONDAY: 1,
   TUESDAY: 2,
   WEDNESDAY: 3,
   THURSDAY: 4,
   FRIDAY: 5,
   SATURDAY: 6,
+  SUNDAY: 7,
 } as const;
 
 export const DAY_NAMES = [
-  'Sunday',
+  '', // index 0 unused (ISO starts at 1)
   'Monday',
   'Tuesday',
   'Wednesday',
   'Thursday',
   'Friday',
   'Saturday',
+  'Sunday',
 ] as const;
 
 // ===== NOTIFICATION CONFIGURATION =====
@@ -114,15 +115,14 @@ export const USER_ROLES = {
   MEMBER: 'MEMBER',
 } as const;
 
-// ===== USER STATUSES =====
+// ===== USER STATUSES (as stored in DB) =====
 export const USER_STATUSES = {
   TRIAL: 'TRIAL',
   ACTIVE: 'ACTIVE',
-  LOCKED: 'LOCKED',
   DEPARTED: 'DEPARTED',
 } as const;
 
-// ===== PAYMENT STATUSES (Computed, not stored) =====
+// ===== PAYMENT STATUSES (Computed, never stored) =====
 export const PAYMENT_STATUSES = {
   TRIAL: 'TRIAL',
   PAID: 'PAID',

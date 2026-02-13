@@ -1,12 +1,13 @@
 /**
  * Voting Logic Utilities
  *
- * Handles voting deadline calculations and validation
+ * Handles voting deadline calculations, validation, and vote summary.
+ * Reuses session datetime calculation from session-generation.ts (single source of truth).
  */
 
-import { addDays, setHours, setMinutes, setSeconds, setMilliseconds, subHours } from 'date-fns';
-import { VOTING_DEADLINE_HOURS_BEFORE } from './constants';
-import { Session, RecurringSlot } from '@prisma/client';
+import { LOW_ATTENDANCE_THRESHOLD } from './constants';
+import { getSessionDateTime, calculateVotingDeadline } from './session-generation';
+import type { Session, RecurringSlot } from '@/generated/prisma/client';
 
 /**
  * Calculate voting deadline (24 hours before session time)
@@ -21,7 +22,7 @@ export function getVotingDeadline(session: Session, recurringSlot: RecurringSlot
 export function getVotingDeadline(weekDate: Date, dayOfWeek: number, startHour: number): Date;
 
 /**
- * Implementation
+ * Implementation — delegates to session-generation.ts for UTC-safe datetime calculation
  */
 export function getVotingDeadline(
   sessionOrWeekDate: Session | Date,
@@ -44,16 +45,9 @@ export function getVotingDeadline(
     hour = startHour!;
   }
 
-  // Session time = weekDate + dayOfWeek + startHour
-  // dayOfWeek: 1=Monday, 2=Tuesday, ..., 7=Sunday
-  const sessionDate = addDays(weekDate, dayOfWeek - 1);
-  let sessionTime = setHours(sessionDate, hour);
-  sessionTime = setMinutes(sessionTime, 0);
-  sessionTime = setSeconds(sessionTime, 0);
-  sessionTime = setMilliseconds(sessionTime, 0);
-
-  // Deadline = 24 hours before
-  return subHours(sessionTime, VOTING_DEADLINE_HOURS_BEFORE);
+  // Reuse getSessionDateTime for UTC-safe calculation, then subtract 24h
+  const sessionTime = getSessionDateTime(weekDate, dayOfWeek, hour);
+  return calculateVotingDeadline(sessionTime);
 }
 
 /**
@@ -86,7 +80,12 @@ export function getTimeUntilDeadline(deadline: Date, now: Date = new Date()): {
 /**
  * Calculate vote summary from votes array
  */
-export function getVoteSummary(votes: Array<{ attending: boolean }>, totalMembers: number) {
+export function getVoteSummary(votes: Array<{ attending: boolean }>, totalMembers: number): {
+  coming: number;
+  notComing: number;
+  noVote: number;
+  total: number;
+} {
   const comingCount = votes.filter((v) => v.attending).length;
   const notComingCount = votes.filter((v) => !v.attending).length;
   const noVoteCount = totalMembers - votes.length;
@@ -100,8 +99,9 @@ export function getVoteSummary(votes: Array<{ attending: boolean }>, totalMember
 }
 
 /**
- * Determine if session has low attendance (1-2 "coming" votes)
+ * Determine if session has low attendance
+ * Low = more than 0 but at or below the LOW_ATTENDANCE_THRESHOLD (2)
  */
 export function hasLowAttendance(comingCount: number): boolean {
-  return comingCount > 0 && comingCount <= 2;
+  return comingCount > 0 && comingCount <= LOW_ATTENDANCE_THRESHOLD;
 }

@@ -1,87 +1,104 @@
-'use client';
-
-/**
- * SessionCard Component
- *
- * Displays a session in the weekly calendar
- * Shows time, trainer, member count, workout snippet, and status
- */
-
-import { Session, RecurringSlot, User } from '@prisma/client';
-import { format } from 'date-fns';
-import { addDays, setHours } from 'date-fns';
-import { MAX_CLASS_SIZE } from '@/lib/constants';
-
-type SessionWithDetails = Session & {
-  recurringSlot: RecurringSlot;
-  members: Array<{ user: Pick<User, 'id' | 'name' | 'photo'> }>;
-  trainers: Array<{ user: Pick<User, 'id' | 'name' | 'photo'> }>;
-};
+import Link from "next/link";
+import { Badge } from "@/components/ui/Badge";
+import { MAX_CLASS_SIZE } from "@/lib/constants";
+import type { SessionWithDetails } from "@/lib/session-generation";
 
 interface SessionCardProps {
   session: SessionWithDetails;
-  onClick?: () => void;
-  showWorkout?: boolean;
+  basePath: string;
+  showVotingIndicator?: boolean;
+  currentUserId?: string;
 }
 
-export function SessionCard({ session, onClick, showWorkout = false }: SessionCardProps) {
-  const { recurringSlot, members, trainers, workoutTitle, status } = session;
+function formatTime(hour: number): string {
+  const period = hour >= 12 ? "PM" : "AM";
+  const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+  return `${displayHour}:00 ${period}`;
+}
 
-  // Calculate session date/time
-  const sessionDate = addDays(session.weekDate, recurringSlot.dayOfWeek - 1);
-  const sessionTime = setHours(sessionDate, recurringSlot.startHour);
-  const timeString = format(sessionTime, 'h:mm a');
+export function SessionCard({
+  session,
+  basePath,
+  showVotingIndicator = false,
+  currentUserId,
+}: SessionCardProps): React.ReactElement {
+  const time = formatTime(session.recurringSlot.startHour);
+  const memberCount = session.members.length;
+  const trainerNames = session.trainers.map((t) => t.user.name).join(", ");
+  const isCancelled = session.status === "CANCELLED";
 
-  // Status styling
-  const statusColors = {
-    SCHEDULED: 'bg-primary/10 text-primary border-primary/20',
-    CANCELLED: 'bg-error/10 text-error border-error/20',
-  };
-
-  const isFull = members.length >= MAX_CLASS_SIZE;
+  // Voting status for current user
+  const userVote = currentUserId
+    ? session.votes.find((v) => v.userId === currentUserId)
+    : null;
+  const yesVotes = session.votes.filter((v) => v.attending).length;
+  const noVotes = session.votes.filter((v) => !v.attending).length;
 
   return (
-    <div
-      className={`rounded-lg border p-4 cursor-pointer transition-all hover:shadow-md ${
-        status === 'CANCELLED' ? 'opacity-60' : ''
-      } ${statusColors[status]}`}
-      onClick={onClick}
+    <Link
+      href={`${basePath}/session/${session.id}`}
+      className={`
+        group block rounded-lg border p-3
+        transition-all duration-150
+        ${
+          isCancelled
+            ? "border-surface-700 bg-surface-800/50 opacity-60"
+            : "border-surface-700 bg-surface-800 hover:border-primary-600/50 hover:bg-surface-700"
+        }
+      `}
     >
-      {/* Time */}
-      <div className="text-sm font-semibold mb-2">{timeString}</div>
-
-      {/* Status badge */}
-      {status === 'CANCELLED' && (
-        <div className="inline-block px-2 py-1 bg-error text-white text-xs rounded mb-2">
-          CANCELLED
-        </div>
-      )}
-
-      {/* Trainers */}
-      {trainers.length > 0 && (
-        <div className="text-xs text-surface-400 mb-2">
-          Trainer: {trainers.map((t) => t.user.name).join(', ')}
-        </div>
-      )}
-
-      {/* Member count */}
-      <div className="text-xs mb-2">
-        <span className={isFull ? 'text-warning' : 'text-surface-300'}>
-          {members.length}/{MAX_CLASS_SIZE} members
-        </span>
-        {isFull && <span className="ml-1 text-warning">(Full)</span>}
+      {/* Time + Status */}
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <span className="text-sm font-semibold text-surface-100">{time}</span>
+        {isCancelled && (
+          <Badge variant="error" size="sm">
+            Cancelled
+          </Badge>
+        )}
+        {!isCancelled && session.votingEnabled && showVotingIndicator && (
+          <Badge variant="primary" size="sm">
+            Voting
+          </Badge>
+        )}
       </div>
 
       {/* Workout title */}
-      {showWorkout && workoutTitle && (
-        <div className="text-sm font-medium text-surface-100 mt-2 truncate">
-          {workoutTitle}
-        </div>
+      {session.workoutTitle && (
+        <p className="text-sm font-medium text-surface-200 truncate mb-1">
+          {session.workoutTitle}
+        </p>
       )}
 
-      {!showWorkout && !workoutTitle && (
-        <div className="text-xs text-surface-500 italic">No workout posted yet</div>
+      {/* Trainer */}
+      {trainerNames && (
+        <p className="text-xs text-surface-400 truncate mb-2">
+          {trainerNames}
+        </p>
       )}
-    </div>
+
+      {/* Footer: member count + voting info */}
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-surface-500">
+          {memberCount}/{MAX_CLASS_SIZE} members
+        </span>
+        {showVotingIndicator && session.votingEnabled && (
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-success-500">{yesVotes} yes</span>
+            <span className="text-error-500">{noVotes} no</span>
+          </div>
+        )}
+        {showVotingIndicator && userVote !== undefined && userVote !== null && (
+          <Badge
+            variant={userVote.attending ? "success" : "error"}
+            size="sm"
+          >
+            {userVote.attending ? "Going" : "Not going"}
+          </Badge>
+        )}
+      </div>
+    </Link>
   );
 }
+
+export { formatTime };
+export type { SessionCardProps };

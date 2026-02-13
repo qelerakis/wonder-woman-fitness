@@ -1,0 +1,118 @@
+/**
+ * Private Sessions API — GET list, POST create
+ *
+ * GET /api/private-sessions — List private sessions (Owner only)
+ * POST /api/private-sessions — Create a private session (Owner only)
+ */
+
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { PrivateSessionSchema } from "@/types";
+
+export async function GET(req: Request): Promise<Response> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if ((session.user.role as string) !== "OWNER") {
+      return Response.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const url = new URL(req.url);
+    const startDate = url.searchParams.get("startDate");
+    const endDate = url.searchParams.get("endDate");
+
+    const where: Record<string, unknown> = {};
+
+    if (startDate || endDate) {
+      where.scheduledAt = {};
+      if (startDate) {
+        (where.scheduledAt as Record<string, unknown>).gte = new Date(startDate);
+      }
+      if (endDate) {
+        (where.scheduledAt as Record<string, unknown>).lte = new Date(endDate);
+      }
+    }
+
+    const privateSessions = await prisma.privateSession.findMany({
+      where,
+      select: {
+        id: true,
+        clientName: true,
+        scheduledAt: true,
+        paid: true,
+        amount: true,
+        exerciseDetails: true,
+        notes: true,
+        createdAt: true,
+        createdBy: {
+          select: { id: true, name: true },
+        },
+      },
+      orderBy: { scheduledAt: "desc" },
+    });
+
+    return Response.json({ data: privateSessions });
+  } catch (error) {
+    console.error("GET /api/private-sessions error:", error);
+    return Response.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(req: Request): Promise<Response> {
+  try {
+    const session = await auth();
+    if (!session?.user) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if ((session.user.role as string) !== "OWNER") {
+      return Response.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const body = await req.json();
+    const parsed = PrivateSessionSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return Response.json(
+        { error: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    const privateSession = await prisma.privateSession.create({
+      data: {
+        clientName: parsed.data.clientName,
+        scheduledAt: new Date(parsed.data.scheduledAt),
+        paid: parsed.data.paid,
+        amount: parsed.data.amount,
+        exerciseDetails: parsed.data.exerciseDetails,
+        notes: parsed.data.notes,
+        createdById: session.user.id,
+      },
+      select: {
+        id: true,
+        clientName: true,
+        scheduledAt: true,
+        paid: true,
+        amount: true,
+        exerciseDetails: true,
+        notes: true,
+        createdAt: true,
+      },
+    });
+
+    return Response.json({ data: privateSession }, { status: 201 });
+  } catch (error) {
+    console.error("POST /api/private-sessions error:", error);
+    return Response.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
