@@ -8,6 +8,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { VoteSchema } from "@/types";
+import { MAX_CLASS_SIZE } from "@/lib/constants";
 
 export async function POST(req: Request): Promise<Response> {
   try {
@@ -54,6 +55,11 @@ export async function POST(req: Request): Promise<Response> {
         votingEnabled: true,
         votingDeadline: true,
         status: true,
+        weekDate: true,
+        customDay: true,
+        recurringSlot: {
+          select: { dayOfWeek: true, startHour: true },
+        },
       },
     });
 
@@ -81,6 +87,48 @@ export async function POST(req: Request): Promise<Response> {
         { error: "Voting deadline has passed" },
         { status: 400 }
       );
+    }
+
+    // Check if session is full (coming votes >= MAX_CLASS_SIZE)
+    const comingCount = await prisma.vote.count({
+      where: { sessionId, attending: true },
+    });
+
+    if (comingCount >= MAX_CLASS_SIZE) {
+      return Response.json(
+        { error: "This session is full" },
+        { status: 400 }
+      );
+    }
+
+    // One-Coming-per-day: if voting Coming, check no other Coming vote on same day
+    if (attending) {
+      const targetDay = targetSession.recurringSlot?.dayOfWeek
+        ?? targetSession.customDay;
+
+      if (targetDay != null) {
+        const existingComing = await prisma.vote.findFirst({
+          where: {
+            userId,
+            attending: true,
+            sessionId: { not: sessionId },
+            session: {
+              weekDate: targetSession.weekDate,
+              OR: [
+                { recurringSlot: { dayOfWeek: targetDay } },
+                { customDay: targetDay },
+              ],
+            },
+          },
+        });
+
+        if (existingComing) {
+          return Response.json(
+            { error: "You're already marked as coming to another session on this day. Change that vote first." },
+            { status: 400 }
+          );
+        }
+      }
     }
 
     // Upsert vote (can change vote before deadline)
