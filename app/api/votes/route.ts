@@ -29,6 +29,23 @@ export async function POST(req: Request): Promise<Response> {
     const { sessionId, attending } = parsed.data;
     const userId = session.user.id;
 
+    // Only active members can vote
+    const role = session.user.role as string;
+    if (role !== "MEMBER") {
+      return Response.json(
+        { error: "Only members can vote" },
+        { status: 403 }
+      );
+    }
+
+    const userStatus = session.user.status as string;
+    if (userStatus !== "ACTIVE" && userStatus !== "TRIAL") {
+      return Response.json(
+        { error: "Only active members can vote" },
+        { status: 403 }
+      );
+    }
+
     // Fetch session with voting info
     const targetSession = await prisma.session.findUnique({
       where: { id: sessionId },
@@ -37,10 +54,6 @@ export async function POST(req: Request): Promise<Response> {
         votingEnabled: true,
         votingDeadline: true,
         status: true,
-        members: {
-          where: { userId },
-          select: { userId: true },
-        },
       },
     });
 
@@ -67,14 +80,6 @@ export async function POST(req: Request): Promise<Response> {
       return Response.json(
         { error: "Voting deadline has passed" },
         { status: 400 }
-      );
-    }
-
-    // Check that the user is a member of this session
-    if (targetSession.members.length === 0) {
-      return Response.json(
-        { error: "You are not assigned to this session" },
-        { status: 403 }
       );
     }
 

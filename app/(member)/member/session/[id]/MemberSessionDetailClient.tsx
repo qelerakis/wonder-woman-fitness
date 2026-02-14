@@ -37,13 +37,12 @@ interface MemberSessionDetailClientProps {
   session: SessionData;
   myVote: boolean | null;
   userId: string;
-  isAssigned: boolean;
 }
 
 export function MemberSessionDetailClient(
   props: MemberSessionDetailClientProps
 ): React.ReactElement {
-  const { session, myVote, isAssigned } = props;
+  const { session, myVote } = props;
   const router = useRouter();
   const { addToast } = useToast();
   const [voting, setVoting] = useState(false);
@@ -55,7 +54,7 @@ export function MemberSessionDetailClient(
   const time = formatTime(startHour);
   const isCancelled = session.status === "CANCELLED";
   const deadlinePassed = new Date(session.votingDeadline) <= new Date();
-  const canVote = session.votingEnabled && !deadlinePassed && !isCancelled && isAssigned;
+  const canVote = session.votingEnabled && !deadlinePassed && !isCancelled;
 
   async function handleVote(attending: boolean): Promise<void> {
     setVoting(true);
@@ -125,14 +124,6 @@ export function MemberSessionDetailClient(
         </Button>
       </div>
 
-      {!isAssigned && (
-        <div className="rounded-lg border border-surface-600 bg-surface-800/50 px-4 py-3">
-          <p className="text-sm text-surface-400">
-            You are not assigned to this session. Contact your trainer or the owner to join.
-          </p>
-        </div>
-      )}
-
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Left column */}
         <div className="space-y-6">
@@ -152,11 +143,7 @@ export function MemberSessionDetailClient(
             <Card>
               <CardHeader title="Your Attendance" />
               <div className="mt-4">
-                {!isAssigned ? (
-                  <p className="text-sm text-surface-500">
-                    You must be assigned to this session to vote.
-                  </p>
-                ) : canVote ? (
+                {canVote ? (
                   <div className="space-y-3">
                     <p className="text-sm text-surface-400">
                       Will you attend this session?

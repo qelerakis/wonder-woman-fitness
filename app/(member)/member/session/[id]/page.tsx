@@ -65,11 +65,6 @@ export default async function MemberSessionDetailPage({
     (v) => v.userId === authSession.user.id
   );
 
-  // Check if this member is assigned to the session
-  const isAssigned = session.members.some(
-    (m) => m.user.id === authSession.user.id
-  );
-
   return (
     <MemberSessionDetailClient
       session={{
@@ -96,7 +91,6 @@ export default async function MemberSessionDetailPage({
       }}
       myVote={myVote ? myVote.attending : null}
       userId={authSession.user.id}
-      isAssigned={isAssigned}
     />
   );
 }

@@ -127,7 +127,6 @@ describe("POST /api/votes", () => {
       status: "CANCELLED",
       votingEnabled: true,
       votingDeadline: new Date("2099-01-01"),
-      members: [{ userId: "member-1" }],
     });
 
     const { POST } = await import("@/app/api/votes/route");
@@ -154,7 +153,6 @@ describe("POST /api/votes", () => {
       status: "SCHEDULED",
       votingEnabled: false,
       votingDeadline: null,
-      members: [{ userId: "member-1" }],
     });
 
     const { POST } = await import("@/app/api/votes/route");
@@ -181,7 +179,6 @@ describe("POST /api/votes", () => {
       status: "SCHEDULED",
       votingEnabled: true,
       votingDeadline: new Date("2020-01-01"), // past deadline
-      members: [{ userId: "member-1" }],
     });
 
     const { POST } = await import("@/app/api/votes/route");
@@ -201,14 +198,86 @@ describe("POST /api/votes", () => {
     expect(body.error).toContain("deadline");
   });
 
-  it("returns 403 when user is not assigned to session", async () => {
+  it("allows any member to vote even if not assigned to session", async () => {
     mockAuth.mockResolvedValue(memberSession("member-1"));
     mockPrisma.session.findUnique.mockResolvedValue({
       id: "cm1234567890abcdef",
       status: "SCHEDULED",
       votingEnabled: true,
       votingDeadline: new Date("2099-01-01"),
-      members: [], // user not in members list
+    });
+    mockPrisma.vote.upsert.mockResolvedValue({
+      id: "v-unassigned",
+      sessionId: "cm1234567890abcdef",
+      userId: "member-1",
+      attending: true,
+      votedAt: new Date(),
+    });
+
+    const { POST } = await import("@/app/api/votes/route");
+    const response = await POST(
+      new Request("http://localhost/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "cm1234567890abcdef",
+          attending: true,
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(body.data.attending).toBe(true);
+  });
+
+  it("requires MEMBER role to vote (rejects OWNER)", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+
+    const { POST } = await import("@/app/api/votes/route");
+    const response = await POST(
+      new Request("http://localhost/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "cm1234567890abcdef",
+          attending: true,
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.error).toContain("members");
+    // Role check should short-circuit before hitting database
+    expect(mockPrisma.session.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("requires MEMBER role to vote (rejects TRAINER)", async () => {
+    mockAuth.mockResolvedValue(trainerSession());
+
+    const { POST } = await import("@/app/api/votes/route");
+    const response = await POST(
+      new Request("http://localhost/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "cm1234567890abcdef",
+          attending: true,
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.error).toContain("members");
+    // Role check should short-circuit before hitting database
+    expect(mockPrisma.session.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("rejects DEPARTED members from voting", async () => {
+    mockAuth.mockResolvedValue({
+      user: { id: "member-departed", email: "departed@test.com", role: "MEMBER", status: "DEPARTED" },
     });
 
     const { POST } = await import("@/app/api/votes/route");
@@ -225,7 +294,31 @@ describe("POST /api/votes", () => {
     const body = await response.json();
 
     expect(response.status).toBe(403);
-    expect(body.error).toContain("not assigned");
+    expect(body.error).toContain("active");
+    expect(mockPrisma.session.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("rejects LOCKED members from voting", async () => {
+    mockAuth.mockResolvedValue({
+      user: { id: "member-locked", email: "locked@test.com", role: "MEMBER", status: "LOCKED" },
+    });
+
+    const { POST } = await import("@/app/api/votes/route");
+    const response = await POST(
+      new Request("http://localhost/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "cm1234567890abcdef",
+          attending: true,
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.error).toContain("active");
+    expect(mockPrisma.session.findUnique).not.toHaveBeenCalled();
   });
 
   it("creates vote successfully (attending: true)", async () => {
@@ -235,7 +328,6 @@ describe("POST /api/votes", () => {
       status: "SCHEDULED",
       votingEnabled: true,
       votingDeadline: new Date("2099-01-01"),
-      members: [{ userId: "member-1" }],
     });
     mockPrisma.vote.upsert.mockResolvedValue({
       id: "v-1",
@@ -285,7 +377,6 @@ describe("POST /api/votes", () => {
       status: "SCHEDULED",
       votingEnabled: true,
       votingDeadline: new Date("2099-01-01"),
-      members: [{ userId: "member-1" }],
     });
     mockPrisma.vote.upsert.mockResolvedValue({
       id: "v-2",
