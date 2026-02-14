@@ -31,8 +31,6 @@ export function SessionCard({
   const userVote = currentUserId
     ? session.votes.find((v) => v.userId === currentUserId)
     : null;
-  const yesVotes = session.votes.filter((v) => v.attending).length;
-  const noVotes = session.votes.filter((v) => !v.attending).length;
 
   return (
     <Link
@@ -81,12 +79,6 @@ export function SessionCard({
         <span className="text-xs text-surface-500">
           {memberCount}/{MAX_CLASS_SIZE} members
         </span>
-        {showVotingIndicator && session.votingEnabled && (
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-success-500">{yesVotes} yes</span>
-            <span className="text-error-500">{noVotes} no</span>
-          </div>
-        )}
         {showVotingIndicator && userVote !== undefined && userVote !== null && (
           <Badge
             variant={userVote.attending ? "success" : "error"}
