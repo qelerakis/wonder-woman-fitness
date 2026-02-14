@@ -75,14 +75,25 @@ export default async function TrainerSessionDetailPage({
   });
 
   // Build vote members list
-  const voteMembers = session.members.map((sm) => {
-    const vote = session.votes.find((v) => v.userId === sm.userId);
-    return {
-      userId: sm.userId,
-      name: sm.user.name,
-      attending: vote ? vote.attending : null,
-    };
-  });
+  // When voting is enabled: use ALL active/trial members (any member can vote)
+  // When voting is disabled: use only assigned members
+  const voteMembers = session.votingEnabled
+    ? allMembers.map((m) => {
+        const vote = session.votes.find((v) => v.userId === m.id);
+        return {
+          userId: m.id,
+          name: m.name,
+          attending: vote ? vote.attending : null,
+        };
+      })
+    : session.members.map((sm) => {
+        const vote = session.votes.find((v) => v.userId === sm.userId);
+        return {
+          userId: sm.userId,
+          name: sm.user.name,
+          attending: vote ? vote.attending : null,
+        };
+      });
 
   return (
     <TrainerSessionDetailClient
