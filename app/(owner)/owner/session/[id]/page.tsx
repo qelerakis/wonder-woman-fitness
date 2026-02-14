@@ -77,15 +77,26 @@ export default async function OwnerSessionDetailPage({
     }),
   ]);
 
-  // Build vote members list (all assigned members with their vote status)
-  const voteMembers = session.members.map((sm) => {
-    const vote = session.votes.find((v) => v.userId === sm.userId);
-    return {
-      userId: sm.userId,
-      name: sm.user.name,
-      attending: vote ? vote.attending : null,
-    };
-  });
+  // Build vote members list
+  // When voting is enabled: use ALL active/trial members (any member can vote)
+  // When voting is disabled: use only assigned members
+  const voteMembers = session.votingEnabled
+    ? allMembers.map((m) => {
+        const vote = session.votes.find((v) => v.userId === m.id);
+        return {
+          userId: m.id,
+          name: m.name,
+          attending: vote ? vote.attending : null,
+        };
+      })
+    : session.members.map((sm) => {
+        const vote = session.votes.find((v) => v.userId === sm.userId);
+        return {
+          userId: sm.userId,
+          name: sm.user.name,
+          attending: vote ? vote.attending : null,
+        };
+      });
 
   // Serialize dates for client
   return (
