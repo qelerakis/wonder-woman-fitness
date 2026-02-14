@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { MAX_CLASS_SIZE } from "@/lib/constants";
 import { MemberSessionDetailClient } from "./MemberSessionDetailClient";
 
 export const metadata = {
@@ -65,6 +66,36 @@ export default async function MemberSessionDetailPage({
     (v) => v.userId === authSession.user.id
   );
 
+  // Count all active/trial members for the vote pool
+  const totalActiveMembers = await prisma.user.count({
+    where: {
+      role: "MEMBER",
+      status: { in: ["ACTIVE", "TRIAL"] },
+    },
+  });
+
+  // Count "Coming" votes for this session to check if full
+  const comingVoteCount = session.votes.filter((v) => v.attending).length;
+
+  // Check if this member already voted "Coming" on another session on the same day
+  const sessionDay = session.recurringSlot?.dayOfWeek ?? session.customDay;
+  const hasComingVoteOnSameDay = sessionDay != null
+    ? await prisma.vote.findFirst({
+        where: {
+          userId: authSession.user.id,
+          attending: true,
+          sessionId: { not: session.id },
+          session: {
+            weekDate: session.weekDate,
+            OR: [
+              { recurringSlot: { dayOfWeek: sessionDay } },
+              { customDay: sessionDay },
+            ],
+          },
+        },
+      }).then((v) => v !== null)
+    : false;
+
   return (
     <MemberSessionDetailClient
       session={{
@@ -83,14 +114,16 @@ export default async function MemberSessionDetailPage({
         customStartHour: session.customStartHour,
         memberNames: session.members.map((m) => m.user.name),
         trainerNames: session.trainers.map((t) => t.user.name),
-        totalMembers: session.members.length,
+        totalMembers: totalActiveMembers,
         votesCount: {
-          coming: session.votes.filter((v) => v.attending).length,
+          coming: comingVoteCount,
           notComing: session.votes.filter((v) => !v.attending).length,
         },
       }}
       myVote={myVote ? myVote.attending : null}
       userId={authSession.user.id}
+      isFull={comingVoteCount >= MAX_CLASS_SIZE}
+      hasComingVoteOnSameDay={hasComingVoteOnSameDay}
     />
   );
 }

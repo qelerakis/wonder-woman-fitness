@@ -37,12 +37,14 @@ interface MemberSessionDetailClientProps {
   session: SessionData;
   myVote: boolean | null;
   userId: string;
+  isFull: boolean;
+  hasComingVoteOnSameDay: boolean;
 }
 
 export function MemberSessionDetailClient(
   props: MemberSessionDetailClientProps
 ): React.ReactElement {
-  const { session, myVote } = props;
+  const { session, myVote, isFull, hasComingVoteOnSameDay } = props;
   const router = useRouter();
   const { addToast } = useToast();
   const [voting, setVoting] = useState(false);
@@ -54,7 +56,7 @@ export function MemberSessionDetailClient(
   const time = formatTime(startHour);
   const isCancelled = session.status === "CANCELLED";
   const deadlinePassed = new Date(session.votingDeadline) <= new Date();
-  const canVote = session.votingEnabled && !deadlinePassed && !isCancelled;
+  const canVote = session.votingEnabled && !deadlinePassed && !isCancelled && !isFull;
 
   async function handleVote(attending: boolean): Promise<void> {
     setVoting(true);
@@ -143,7 +145,14 @@ export function MemberSessionDetailClient(
             <Card>
               <CardHeader title="Your Attendance" />
               <div className="mt-4">
-                {canVote ? (
+                {isFull ? (
+                  <div className="space-y-2">
+                    <Badge variant="warning" size="sm">Full</Badge>
+                    <p className="text-sm text-surface-500">
+                      This session is full — voting is closed.
+                    </p>
+                  </div>
+                ) : canVote ? (
                   <div className="space-y-3">
                     <p className="text-sm text-surface-400">
                       Will you attend this session?
@@ -156,6 +165,7 @@ export function MemberSessionDetailClient(
                         size="sm"
                         onClick={() => handleVote(true)}
                         loading={voting}
+                        disabled={hasComingVoteOnSameDay && currentVote !== true}
                       >
                         {currentVote === true ? "✓ I'm Coming" : "I'm Coming"}
                       </Button>
@@ -172,6 +182,11 @@ export function MemberSessionDetailClient(
                           : "Not Coming"}
                       </Button>
                     </div>
+                    {hasComingVoteOnSameDay && currentVote !== true && (
+                      <p className="text-xs text-warning-400">
+                        You&apos;re already coming to another session on this day.
+                      </p>
+                    )}
                     {currentVote !== null && (
                       <p className="text-xs text-surface-500">
                         You can change your vote until the deadline.

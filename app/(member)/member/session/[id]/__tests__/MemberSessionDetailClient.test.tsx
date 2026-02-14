@@ -63,7 +63,8 @@ describe("MemberSessionDetailClient", () => {
         session={makeSession()}
         myVote={null}
         userId="member-99"
-
+        isFull={false}
+        hasComingVoteOnSameDay={false}
       />
     );
 
@@ -78,7 +79,8 @@ describe("MemberSessionDetailClient", () => {
         session={makeSession()}
         myVote={null}
         userId="member-1"
-
+        isFull={false}
+        hasComingVoteOnSameDay={false}
       />
     );
 
@@ -93,7 +95,8 @@ describe("MemberSessionDetailClient", () => {
         session={makeSession()}
         myVote={null}
         userId="member-99"
-
+        isFull={false}
+        hasComingVoteOnSameDay={false}
       />
     );
 
@@ -107,7 +110,8 @@ describe("MemberSessionDetailClient", () => {
         session={makeSession()}
         myVote={null}
         userId="member-99"
-
+        isFull={false}
+        hasComingVoteOnSameDay={false}
       />
     );
 
@@ -121,7 +125,8 @@ describe("MemberSessionDetailClient", () => {
         session={makeSession({ votingEnabled: false })}
         myVote={null}
         userId="member-1"
-
+        isFull={false}
+        hasComingVoteOnSameDay={false}
       />
     );
 
@@ -138,7 +143,8 @@ describe("MemberSessionDetailClient", () => {
         })}
         myVote={null}
         userId="member-1"
-
+        isFull={false}
+        hasComingVoteOnSameDay={false}
       />
     );
 
@@ -154,7 +160,8 @@ describe("MemberSessionDetailClient", () => {
         })}
         myVote={true}
         userId="member-99"
-
+        isFull={false}
+        hasComingVoteOnSameDay={false}
       />
     );
 
@@ -173,7 +180,8 @@ describe("MemberSessionDetailClient", () => {
         session={makeSession({ status: "CANCELLED" })}
         myVote={null}
         userId="member-1"
-
+        isFull={false}
+        hasComingVoteOnSameDay={false}
       />
     );
 
@@ -192,7 +200,8 @@ describe("MemberSessionDetailClient", () => {
         session={makeSession()}
         myVote={null}
         userId="member-99"
-
+        isFull={false}
+        hasComingVoteOnSameDay={false}
       />
     );
 
@@ -213,7 +222,8 @@ describe("MemberSessionDetailClient", () => {
         session={makeSession()}
         myVote={true}
         userId="member-99"
-
+        isFull={false}
+        hasComingVoteOnSameDay={false}
       />
     );
 
@@ -232,7 +242,8 @@ describe("MemberSessionDetailClient", () => {
         session={makeSession()}
         myVote={true}
         userId="member-99"
-
+        isFull={false}
+        hasComingVoteOnSameDay={false}
       />
     );
 
