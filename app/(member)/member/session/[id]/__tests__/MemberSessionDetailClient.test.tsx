@@ -231,6 +231,74 @@ describe("MemberSessionDetailClient", () => {
     expect(screen.getByText("✓ I'm Coming")).toBeTruthy();
   });
 
+  it("shows Full badge and hides voting buttons when session is full", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={null}
+        userId="member-1"
+        isFull={true}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("Full")).toBeTruthy();
+    expect(screen.getByText("This session is full — voting is closed.")).toBeTruthy();
+    expect(screen.queryByText("I'm Coming")).toBeNull();
+    expect(screen.queryByText("Not Coming")).toBeNull();
+  });
+
+  it("disables 'I'm Coming' button when member has Coming vote on same day", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={true}
+      />
+    );
+
+    const comingButton = screen.getByText("I'm Coming").closest("button");
+    expect(comingButton).toBeTruthy();
+    expect(comingButton!.disabled).toBe(true);
+    // "Not Coming" should still be enabled
+    const notComingButton = screen.getByText("Not Coming").closest("button");
+    expect(notComingButton).toBeTruthy();
+    expect(notComingButton!.disabled).toBe(false);
+  });
+
+  it("shows same-day warning when member has Coming vote on same day", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={true}
+      />
+    );
+
+    expect(screen.getByText(/already coming to another session/i)).toBeTruthy();
+  });
+
+  it("does NOT disable 'I'm Coming' if member already voted Coming on this session (same-day = self)", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={true}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={true}
+      />
+    );
+
+    // "✓ I'm Coming" button should NOT be disabled since currentVote === true
+    const comingButton = screen.getByText("✓ I'm Coming").closest("button");
+    expect(comingButton).toBeTruthy();
+    expect(comingButton!.disabled).toBe(false);
+  });
+
   it("allows unassigned member to change vote to 'Not Coming'", async () => {
     (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
       ok: true,

@@ -234,6 +234,24 @@ describe("getVoteSummary", () => {
     expect(result.noVote).toBe(0);
     expect(result.total).toBe(0);
   });
+
+  it("handles totalMembers larger than votes (all-members pool)", () => {
+    // Simulates voting-enabled: 30 total active members, only 5 voted
+    const votes = [
+      { attending: true },
+      { attending: true },
+      { attending: false },
+      { attending: false },
+      { attending: true },
+    ];
+
+    const result = getVoteSummary(votes, 30);
+
+    expect(result.coming).toBe(3);
+    expect(result.notComing).toBe(2);
+    expect(result.noVote).toBe(25);
+    expect(result.total).toBe(30);
+  });
 });
 
 // ===== hasLowAttendance =====
