@@ -5,11 +5,11 @@
 | Field              | Detail                                      |
 |--------------------|---------------------------------------------|
 | **Product Name**   | Wonder Woman Fitness                        |
-| **Version**        | 1.0 (MVP)                                   |
+| **Version**        | 1.0 (MVP) — Feature Complete                |
 | **Platform**       | Web Application                             |
 | **Author**         | —                                           |
-| **Last Updated**   | February 11, 2026                           |
-| **Status**         | Draft                                       |
+| **Last Updated**   | February 14, 2026                           |
+| **Status**         | Complete — All MVP features implemented     |
 | **Domain**         | wonderwomanfitness.mk                       |
 
 ---
@@ -598,6 +598,67 @@ This section outlines the primary screens to be designed and built.
 | 4  | Is there a preferred domain name for the web app?                                            | **wonderwomanfitness.mk** |
 | 5  | Should the app support a "trial" period for new members before their first payment is due?   | **Yes** — 2-week free trial with full access. After trial, standard payment cycle begins with a 10-day grace period for the first month. |
 | 6  | What happens if a member's move is declined — does the original class stay cancelled?        | **The move is final.** The original class stays cancelled and the member is notified of their new assignment. |
+
+---
+
+---
+
+## 12. Implementation Status (as of February 14, 2026)
+
+All MVP features defined in this PRD have been implemented and tested. The application is feature-complete and production-ready.
+
+### Implemented Features
+
+| Feature Area | Status | Notes |
+|---|---|---|
+| Authentication & Registration | Done | NextAuth v5, JWT strategy, credentials provider |
+| Schedule Management | Done | Recurring slots + one-off custom sessions |
+| Workout Posting | Done | Per-session workout editor for owner/trainer |
+| Attendance Voting | Done | 24h deadline, inline voting modal for members |
+| Payment Tracking | Done | Computed status (never stored), grace period, lockout |
+| Private Sessions | Done | Full CRUD, payment tracking |
+| Notifications | Done | 12 types, email + in-app, 3 automated cron jobs |
+| Member Profile | Done | Edit name, phone, email, photo (Cloudinary) |
+| Member Departure | Done | Voluntary departure, motivational banner, rejoin flow |
+| Trial Period | Done | 14-day trial, auto-transition, owner notifications |
+| Analytics Dashboard | Done | Engagement, class performance, revenue, retention charts |
+| Session Assignments | Done | Owner assigns trainers/members, carry-forward on week generation |
+| Delete Recurring Slot | Done | Cascade option to delete future sessions |
+
+### Post-MVP Additions (Built Beyond Original PRD)
+
+These features were added during development to address real workflow needs:
+
+1. **One-Off Custom Sessions** — Sessions not tied to a recurring slot (e.g., special events, makeup classes). Uses `customDay` + `customStartHour` fields on Session.
+2. **Trainer Schedule Access** — Trainers can create recurring slots and one-off sessions (not just post workouts).
+3. **Session Assignment Management** — Inline toggle lists for assigning trainers and members to individual sessions. Members see all sessions with visual distinction for assigned vs. available.
+4. **Carry-Forward Assignments** — When generating a new week, trainer and member assignments are automatically copied from the previous week's matching slots. Departed members are excluded.
+5. **Delete Recurring Slot with Cascade** — Owner can delete a recurring slot and optionally delete all future sessions generated from it.
+6. **Member Voting Redesign** — Inline voting modal (no page navigation). Assigned sessions have green tint styling. SessionCard adapts rendering by role.
+
+### Tech Stack (Actual Versions)
+
+| Layer | Technology | Actual Version |
+|---|---|---|
+| Framework | Next.js (App Router) | 15.5.12 |
+| Language | TypeScript | 5.x (strict mode) |
+| Styling | Tailwind CSS | 4.1.18 |
+| Database | PostgreSQL (Neon) | 16 |
+| ORM | Prisma | 7.4.0 (adapter pattern) |
+| Auth | NextAuth.js | v5 beta.30 |
+| Email | Resend | Latest |
+| File Storage | Cloudinary | Latest |
+| Charts | Recharts | 2.x |
+| Validation | Zod | 3.x |
+| Testing | Vitest | Latest |
+| Hosting | Vercel + Neon | — |
+
+### Test Coverage
+
+358 automated tests across 15 test files, all passing (~3.7s):
+- Business logic: 103 tests (payment, voting, session generation, carry-forward)
+- API routes: 200 tests (members, sessions, payments, votes, assignments, private sessions, recurring slots)
+- UI components: 55 tests (Modal, CreateSessionModal, session schemas, SessionCard, VoteModal, MemberScheduleClient)
 
 ---
 

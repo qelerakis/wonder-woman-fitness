@@ -8,10 +8,13 @@
 
 Wonder Woman Fitness is a web-based boutique fitness studio management platform. It has three user roles (Owner, Trainer, Member) and handles scheduling, attendance voting, cash payment tracking, notifications, and analytics for a single gym.
 
+**Project status**: Feature-complete (February 14, 2026). All MVP features + post-MVP additions implemented and tested. 358 tests passing. Production build succeeds.
+
 **Key documents** — read these first:
-- `PRD.md` — What to build and why
+- `PRD.md` — What was built and why (includes implementation status)
 - `ARCHITECTURE.md` — How the system is designed, tech stack, data flow, and design decisions
-- `TASKS.md` — Ordered checklist of everything to build, with dependencies
+- `DEPLOYMENT.md` — Production deployment guide (Vercel + Neon + Resend + Cloudinary)
+- `docs/plans/` — 7 design and implementation plan documents
 
 ---
 
@@ -23,13 +26,14 @@ Wonder Woman Fitness is a web-based boutique fitness studio management platform.
 | Language      | TypeScript (strict)     |
 | Styling       | Tailwind CSS 4          |
 | Database      | PostgreSQL (Neon)       |
-| ORM           | Prisma 6                |
+| ORM           | Prisma 7 (adapter)      |
 | Auth          | NextAuth.js v5          |
 | Email         | Resend                  |
 | File uploads  | Cloudinary              |
 | Charts        | Recharts                |
 | Validation    | Zod                     |
 | Cron          | Vercel Cron Jobs        |
+| Testing       | Vitest                  |
 
 ---
 
@@ -104,7 +108,7 @@ npx prisma migrate deploy
 - **Components**: PascalCase — `SessionCard.tsx`, `PaymentBanner.tsx`
 - **Utilities / lib**: camelCase — `paymentLogic.ts`, `notifications.ts`
 - **API routes**: kebab-case folders — `api/private-sessions/route.ts`
-- **Types**: PascalCase, co-located in `src/types/index.ts` or next to the feature
+- **Types**: PascalCase, co-located in `types/index.ts` or next to the feature
 
 ### 4.2 TypeScript
 - **Strict mode** is enabled. Do not use `any`. Use `unknown` and narrow with type guards.
@@ -143,10 +147,12 @@ npx prisma migrate deploy
   }
   ```
 
-### 4.4 Prisma
+### 4.4 Prisma (v7 — Adapter Pattern)
+- **Prisma 7** uses the adapter pattern: `PrismaPg` from `@prisma/adapter-pg`. Generated client lives at `@/generated/prisma`.
 - Always use the singleton client from `lib/prisma.ts`. Never instantiate `new PrismaClient()` directly.
 - Always use `select` or `include` to fetch only needed fields. No naked `findMany()` without field selection.
 - All database writes that involve multiple tables must use `prisma.$transaction()`.
+- **Client components cannot import from `@/generated/prisma/client`** — use local type aliases instead (e.g., `type UserRole = "OWNER" | "TRAINER" | "MEMBER"`).
 - When adding/changing models, always create a migration with a descriptive name:
   ```bash
   npx prisma migrate dev --name add-payment-notes-field
@@ -164,9 +170,10 @@ npx prisma migrate deploy
   }
   ```
 
-### 4.6 Styling
+### 4.6 Styling (Tailwind CSS 4)
 - Use Tailwind utility classes exclusively. No CSS modules, no `style` props, no external CSS files.
-- Brand colors are defined in `tailwind.config.ts`. Use semantic names:
+- **Tailwind v4 uses CSS-based config** via `@theme` directive in `app/globals.css` (not `tailwind.config.ts`).
+- Brand colors are defined in `app/globals.css`. Use semantic names:
   - `bg-primary` / `text-primary` — purple shades
   - `bg-surface` / `text-surface` — dark/black shades
   - `bg-success`, `bg-warning`, `bg-error` — state colors
@@ -253,7 +260,7 @@ They can request to rejoin, but the owner must approve.
 
 ### Fetching data in Server Components
 ```typescript
-// src/app/(owner)/members/page.tsx
+// app/(owner)/members/page.tsx
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -330,10 +337,57 @@ CRON_SECRET=              # Random 32+ char string for securing cron endpoints
 1. **Never store payment status on the User model.** It's computed. See section 6.1.
 2. **Prisma's DateTime is UTC.** Always convert to the gym's local timezone when displaying to users. Use `date-fns-tz` if needed.
 3. **NextAuth v5 uses `auth()` not `getServerSession()`.** The v4 API is different.
-4. **Vercel Cron routes must be GET requests** and secured with the `CRON_SECRET` header.
-5. **Tailwind v4 uses CSS-based config**, not `tailwind.config.js`. Check the Tailwind v4 migration guide if something doesn't work.
-6. **Cloudinary unsigned uploads are insecure.** Always upload from the server (API route), never directly from the client.
-7. **The owner account is created via seed script, not via the registration page.** The registration page always creates MEMBER accounts.
-8. **Session weekDate** is always the Monday of that week, regardless of which day the session falls on. The actual day comes from the RecurringSlot's `dayOfWeek`.
-9. **Max class size is 20.** Always validate before adding members to a session. The constant is in `lib/constants.ts`.
-10. **Trial period is exactly 14 days.** After that, the first grace period starts from `trialEndsAt`, not from the 1st of the month.
+4. **Auth is split**: `lib/auth.config.ts` (edge-compatible, no Prisma) + `lib/auth.ts` (full, server-only). Middleware uses `auth.config.ts`.
+5. **Vercel Cron routes must be GET requests** and secured with the `CRON_SECRET` header.
+6. **Tailwind v4 uses CSS-based config** via `@theme` directive in `app/globals.css`, not `tailwind.config.js`.
+7. **Cloudinary unsigned uploads are insecure.** Always upload from the server (API route), never directly from the client.
+8. **The owner account is created via seed script, not via the registration page.** The registration page always creates MEMBER accounts.
+9. **Session weekDate** is always the Monday of that week, regardless of which day the session falls on. The actual day comes from the RecurringSlot's `dayOfWeek` or Session's `customDay`.
+10. **Max class size is 20.** Always validate before adding members to a session. The constant is in `lib/constants.ts`.
+11. **Trial period is exactly 14 days.** After that, the first grace period starts from `trialEndsAt`, not from the 1st of the month.
+12. **Client components cannot import from `@/generated/prisma/client`** — use local type aliases instead.
+13. **Route groups are invisible in URL.** `(owner)`, `(trainer)`, `(member)` don't appear in paths. Use role-prefixed paths: `/owner/schedule`, `/member/schedule`, `/trainer/session/[id]`.
+14. **Next.js 15 params are async.** Page props use `Promise<{ id: string }>` pattern — always `await` params.
+15. **`serverExternalPackages`** in `next.config.ts` includes `["@prisma/client", "@prisma/adapter-pg", "bcrypt"]`.
+16. **Sessions can be one-off (custom).** When `recurringSlotId` is null, the session uses `customDay` + `customStartHour`.
+
+---
+
+## 10. Test Suite
+
+358 tests across 15 files, all passing (~3.7s). Run with `npm test`.
+
+### Business Logic (4 files, 103 tests)
+| File | Tests | What it covers |
+|---|---|---|
+| `payment-logic.test.ts` | 29 | Trial, grace period, lockout, overrides, edge cases |
+| `voting-logic.test.ts` | 25 | Deadline calculation, eligibility checks |
+| `session-generation.test.ts` | 24 | Week generation from recurring slots |
+| `session-generation-carry-forward.test.ts` | 25 | Assignment carryover, departed member exclusion |
+
+### API Routes (8 files, 200 tests)
+| File | Tests | What it covers |
+|---|---|---|
+| `sessions.test.ts` | 54 | Recurring, one-off, voting, cancel, generate week |
+| `private-sessions.test.ts` | 43 | Full CRUD, payment status |
+| `recurring-slots.test.ts` | 21 | Create, delete, cascade |
+| `session-members.test.ts` | 19 | Assign/remove members, capacity, vote cleanup |
+| `members.test.ts` | 16 | CRUD, status transitions |
+| `votes.test.ts` | 15 | Cast, update, deadline enforcement |
+| `session-trainers.test.ts` | 14 | Assign/remove trainers, auth |
+| `payments.test.ts` | 13 | Record, advance payments, validation |
+
+### UI Components (3 files, 55 tests)
+| File | Tests | What it covers |
+|---|---|---|
+| `SessionCard.test.tsx` | 39 | Display, voting, assignments, role-based behavior |
+| `Modal.test.tsx` | 28 | Keyboard nav, accessibility, focus trap |
+| `session-schemas.test.tsx` | 17 | Zod validation for sessions |
+| `CreateSessionModal.test.tsx` | 15 | One-off, new recurring, validation |
+| `VoteModal.test.tsx` | 11 | Inline voting modal |
+| `MemberScheduleClient.test.tsx` | 7 | Calendar rendering, assigned vs unassigned |
+
+### Known Lint Warnings (4, pre-existing)
+- `ScheduleClient.tsx`: trainers, members unused
+- `members` API route: `_payments` unused
+- `notifications` lib: `_user` unused

@@ -8,7 +8,7 @@
 | **Language**       | TypeScript                     | 5.x      | Type safety across the entire stack prevents an entire class of runtime bugs, especially important for role-based logic and payment calculations. |
 | **Styling**        | Tailwind CSS                   | 4.x      | Utility-first CSS. Easy to enforce the purple/black brand palette via `tailwind.config`. No context-switching between files. |
 | **Database**       | PostgreSQL                     | 16       | Relational data (users → payments → sessions → votes) is the core of this app. Postgres handles it natively with foreign keys, constraints, and transactional integrity. |
-| **ORM**            | Prisma                         | 6.x      | Type-safe queries generated from a single `schema.prisma` file. Migrations are version-controlled. Introspection makes onboarding easy. |
+| **ORM**            | Prisma                         | 7.x      | Type-safe queries with adapter pattern (`PrismaPg`). Generated client at `@/generated/prisma`. Migrations are version-controlled. |
 | **Auth**           | NextAuth.js (Auth.js) v5       | 5.x      | Credentials provider for email/password. Session strategy via JWT. Role field (`OWNER`, `TRAINER`, `MEMBER`) stored in the token for middleware-level access control. |
 | **Email**          | Resend                         | Latest   | Simple API, excellent deliverability, built-in React Email support for templated emails. Free tier covers MVP volume. |
 | **File Storage**   | Cloudinary                     | Latest   | Member photo uploads with automatic resizing/optimization. No need to manage S3 buckets and CDN configuration for a single-gym app. |
@@ -25,79 +25,121 @@
 ```
 wonder-woman-fitness/
 ├── prisma/
-│   ├── schema.prisma              # Database schema (single source of truth)
+│   ├── schema.prisma              # Database schema (9 models, 4 enums)
 │   ├── migrations/                # Version-controlled migrations
 │   └── seed.ts                    # Seed script (owner account, sample data)
-├── src/
-│   ├── app/                       # Next.js App Router
-│   │   ├── (auth)/                # Auth routes (login, register, forgot-password)
-│   │   │   ├── login/page.tsx
-│   │   │   ├── register/page.tsx
-│   │   │   └── forgot-password/page.tsx
-│   │   ├── (member)/              # Member-facing routes
-│   │   │   ├── schedule/page.tsx
-│   │   │   ├── session/[id]/page.tsx
-│   │   │   ├── profile/page.tsx
-│   │   │   └── notifications/page.tsx
-│   │   ├── (trainer)/             # Trainer-facing routes
-│   │   │   ├── my-schedule/page.tsx
-│   │   │   └── session/[id]/page.tsx
-│   │   ├── (owner)/               # Owner/admin routes
-│   │   │   ├── dashboard/page.tsx
-│   │   │   ├── schedule/page.tsx
-│   │   │   ├── session/[id]/page.tsx
-│   │   │   ├── members/page.tsx
-│   │   │   ├── members/[id]/page.tsx
-│   │   │   ├── members/inactive/page.tsx
-│   │   │   ├── members/trial/page.tsx
-│   │   │   ├── payments/page.tsx
-│   │   │   ├── private-sessions/page.tsx
-│   │   │   ├── trainers/page.tsx
-│   │   │   └── notifications/page.tsx
-│   │   ├── api/                   # API route handlers
-│   │   │   ├── auth/[...nextauth]/route.ts
-│   │   │   ├── members/route.ts
-│   │   │   ├── sessions/route.ts
-│   │   │   ├── votes/route.ts
-│   │   │   ├── payments/route.ts
-│   │   │   ├── private-sessions/route.ts
-│   │   │   ├── notifications/route.ts
-│   │   │   ├── analytics/route.ts
-│   │   │   └── cron/
-│   │   │       ├── payment-reminders/route.ts
-│   │   │       └── trial-expiration/route.ts
-│   │   ├── layout.tsx             # Root layout (nav, auth provider, notification bell)
-│   │   └── middleware.ts          # Role-based route protection + payment lockout
-│   ├── components/
-│   │   ├── ui/                    # Generic UI primitives (Button, Input, Modal, Badge, etc.)
-│   │   ├── schedule/              # WeeklyCalendar, SessionCard, VotingPrompt
-│   │   ├── payments/              # PaymentForm, PaymentBanner, LockoutScreen
-│   │   ├── analytics/             # Charts, MetricCards, DateRangeFilter
-│   │   ├── notifications/         # NotificationBell, NotificationList
-│   │   └── members/               # MemberTable, MemberCard, TrialBadge
-│   ├── lib/
-│   │   ├── prisma.ts              # Prisma client singleton
-│   │   ├── auth.ts                # NextAuth configuration
-│   │   ├── email.ts               # Resend client + email templates
-│   │   ├── cloudinary.ts          # Upload helper
-│   │   ├── constants.ts           # Magic numbers (MAX_CLASS_SIZE=20, GRACE_PERIOD_DAYS=10, TRIAL_DAYS=14, etc.)
-│   │   ├── payment-logic.ts       # Payment status calculation, grace period logic
-│   │   └── notifications.ts       # Notification creation + dispatch (email + in-app)
-│   ├── types/
-│   │   └── index.ts               # Shared TypeScript types and Zod schemas
-│   └── hooks/
-│       ├── useNotifications.ts    # Polling/SSE for real-time notification badge
-│       └── usePaymentStatus.ts    # Client-side payment state
+├── generated/
+│   └── prisma/                    # Prisma 7 generated client (adapter pattern)
+├── app/                           # Next.js App Router (no src/ prefix)
+│   ├── (auth)/                    # Auth routes
+│   │   ├── login/page.tsx
+│   │   ├── register/page.tsx
+│   │   └── forgot-password/page.tsx
+│   ├── (member)/                  # Member-facing routes
+│   │   ├── member/
+│   │   │   ├── schedule/page.tsx          # Weekly calendar with voting
+│   │   │   ├── session/[id]/page.tsx      # Session detail + vote modal
+│   │   │   ├── profile/page.tsx           # Edit profile + photo upload
+│   │   │   ├── notifications/page.tsx     # Notification center
+│   │   │   ├── stop-training/page.tsx     # Voluntary departure flow
+│   │   │   ├── departed/page.tsx          # Motivational banner + rejoin
+│   │   │   └── locked/page.tsx            # Payment lockout screen
+│   ├── (trainer)/                 # Trainer-facing routes
+│   │   ├── my-schedule/page.tsx           # Trainer's assigned sessions
+│   │   └── trainer/
+│   │       ├── session/[id]/page.tsx      # Session detail + workout editor
+│   │       ├── notifications/page.tsx     # Trainer notifications
+│   │       └── private-sessions/page.tsx  # View private sessions (read-only)
+│   ├── (owner)/                   # Owner/admin routes
+│   │   ├── dashboard/page.tsx             # Analytics dashboard
+│   │   ├── owner/
+│   │   │   ├── schedule/page.tsx          # Weekly calendar + create sessions
+│   │   │   ├── session/[id]/page.tsx      # Full session management
+│   │   │   └── notifications/page.tsx     # Owner notifications
+│   │   ├── members/page.tsx               # Member list table
+│   │   ├── members/[id]/page.tsx          # Member detail + payments
+│   │   ├── members/inactive/page.tsx      # Departed members
+│   │   ├── members/trial/page.tsx         # Trial members
+│   │   ├── payments/page.tsx              # Payment tracking
+│   │   ├── private-sessions/page.tsx      # Private session management
+│   │   └── trainers/page.tsx              # Trainer account management
+│   ├── api/                       # API route handlers (~30 endpoints)
+│   │   ├── auth/
+│   │   │   ├── [...nextauth]/route.ts     # NextAuth v5 handler
+│   │   │   └── register/route.ts          # Member self-registration
+│   │   ├── members/
+│   │   │   ├── route.ts                   # GET (list), POST
+│   │   │   └── [id]/
+│   │   │       ├── route.ts               # GET, PATCH (profile/status)
+│   │   │       └── payment-status/route.ts # Computed payment status
+│   │   ├── sessions/
+│   │   │   ├── route.ts                   # GET (list), POST (create)
+│   │   │   ├── [id]/
+│   │   │   │   ├── route.ts               # GET, PATCH, DELETE
+│   │   │   │   ├── trainers/route.ts      # POST (assign/remove trainers)
+│   │   │   │   ├── members/route.ts       # POST (assign/remove members)
+│   │   │   │   └── move-members/route.ts  # POST (move between sessions)
+│   │   │   └── generate-week/route.ts     # POST (generate from templates)
+│   │   ├── recurring-slots/route.ts       # GET, POST, DELETE (with cascade)
+│   │   ├── votes/route.ts                 # GET, POST, DELETE
+│   │   ├── payments/
+│   │   │   ├── route.ts                   # GET, POST
+│   │   │   └── [id]/route.ts              # GET, DELETE
+│   │   ├── private-sessions/
+│   │   │   ├── route.ts                   # GET, POST
+│   │   │   └── [id]/route.ts              # PATCH, DELETE
+│   │   ├── notifications/
+│   │   │   ├── route.ts                   # GET (list)
+│   │   │   └── [id]/route.ts              # PATCH (mark read)
+│   │   ├── analytics/route.ts             # GET (owner-only dashboard)
+│   │   └── cron/                          # Secured with CRON_SECRET
+│   │       ├── payment-reminders/route.ts # Daily at 9 AM
+│   │       ├── trial-expiration/route.ts  # Daily at 6 AM
+│   │       └── voting-deadline/route.ts   # Hourly
+│   ├── globals.css                # Tailwind v4 CSS config (@theme directive)
+│   ├── layout.tsx                 # Root layout (Header, auth provider)
+│   └── middleware.ts              # Role-based routing + payment lockout
+├── components/
+│   ├── ui/                        # 9 primitives (Badge, Button, Card, Input, Modal, Select, Spinner, Textarea, Toast)
+│   ├── schedule/                  # 9 components (WeeklyCalendar, SessionCard, CreateSessionModal,
+│   │                              #   DeleteRecurringSlotModal, VotingPrompt, VoteSummary,
+│   │                              #   WorkoutDisplay, WorkoutEditor, AssignmentToggleList)
+│   ├── payment/                   # 5 components (PaymentBanner, LockoutScreen, PaymentForm,
+│   │                              #   PaymentHistory, PaymentStatusBadge)
+│   ├── member/                    # 3 components (MemberTable, MemberCard, TrialBadge)
+│   ├── notification/              # 4 components (NotificationBell, NotificationList,
+│   │                              #   NotificationItem, NotificationsClient)
+│   ├── analytics/                 # 5 components (MetricCard, AttendanceChart, RevenueChart,
+│   │                              #   RetentionChart, DateRangeFilter)
+│   └── layout/                    # 2 components (Header, Navigation)
+├── lib/
+│   ├── prisma.ts                  # Prisma 7 singleton (PrismaPg adapter)
+│   ├── auth.ts                    # NextAuth full config (server-only, uses Prisma)
+│   ├── auth.config.ts             # NextAuth edge-compatible config (no Prisma)
+│   ├── email.ts                   # Resend client + email templates
+│   ├── cloudinary.ts              # Upload helper
+│   ├── constants.ts               # All magic numbers (~167 lines)
+│   ├── payment-logic.ts           # Computed payment status engine
+│   ├── voting-logic.ts            # Voting deadline calculation, eligibility
+│   ├── session-generation.ts      # generateSessionsForWeek() with carry-forward
+│   ├── notifications.ts           # dispatchNotification() email + in-app
+│   └── __tests__/                 # 4 business logic test files (103 tests)
+├── types/
+│   └── index.ts                   # Shared TypeScript types + Zod schemas
+├── hooks/                         # Custom React hooks
+├── docs/
+│   └── plans/                     # 7 design/plan documents
 ├── public/
 │   └── images/                    # Logo, branding assets
-├── .env.local                     # Environment variables (DB_URL, NEXTAUTH_SECRET, RESEND_API_KEY, etc.)
-├── tailwind.config.ts             # Purple/black brand palette
-├── next.config.ts
+├── .env.local                     # Environment variables
+├── next.config.ts                 # serverExternalPackages: prisma, pg, bcrypt
+├── vercel.json                    # 3 cron job definitions
+├── vitest.config.ts               # Test configuration
 ├── package.json
 ├── tsconfig.json
 ├── PRD.md
 ├── ARCHITECTURE.md
-├── TASKS.md
+├── DEPLOYMENT.md
 └── CLAUDE.md
 ```
 
@@ -110,21 +152,23 @@ wonder-woman-fitness/
 │    User      │       │  RecurringSlot   │       │    Session       │
 ├─────────────┤       ├──────────────────┤       ├──────────────────┤
 │ id           │       │ id               │       │ id               │
-│ email        │       │ dayOfWeek (0-6)  │       │ recurringSlotId  │──→ RecurringSlot
-│ passwordHash │       │ startHour (7-22) │       │ weekDate         │
-│ name         │       │ createdAt        │       │ workoutTitle     │
-│ phone        │       └──────────────────┘       │ workoutDetails   │
-│ photo        │                                  │ votingEnabled    │
-│ role (enum)  │                                  │ votingDeadline   │
-│ status (enum)│                                  │ status (enum)    │
-│ joinDate     │       ┌──────────────────┐       │ createdAt        │
-│ trialEndsAt  │       │  SessionMember   │       └──────────────────┘
-│ departedAt   │       ├──────────────────┤              │
-│ departReason │       │ sessionId        │──→ Session   │
-│ monthlyRate  │       │ userId           │──→ User      │
-│ createdAt    │       └──────────────────┘              │
-│ updatedAt    │                                         │
-└──────┬───────┘       ┌──────────────────┐              │
+│ email        │       │ dayOfWeek (1-7)  │       │ recurringSlotId? │──→ RecurringSlot
+│ passwordHash │       │ startHour (7-22) │       │ customDay?       │  (nullable for one-offs)
+│ name         │       │ createdAt        │       │ customStartHour? │
+│ phone        │       └──────────────────┘       │ weekDate         │
+│ photo        │                                  │ workoutTitle     │
+│ role (enum)  │                                  │ workoutDetails   │
+│ status (enum)│                                  │ votingEnabled    │
+│ joinDate     │                                  │ votingDeadline   │
+│ trialEndsAt  │                                  │ status (enum)    │
+│ departedAt   │       ┌──────────────────┐       │ createdById?     │──→ User
+│ departReason │       │  SessionMember   │       │ createdAt        │
+│ monthlyRate  │       ├──────────────────┤       └──────────────────┘
+│ overrideActive│      │ sessionId        │──→ Session   │
+│ createdAt    │       │ userId           │──→ User      │
+│ updatedAt    │       └──────────────────┘              │
+└──────┬───────┘                                         │
+       │               ┌──────────────────┐              │
        │               │  SessionTrainer  │              │
        │               ├──────────────────┤              │
        │               │ sessionId        │──→ Session   │
@@ -185,7 +229,7 @@ wonder-woman-fitness/
 
 ```
 UserRole:     OWNER | TRAINER | MEMBER
-UserStatus:   TRIAL | ACTIVE | LOCKED | DEPARTED
+UserStatus:   TRIAL | ACTIVE | DEPARTED  (LOCKED is computed, never stored)
 SessionStatus: SCHEDULED | CANCELLED
 NotificationType: WORKOUT_POSTED | VOTING_OPENED | CLASS_CANCELLED |
                   MEMBER_MOVED | PAYMENT_REMINDER | LOCKOUT |
@@ -264,9 +308,9 @@ In-app notifications are fetched client-side by polling `GET /api/notifications?
 
 | Job                      | Schedule          | Action                                                                 |
 |--------------------------|-------------------|------------------------------------------------------------------------|
-| `payment-reminders`      | Daily at 8:00 AM  | Check all active members. Send reminders on day 1, 7. Lock out on day 11. |
-| `trial-expiration`       | Daily at 8:00 AM  | Check trial members. Notify owner 2 days before. Transition expired trials to ACTIVE. |
-| `voting-deadline-check`  | Daily at 11:59 PM | Lock voting on sessions where deadline has passed.                     |
+| `payment-reminders`      | Daily at 9:00 AM  | Check all active members. Send reminders on day 1, 7. Lock out on day 11. |
+| `trial-expiration`       | Daily at 6:00 AM  | Check trial members. Notify owner 2 days before. Transition expired trials to ACTIVE. |
+| `voting-deadline`        | Hourly            | Lock voting on sessions where deadline has passed.                     |
 
 Cron routes are secured with a `CRON_SECRET` header that Vercel injects automatically.
 
@@ -436,3 +480,44 @@ CRON_SECRET=<random-32-char-string>
 | Production  | Live app                | `main`           | https://wonderwomanfitness.mk          |
 | Preview     | PR previews             | `preview`        | https://preview-*.vercel.app           |
 | Development | Local dev               | `dev` (or local) | http://localhost:3000                   |
+
+---
+
+## 9. Post-MVP Architectural Additions
+
+These features were added after the initial 10-phase build:
+
+### 9.1 Custom One-Off Sessions
+
+Sessions can now exist without a `RecurringSlot`. The `Session` model gained nullable `customDay` (1-7) and `customStartHour` (7-22) fields. When `recurringSlotId` is null, these fields define the session's day/time. Two unique constraints enforce no duplicates for either session type.
+
+### 9.2 Session Assignment Management
+
+Two new API endpoints handle trainer and member assignment at the individual session level:
+- `POST /api/sessions/[id]/trainers` — Owner-only, toggle trainers on/off
+- `POST /api/sessions/[id]/members` — Owner + assigned trainers, toggle members on/off
+
+The `AssignmentToggleList` component provides an inline toggle UI used by the session detail page.
+
+### 9.3 Carry-Forward on Week Generation
+
+`generateSessionsForWeek()` in `lib/session-generation.ts` now copies trainer and member assignments from the previous week's matching recurring slot sessions. Departed members are automatically excluded from carry-forward.
+
+### 9.4 Auth Split Pattern (Prisma 7 + Edge)
+
+NextAuth v5's middleware runs on the Edge runtime, which cannot import Prisma. The auth config is split:
+- `lib/auth.config.ts` — Edge-compatible config (callbacks, pages, providers without DB calls)
+- `lib/auth.ts` — Full server config that imports Prisma for the `authorize()` function
+
+Middleware uses `auth.config.ts`. Server components and API routes use `auth.ts`.
+
+### 9.5 Delete Recurring Slot with Cascade
+
+`DELETE /api/recurring-slots` accepts an optional `deleteFutureSessions` flag. When true, it deletes all future sessions (weekDate >= current week Monday) generated from the slot before deleting the slot itself. The `DeleteRecurringSlotModal` component provides the UI.
+
+### 9.6 Test Suite
+
+358 automated tests across 15 files using Vitest:
+- **Business logic** (4 files, 103 tests): payment-logic, voting-logic, session-generation, carry-forward
+- **API routes** (8 files, 200 tests): members, sessions, payments, votes, session-trainers, session-members, private-sessions, recurring-slots
+- **UI components** (3 files, 55 tests): Modal, CreateSessionModal, session-schemas, SessionCard, VoteModal, MemberScheduleClient
