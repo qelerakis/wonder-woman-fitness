@@ -12,6 +12,7 @@ import {
   getTimeUntilDeadline,
   getVoteSummary,
   hasLowAttendance,
+  isSessionFull,
 } from "../voting-logic";
 
 // ===== Test Helpers =====
@@ -261,5 +262,29 @@ describe("hasLowAttendance", () => {
 
   it("returns false when 20 members are coming (max class size)", () => {
     expect(hasLowAttendance(20)).toBe(false);
+  });
+});
+
+// ===== isSessionFull =====
+
+describe("isSessionFull", () => {
+  it("returns false when coming count is below max", () => {
+    expect(isSessionFull(10)).toBe(false);
+  });
+
+  it("returns false when coming count is 19 (one below max)", () => {
+    expect(isSessionFull(19)).toBe(false);
+  });
+
+  it("returns true when coming count equals MAX_CLASS_SIZE (20)", () => {
+    expect(isSessionFull(20)).toBe(true);
+  });
+
+  it("returns true when coming count exceeds MAX_CLASS_SIZE", () => {
+    expect(isSessionFull(25)).toBe(true);
+  });
+
+  it("returns false when coming count is 0", () => {
+    expect(isSessionFull(0)).toBe(false);
   });
 });

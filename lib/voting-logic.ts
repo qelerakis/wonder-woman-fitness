@@ -5,7 +5,7 @@
  * Reuses session datetime calculation from session-generation.ts (single source of truth).
  */
 
-import { LOW_ATTENDANCE_THRESHOLD } from './constants';
+import { LOW_ATTENDANCE_THRESHOLD, MAX_CLASS_SIZE } from './constants';
 import { getSessionDateTime, calculateVotingDeadline } from './session-generation';
 import type { Session, RecurringSlot } from '@/generated/prisma/client';
 
@@ -104,4 +104,11 @@ export function getVoteSummary(votes: Array<{ attending: boolean }>, totalMember
  */
 export function hasLowAttendance(comingCount: number): boolean {
   return comingCount > 0 && comingCount <= LOW_ATTENDANCE_THRESHOLD;
+}
+
+/**
+ * Check if session is full (coming votes >= MAX_CLASS_SIZE)
+ */
+export function isSessionFull(comingCount: number): boolean {
+  return comingCount >= MAX_CLASS_SIZE;
 }
