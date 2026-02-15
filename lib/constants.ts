@@ -92,7 +92,7 @@ export const TIME_FORMAT = 'HH:mm';
 export const CRON_SCHEDULES = {
   PAYMENT_REMINDERS: '0 9 * * *',   // Daily at 9 AM
   TRIAL_EXPIRATION: '0 6 * * *',    // Daily at 6 AM
-  VOTING_DEADLINE: '0 * * * *',      // Every hour
+  VOTING_DEADLINE: '0 0 * * *',      // Daily at midnight
 } as const;
 
 // ===== EMAIL CONFIGURATION =====

@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/cron/voting-deadline",
-      "schedule": "0 * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
