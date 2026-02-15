@@ -57,6 +57,12 @@ const mockPrisma = {
     update: vi.fn(),
     delete: vi.fn(),
   },
+  sessionMember: {
+    deleteMany: vi.fn(),
+  },
+  vote: {
+    deleteMany: vi.fn(),
+  },
   sessionTrainer: {
     create: vi.fn(),
   },
@@ -1439,5 +1445,952 @@ describe("POST /api/sessions — trainer access", () => {
         userId: "trainer-1",
       },
     });
+  });
+});
+
+// ===== PATCH /api/sessions/[id] — enabling voting clears members =====
+
+describe("PATCH /api/sessions/[id] — enabling voting clears members", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("deletes all session members when voting is enabled by owner", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      workoutTitle: null,
+      trainers: [],
+      members: [
+        { user: { id: "m-1", name: "Alice" } },
+        { user: { id: "m-2", name: "Bob" } },
+        { user: { id: "m-3", name: "Carol" } },
+      ],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+      customStartHour: null,
+    });
+    mockPrisma.sessionMember.deleteMany.mockResolvedValue({ count: 3 });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      workoutTitle: null,
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ votingEnabled: true }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockPrisma.sessionMember.deleteMany).toHaveBeenCalledWith({
+      where: { sessionId: "s-1" },
+    });
+  });
+
+  it("deletes all session members when voting is enabled by trainer", async () => {
+    mockAuth.mockResolvedValue(trainerSession("trainer-1"));
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      workoutTitle: null,
+      trainers: [{ userId: "trainer-1" }],
+      members: [
+        { user: { id: "m-1", name: "Alice" } },
+        { user: { id: "m-2", name: "Bob" } },
+        { user: { id: "m-3", name: "Carol" } },
+      ],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+      customStartHour: null,
+    });
+    mockPrisma.sessionMember.deleteMany.mockResolvedValue({ count: 3 });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      workoutTitle: null,
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ votingEnabled: true }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockPrisma.sessionMember.deleteMany).toHaveBeenCalledWith({
+      where: { sessionId: "s-1" },
+    });
+  });
+
+  it("does NOT delete members when voting is already enabled (no-op toggle)", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      workoutTitle: null,
+      trainers: [],
+      members: [{ user: { id: "m-1", name: "Alice" } }],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+      customStartHour: null,
+    });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      workoutTitle: null,
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [{ user: { id: "m-1", name: "Alice" } }],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ votingEnabled: true }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockPrisma.sessionMember.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("does NOT delete members when only updating workout (no votingEnabled field)", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      workoutTitle: null,
+      trainers: [],
+      members: [{ user: { id: "m-1", name: "Alice" } }],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+      customStartHour: null,
+    });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      workoutTitle: "Leg Day",
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [{ user: { id: "m-1", name: "Alice" } }],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workoutTitle: "Leg Day" }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockPrisma.sessionMember.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("clears members even when session has zero members (no error)", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      workoutTitle: null,
+      trainers: [],
+      members: [],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+      customStartHour: null,
+    });
+    mockPrisma.sessionMember.deleteMany.mockResolvedValue({ count: 0 });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      workoutTitle: null,
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ votingEnabled: true }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockPrisma.sessionMember.deleteMany).toHaveBeenCalledWith({
+      where: { sessionId: "s-1" },
+    });
+  });
+
+  it("clears members when enabling voting alongside workout update", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      workoutTitle: null,
+      trainers: [],
+      members: [{ user: { id: "m-1", name: "Alice" } }],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+      customStartHour: null,
+    });
+    mockPrisma.sessionMember.deleteMany.mockResolvedValue({ count: 1 });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      workoutTitle: "Upper Body",
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ votingEnabled: true, workoutTitle: "Upper Body" }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockPrisma.sessionMember.deleteMany).toHaveBeenCalledWith({
+      where: { sessionId: "s-1" },
+    });
+  });
+
+  it("clears members with many members (capacity edge)", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    const twentyMembers = Array.from({ length: 20 }, (_, i) => ({
+      user: { id: `m-${i + 1}`, name: `Member ${i + 1}` },
+    }));
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      workoutTitle: null,
+      trainers: [],
+      members: twentyMembers,
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+      customStartHour: null,
+    });
+    mockPrisma.sessionMember.deleteMany.mockResolvedValue({ count: 20 });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      workoutTitle: null,
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ votingEnabled: true }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockPrisma.sessionMember.deleteMany).toHaveBeenCalledWith({
+      where: { sessionId: "s-1" },
+    });
+  });
+});
+
+// ===== PATCH /api/sessions/[id] — disabling voting clears votes =====
+
+describe("PATCH /api/sessions/[id] — disabling voting clears votes", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("deletes all votes when voting is disabled by owner", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      workoutTitle: null,
+      trainers: [],
+      members: [],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+      customStartHour: null,
+    });
+    mockPrisma.vote.deleteMany.mockResolvedValue({ count: 5 });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      workoutTitle: null,
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ votingEnabled: false }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockPrisma.vote.deleteMany).toHaveBeenCalledWith({
+      where: { sessionId: "s-1" },
+    });
+  });
+
+  it("deletes all votes when voting is disabled by trainer", async () => {
+    mockAuth.mockResolvedValue(trainerSession("trainer-1"));
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      workoutTitle: null,
+      trainers: [{ userId: "trainer-1" }],
+      members: [],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+      customStartHour: null,
+    });
+    mockPrisma.vote.deleteMany.mockResolvedValue({ count: 3 });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      workoutTitle: null,
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ votingEnabled: false }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockPrisma.vote.deleteMany).toHaveBeenCalledWith({
+      where: { sessionId: "s-1" },
+    });
+  });
+
+  it("does NOT delete votes when voting is already disabled (no-op toggle)", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      workoutTitle: null,
+      trainers: [],
+      members: [],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+      customStartHour: null,
+    });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      workoutTitle: null,
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ votingEnabled: false }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockPrisma.vote.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("clears votes even when session has zero votes (no error)", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      workoutTitle: null,
+      trainers: [],
+      members: [],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+      customStartHour: null,
+    });
+    mockPrisma.vote.deleteMany.mockResolvedValue({ count: 0 });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      workoutTitle: null,
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ votingEnabled: false }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockPrisma.vote.deleteMany).toHaveBeenCalledWith({
+      where: { sessionId: "s-1" },
+    });
+  });
+
+  it("clears votes when disabling voting alongside workout update", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      workoutTitle: null,
+      trainers: [],
+      members: [],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+      customStartHour: null,
+    });
+    mockPrisma.vote.deleteMany.mockResolvedValue({ count: 2 });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      workoutTitle: "Cardio Blast",
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ votingEnabled: false, workoutTitle: "Cardio Blast" }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockPrisma.vote.deleteMany).toHaveBeenCalledWith({
+      where: { sessionId: "s-1" },
+    });
+  });
+
+  it("clears many votes (20 members all voted)", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      workoutTitle: null,
+      trainers: [],
+      members: [],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+      customStartHour: null,
+    });
+    mockPrisma.vote.deleteMany.mockResolvedValue({ count: 20 });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      workoutTitle: null,
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ votingEnabled: false }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockPrisma.vote.deleteMany).toHaveBeenCalledWith({
+      where: { sessionId: "s-1" },
+    });
+  });
+});
+
+// ===== PATCH /api/sessions/[id] — voting toggle transaction & edge cases =====
+
+describe("PATCH /api/sessions/[id] — voting toggle transaction & edge cases", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("uses $transaction when enabling voting (atomic cleanup)", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      workoutTitle: null,
+      trainers: [],
+      members: [],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+      customStartHour: null,
+    });
+    mockPrisma.sessionMember.deleteMany.mockResolvedValue({ count: 0 });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ votingEnabled: true }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(mockPrisma.$transaction).toHaveBeenCalled();
+  });
+
+  it("uses $transaction when disabling voting (atomic cleanup)", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      workoutTitle: null,
+      trainers: [],
+      members: [],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+      customStartHour: null,
+    });
+    mockPrisma.vote.deleteMany.mockResolvedValue({ count: 0 });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ votingEnabled: false }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(mockPrisma.$transaction).toHaveBeenCalled();
+  });
+
+  it("does not use $transaction when not toggling voting", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      workoutTitle: null,
+      trainers: [],
+      members: [],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+      customStartHour: null,
+    });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      workoutTitle: "Leg Day",
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workoutTitle: "Leg Day" }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("enabling voting on cancelled session still clears members", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "CANCELLED",
+      votingEnabled: false,
+      workoutTitle: null,
+      trainers: [],
+      members: [{ user: { id: "m-1", name: "Alice" } }],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+      customStartHour: null,
+    });
+    mockPrisma.sessionMember.deleteMany.mockResolvedValue({ count: 1 });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "CANCELLED",
+      votingEnabled: true,
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ votingEnabled: true }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockPrisma.sessionMember.deleteMany).toHaveBeenCalledWith({
+      where: { sessionId: "s-1" },
+    });
+  });
+
+  it("disabling voting on cancelled session still clears votes", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "CANCELLED",
+      votingEnabled: true,
+      workoutTitle: null,
+      trainers: [],
+      members: [],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+      customStartHour: null,
+    });
+    mockPrisma.vote.deleteMany.mockResolvedValue({ count: 3 });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "CANCELLED",
+      votingEnabled: false,
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ votingEnabled: false }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockPrisma.vote.deleteMany).toHaveBeenCalledWith({
+      where: { sessionId: "s-1" },
+    });
+  });
+
+  it("enabling voting does NOT clear votes (only members)", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      workoutTitle: null,
+      trainers: [],
+      members: [{ user: { id: "m-1", name: "Alice" } }],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+      customStartHour: null,
+    });
+    mockPrisma.sessionMember.deleteMany.mockResolvedValue({ count: 1 });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ votingEnabled: true }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(mockPrisma.sessionMember.deleteMany).toHaveBeenCalled();
+    expect(mockPrisma.vote.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("disabling voting does NOT clear members (only votes)", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      workoutTitle: null,
+      trainers: [],
+      members: [{ user: { id: "m-1", name: "Alice" } }],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+      customStartHour: null,
+    });
+    mockPrisma.vote.deleteMany.mockResolvedValue({ count: 2 });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [{ user: { id: "m-1", name: "Alice" } }],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ votingEnabled: false }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(mockPrisma.vote.deleteMany).toHaveBeenCalled();
+    expect(mockPrisma.sessionMember.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("cancellation with simultaneous voting toggle does not conflict", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      workoutTitle: null,
+      trainers: [],
+      members: [{ user: { id: "m-1", name: "Alice" } }],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+      customStartHour: null,
+    });
+    mockPrisma.sessionMember.deleteMany.mockResolvedValue({ count: 1 });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "CANCELLED",
+      votingEnabled: true,
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ votingEnabled: true, status: "CANCELLED" }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockPrisma.sessionMember.deleteMany).toHaveBeenCalledWith({
+      where: { sessionId: "s-1" },
+    });
+    expect(mockPrisma.$transaction).toHaveBeenCalled();
+  });
+
+  it("custom session (no recurringSlot) — enabling voting clears members", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      workoutTitle: null,
+      trainers: [],
+      members: [{ user: { id: "m-1", name: "Alice" } }],
+      recurringSlot: null,
+      customDay: 3,
+      customStartHour: 14,
+    });
+    mockPrisma.sessionMember.deleteMany.mockResolvedValue({ count: 1 });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      recurringSlot: null,
+      customDay: 3,
+      customStartHour: 14,
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ votingEnabled: true }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockPrisma.sessionMember.deleteMany).toHaveBeenCalledWith({
+      where: { sessionId: "s-1" },
+    });
+  });
+
+  it("custom session — disabling voting clears votes", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      workoutTitle: null,
+      trainers: [],
+      members: [],
+      recurringSlot: null,
+      customDay: 5,
+      customStartHour: 16,
+    });
+    mockPrisma.vote.deleteMany.mockResolvedValue({ count: 4 });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      recurringSlot: null,
+      customDay: 5,
+      customStartHour: 16,
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ votingEnabled: false }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockPrisma.vote.deleteMany).toHaveBeenCalledWith({
+      where: { sessionId: "s-1" },
+    });
+  });
+
+  it("enabling voting still allows session update to succeed", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      workoutTitle: null,
+      trainers: [],
+      members: [{ user: { id: "m-1", name: "Alice" } }],
+      recurringSlot: { dayOfWeek: 2, startHour: 10 },
+      customDay: null,
+      customStartHour: null,
+    });
+    mockPrisma.sessionMember.deleteMany.mockResolvedValue({ count: 1 });
+    const updatedSession = {
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      workoutTitle: "HIIT Circuit",
+      recurringSlot: { dayOfWeek: 2, startHour: 10 },
+      members: [],
+    };
+    mockPrisma.session.update.mockResolvedValue(updatedSession);
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ votingEnabled: true, workoutTitle: "HIIT Circuit" }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data).toEqual(updatedSession);
+    expect(body.data.votingEnabled).toBe(true);
+    expect(body.data.workoutTitle).toBe("HIIT Circuit");
+    expect(body.data.members).toEqual([]);
   });
 });

@@ -215,16 +215,18 @@ export function TrainerSessionDetailClient({
             </div>
           </Card>
 
-          {/* Members */}
-          <AssignmentToggleList
-            title="Members"
-            people={allMembers}
-            assignedIds={currentMemberIds}
-            onToggle={handleToggleMember}
-            disabled={isCancelled}
-            maxCapacity={MAX_CLASS_SIZE}
-            currentCount={currentMemberIds.length}
-          />
+          {/* Members — only shown when voting is disabled */}
+          {!session.votingEnabled && (
+            <AssignmentToggleList
+              title="Members"
+              people={allMembers}
+              assignedIds={currentMemberIds}
+              onToggle={handleToggleMember}
+              disabled={isCancelled}
+              maxCapacity={MAX_CLASS_SIZE}
+              currentCount={currentMemberIds.length}
+            />
+          )}
 
           {/* Toggle voting */}
           {!isCancelled && (
@@ -236,13 +238,15 @@ export function TrainerSessionDetailClient({
 
         {/* Right column */}
         <div className="space-y-6">
-          {/* Voting Results (read-only) */}
-          <Card>
-            <CardHeader title="Voting Results" />
-            <div className="mt-4">
-              <VoteSummary members={voteMembers} />
-            </div>
-          </Card>
+          {/* Voting Results — only shown when voting is enabled */}
+          {session.votingEnabled && (
+            <Card>
+              <CardHeader title="Voting Results" />
+              <div className="mt-4">
+                <VoteSummary members={voteMembers} />
+              </div>
+            </Card>
+          )}
 
           {/* Trainers */}
           <Card>

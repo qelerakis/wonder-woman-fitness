@@ -174,7 +174,11 @@ export async function PATCH(
       }
     }
 
-    const updated = await prisma.session.update({
+    // Detect actual voting state change
+    const isEnablingVoting = parsed.data.votingEnabled === true && !existingSession.votingEnabled;
+    const isDisablingVoting = parsed.data.votingEnabled === false && existingSession.votingEnabled;
+
+    const updateQuery = {
       where: { id },
       data: updateData,
       include: {
@@ -187,7 +191,26 @@ export async function PATCH(
           },
         },
       },
-    });
+    };
+
+    let updated;
+
+    if (isEnablingVoting) {
+      // Enabling voting: clear member assignments atomically
+      updated = await prisma.$transaction(async (tx) => {
+        await tx.sessionMember.deleteMany({ where: { sessionId: id } });
+        return tx.session.update(updateQuery);
+      });
+    } else if (isDisablingVoting) {
+      // Disabling voting: clear votes atomically
+      updated = await prisma.$transaction(async (tx) => {
+        await tx.vote.deleteMany({ where: { sessionId: id } });
+        return tx.session.update(updateQuery);
+      });
+    } else {
+      // No voting toggle: simple update
+      updated = await prisma.session.update(updateQuery);
+    }
 
     return Response.json({ data: updated });
   } catch (error) {

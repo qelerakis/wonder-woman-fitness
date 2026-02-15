@@ -342,15 +342,17 @@ export function SessionDetailClient({
             disabled={isCancelled}
           />
 
-          <AssignmentToggleList
-            title="Members"
-            people={allMembers}
-            assignedIds={currentMemberIds}
-            onToggle={handleToggleMember}
-            disabled={isCancelled}
-            maxCapacity={MAX_CLASS_SIZE}
-            currentCount={currentMemberIds.length}
-          />
+          {!session.votingEnabled && (
+            <AssignmentToggleList
+              title="Members"
+              people={allMembers}
+              assignedIds={currentMemberIds}
+              onToggle={handleToggleMember}
+              disabled={isCancelled}
+              maxCapacity={MAX_CLASS_SIZE}
+              currentCount={currentMemberIds.length}
+            />
+          )}
         </div>
       </div>
 
