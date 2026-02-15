@@ -9,11 +9,18 @@ import { Resend } from 'resend';
 import { EMAIL_FROM } from './constants';
 import type { NotificationType } from '@/generated/prisma/client';
 
-if (!process.env.RESEND_API_KEY) {
-  console.warn('RESEND_API_KEY not configured. Emails will not be sent.');
-}
+let resend: Resend | null = null;
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function getResendClient(): Resend | null {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('RESEND_API_KEY not configured. Emails will not be sent.');
+    return null;
+  }
+  if (!resend) {
+    resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resend;
+}
 
 /**
  * Send a notification email to a user.
@@ -31,9 +38,14 @@ export async function sendNotificationEmail(
   body: string
 ): Promise<boolean> {
   try {
+    const client = getResendClient();
+    if (!client) {
+      return false;
+    }
+
     const html = buildEmailHtml(type, title, body);
 
-    await resend.emails.send({
+    await client.emails.send({
       from: EMAIL_FROM,
       to,
       subject: title,
