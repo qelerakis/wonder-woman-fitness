@@ -252,6 +252,55 @@ describe("getVoteSummary", () => {
     expect(result.noVote).toBe(25);
     expect(result.total).toBe(30);
   });
+
+  it("returns zero noVote when all members have voted", () => {
+    const votes = [
+      { attending: true },
+      { attending: true },
+      { attending: false },
+      { attending: true },
+    ];
+
+    const result = getVoteSummary(votes, 4);
+
+    expect(result.coming).toBe(3);
+    expect(result.notComing).toBe(1);
+    expect(result.noVote).toBe(0);
+    expect(result.total).toBe(4);
+  });
+
+  it("handles single member who voted yes", () => {
+    const result = getVoteSummary([{ attending: true }], 1);
+
+    expect(result.coming).toBe(1);
+    expect(result.notComing).toBe(0);
+    expect(result.noVote).toBe(0);
+    expect(result.total).toBe(1);
+  });
+
+  it("handles single member who voted no", () => {
+    const result = getVoteSummary([{ attending: false }], 1);
+
+    expect(result.coming).toBe(0);
+    expect(result.notComing).toBe(1);
+    expect(result.noVote).toBe(0);
+    expect(result.total).toBe(1);
+  });
+
+  it("correctly counts large pools with few voters", () => {
+    // 50 total members, only 2 voted (1 coming, 1 not)
+    const votes = [
+      { attending: true },
+      { attending: false },
+    ];
+
+    const result = getVoteSummary(votes, 50);
+
+    expect(result.coming).toBe(1);
+    expect(result.notComing).toBe(1);
+    expect(result.noVote).toBe(48);
+    expect(result.total).toBe(50);
+  });
 });
 
 // ===== hasLowAttendance =====
@@ -286,6 +335,10 @@ describe("hasLowAttendance", () => {
 // ===== isSessionFull =====
 
 describe("isSessionFull", () => {
+  it("returns false when coming count is 0", () => {
+    expect(isSessionFull(0)).toBe(false);
+  });
+
   it("returns false when coming count is below max", () => {
     expect(isSessionFull(10)).toBe(false);
   });
@@ -298,11 +351,19 @@ describe("isSessionFull", () => {
     expect(isSessionFull(20)).toBe(true);
   });
 
+  it("returns true when coming count is 21 (one above max)", () => {
+    expect(isSessionFull(21)).toBe(true);
+  });
+
   it("returns true when coming count exceeds MAX_CLASS_SIZE", () => {
     expect(isSessionFull(25)).toBe(true);
   });
 
-  it("returns false when coming count is 0", () => {
-    expect(isSessionFull(0)).toBe(false);
+  it("returns true for large coming count", () => {
+    expect(isSessionFull(100)).toBe(true);
+  });
+
+  it("returns false when coming count is negative (defensive guard)", () => {
+    expect(isSessionFull(-1)).toBe(false);
   });
 });

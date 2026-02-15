@@ -90,15 +90,18 @@ export async function POST(req: Request): Promise<Response> {
     }
 
     // Check if session is full (coming votes >= MAX_CLASS_SIZE)
-    const comingCount = await prisma.vote.count({
-      where: { sessionId, attending: true },
-    });
+    // Only block "Coming" votes — members can still vote "Not Coming" to free a spot
+    if (attending) {
+      const comingCount = await prisma.vote.count({
+        where: { sessionId, attending: true },
+      });
 
-    if (comingCount >= MAX_CLASS_SIZE) {
-      return Response.json(
-        { error: "This session is full" },
-        { status: 400 }
-      );
+      if (comingCount >= MAX_CLASS_SIZE) {
+        return Response.json(
+          { error: "This session is full" },
+          { status: 400 }
+        );
+      }
     }
 
     // One-Coming-per-day: if voting Coming, check no other Coming vote on same day

@@ -284,24 +284,24 @@ describe("SessionCard", () => {
     });
   });
 
-  // ─── Member Count ────────────────────────────────────────────────
+  // ─── Member Count (voting disabled) ─────────────────────────────
 
-  describe("member count", () => {
-    it("shows member count out of MAX_CLASS_SIZE", () => {
-      const session = makeSession();
+  describe("member count (voting disabled)", () => {
+    it("shows assigned member count when voting is disabled", () => {
+      const session = makeSession({ votingEnabled: false });
       render(<SessionCard session={session} basePath="/member/session" />);
 
       expect(screen.getByText("2/20 members")).toBeDefined();
     });
 
-    it("shows 0/20 when no members assigned", () => {
-      const session = makeSession({ members: [] });
+    it("shows 0/20 members when no members assigned and voting disabled", () => {
+      const session = makeSession({ members: [], votingEnabled: false });
       render(<SessionCard session={session} basePath="/member/session" />);
 
       expect(screen.getByText("0/20 members")).toBeDefined();
     });
 
-    it("shows correct count with many members", () => {
+    it("shows correct assigned count with many members", () => {
       const members = Array.from({ length: 15 }, (_, i) => ({
         sessionId: "session-1",
         userId: `member-${i}`,
@@ -312,10 +312,88 @@ describe("SessionCard", () => {
           status: "ACTIVE",
         },
       }));
-      const session = makeSession({ members });
+      const session = makeSession({ members, votingEnabled: false });
       render(<SessionCard session={session} basePath="/member/session" />);
 
       expect(screen.getByText("15/20 members")).toBeDefined();
+    });
+  });
+
+  // ─── Coming Count (voting enabled) ────────────────────────────
+
+  describe("coming count (voting enabled)", () => {
+    it("shows coming vote count instead of member count when voting is enabled", () => {
+      // 2 assigned members, but only 1 attending vote
+      const session = makeSession({ votingEnabled: true });
+      render(<SessionCard session={session} basePath="/member/session" />);
+
+      // Should show 1 (coming votes), NOT 2 (assigned members)
+      expect(screen.getByText("1/20 coming")).toBeDefined();
+      expect(screen.queryByText("2/20 members")).toBeNull();
+    });
+
+    it("shows 0/20 coming when voting enabled but no attending votes", () => {
+      const session = makeSession({
+        votingEnabled: true,
+        votes: [
+          {
+            id: "vote-1",
+            userId: "member-1",
+            attending: false,
+            votedAt: new Date("2026-02-09T10:00:00.000Z"),
+          },
+        ],
+      });
+      render(<SessionCard session={session} basePath="/member/session" />);
+
+      expect(screen.getByText("0/20 coming")).toBeDefined();
+    });
+
+    it("shows 0/20 coming when voting enabled and no votes at all", () => {
+      const session = makeSession({
+        votingEnabled: true,
+        votes: [],
+      });
+      render(<SessionCard session={session} basePath="/member/session" />);
+
+      expect(screen.getByText("0/20 coming")).toBeDefined();
+    });
+
+    it("counts only attending=true votes for the coming count", () => {
+      const votes = [
+        { id: "v1", userId: "m1", attending: true, votedAt: new Date("2026-02-09T10:00:00.000Z") },
+        { id: "v2", userId: "m2", attending: true, votedAt: new Date("2026-02-09T10:00:00.000Z") },
+        { id: "v3", userId: "m3", attending: false, votedAt: new Date("2026-02-09T10:00:00.000Z") },
+        { id: "v4", userId: "m4", attending: true, votedAt: new Date("2026-02-09T10:00:00.000Z") },
+        { id: "v5", userId: "m5", attending: false, votedAt: new Date("2026-02-09T10:00:00.000Z") },
+      ];
+      const session = makeSession({ votingEnabled: true, votes });
+      render(<SessionCard session={session} basePath="/member/session" />);
+
+      // 3 attending out of 5 votes
+      expect(screen.getByText("3/20 coming")).toBeDefined();
+    });
+
+    it("shows high coming count correctly when many are attending", () => {
+      const votes = Array.from({ length: 18 }, (_, i) => ({
+        id: `vote-${i}`,
+        userId: `member-${i}`,
+        attending: true,
+        votedAt: new Date("2026-02-09T10:00:00.000Z"),
+      }));
+      const session = makeSession({ votingEnabled: true, votes });
+      render(<SessionCard session={session} basePath="/member/session" />);
+
+      expect(screen.getByText("18/20 coming")).toBeDefined();
+    });
+
+    it("uses 'coming' label not 'members' when voting is enabled", () => {
+      const session = makeSession({ votingEnabled: true });
+      render(<SessionCard session={session} basePath="/member/session" />);
+
+      // Should say "coming" not "members"
+      expect(screen.queryByText(/\/20 members/)).toBeNull();
+      expect(screen.getByText(/\/20 coming/)).toBeDefined();
     });
   });
 

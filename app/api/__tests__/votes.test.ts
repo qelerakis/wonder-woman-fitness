@@ -446,15 +446,24 @@ describe("POST /api/votes", () => {
     expect(body.error).toContain("full");
   });
 
-  it("returns 400 when session is full and attending=false", async () => {
+  it("allows Not Coming vote even when session is full (to free a spot)", async () => {
     mockAuth.mockResolvedValue(memberSession("member-1"));
     mockPrisma.session.findUnique.mockResolvedValue({
       id: "cm1234567890abcdef",
       status: "SCHEDULED",
       votingEnabled: true,
       votingDeadline: new Date("2099-01-01"),
+      weekDate: new Date("2026-03-09"),
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
     });
-    mockPrisma.vote.count.mockResolvedValue(20);
+    mockPrisma.vote.upsert.mockResolvedValue({
+      id: "v-free-spot",
+      sessionId: "cm1234567890abcdef",
+      userId: "member-1",
+      attending: false,
+      votedAt: new Date(),
+    });
 
     const { POST } = await import("@/app/api/votes/route");
     const response = await POST(
@@ -469,8 +478,10 @@ describe("POST /api/votes", () => {
     );
     const body = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(body.error).toContain("full");
+    expect(response.status).toBe(201);
+    expect(body.data.attending).toBe(false);
+    // Full-session check should be skipped for Not Coming votes
+    expect(mockPrisma.vote.count).not.toHaveBeenCalled();
   });
 
   it("returns 400 when member already voted Coming on another session same day", async () => {
@@ -544,6 +555,313 @@ describe("POST /api/votes", () => {
 
     expect(response.status).toBe(201);
     expect(body.data.attending).toBe(false);
+  });
+
+  // ===== Additional edge case tests for full-session and one-per-day =====
+
+  it("allows vote when session has 19 Coming votes (one below max)", async () => {
+    mockAuth.mockResolvedValue(memberSession("member-1"));
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "cm1234567890abcdef",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      votingDeadline: new Date("2099-01-01"),
+      weekDate: new Date("2026-03-09"),
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+    });
+    mockPrisma.vote.count.mockResolvedValue(19); // one below max
+    mockPrisma.vote.findFirst.mockResolvedValue(null);
+    mockPrisma.vote.upsert.mockResolvedValue({
+      id: "v-boundary",
+      sessionId: "cm1234567890abcdef",
+      userId: "member-1",
+      attending: true,
+      votedAt: new Date(),
+    });
+
+    const { POST } = await import("@/app/api/votes/route");
+    const response = await POST(
+      new Request("http://localhost/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "cm1234567890abcdef",
+          attending: true,
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(body.data.attending).toBe(true);
+  });
+
+  it("rejects vote when Coming count exceeds MAX_CLASS_SIZE (21 > 20)", async () => {
+    mockAuth.mockResolvedValue(memberSession("member-1"));
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "cm1234567890abcdef",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      votingDeadline: new Date("2099-01-01"),
+    });
+    mockPrisma.vote.count.mockResolvedValue(21); // over max
+
+    const { POST } = await import("@/app/api/votes/route");
+    const response = await POST(
+      new Request("http://localhost/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "cm1234567890abcdef",
+          attending: true,
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toContain("full");
+  });
+
+  it("allows TRIAL member to vote successfully", async () => {
+    mockAuth.mockResolvedValue({
+      user: { id: "member-trial", email: "trial@test.com", role: "MEMBER", status: "TRIAL" },
+    });
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "cm1234567890abcdef",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      votingDeadline: new Date("2099-01-01"),
+      weekDate: new Date("2026-03-09"),
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+    });
+    mockPrisma.vote.count.mockResolvedValue(0);
+    mockPrisma.vote.findFirst.mockResolvedValue(null);
+    mockPrisma.vote.upsert.mockResolvedValue({
+      id: "v-trial",
+      sessionId: "cm1234567890abcdef",
+      userId: "member-trial",
+      attending: true,
+      votedAt: new Date(),
+    });
+
+    const { POST } = await import("@/app/api/votes/route");
+    const response = await POST(
+      new Request("http://localhost/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "cm1234567890abcdef",
+          attending: true,
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(body.data.attending).toBe(true);
+  });
+
+  it("enforces one-per-day on custom (one-off) sessions using customDay", async () => {
+    mockAuth.mockResolvedValue(memberSession("member-1"));
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "cm2custom0session0a",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      votingDeadline: new Date("2099-01-01"),
+      weekDate: new Date("2026-03-09"),
+      recurringSlot: null, // one-off session
+      customDay: 3, // Wednesday
+    });
+    mockPrisma.vote.count.mockResolvedValue(5);
+    mockPrisma.vote.findFirst.mockResolvedValue({
+      id: "existing-coming",
+      sessionId: "cm0otherwednesday0",
+      userId: "member-1",
+      attending: true,
+    });
+
+    const { POST } = await import("@/app/api/votes/route");
+    const response = await POST(
+      new Request("http://localhost/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "cm2custom0session0a",
+          attending: true,
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toContain("already");
+  });
+
+  it("allows Coming vote on custom session when no existing Coming on that day", async () => {
+    mockAuth.mockResolvedValue(memberSession("member-1"));
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "cm2custom0session0a",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      votingDeadline: new Date("2099-01-01"),
+      weekDate: new Date("2026-03-09"),
+      recurringSlot: null,
+      customDay: 3,
+    });
+    mockPrisma.vote.count.mockResolvedValue(5);
+    mockPrisma.vote.findFirst.mockResolvedValue(null); // no existing Coming
+    mockPrisma.vote.upsert.mockResolvedValue({
+      id: "v-custom-ok",
+      sessionId: "cm2custom0session0a",
+      userId: "member-1",
+      attending: true,
+      votedAt: new Date(),
+    });
+
+    const { POST } = await import("@/app/api/votes/route");
+    const response = await POST(
+      new Request("http://localhost/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "cm2custom0session0a",
+          attending: true,
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(body.data.attending).toBe(true);
+  });
+
+  it("skips one-per-day check when voting Not Coming (does not call findFirst)", async () => {
+    mockAuth.mockResolvedValue(memberSession("member-1"));
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "cm1234567890abcdef",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      votingDeadline: new Date("2099-01-01"),
+      weekDate: new Date("2026-03-09"),
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+    });
+    mockPrisma.vote.count.mockResolvedValue(5);
+    mockPrisma.vote.upsert.mockResolvedValue({
+      id: "v-not-coming",
+      sessionId: "cm1234567890abcdef",
+      userId: "member-1",
+      attending: false,
+      votedAt: new Date(),
+    });
+
+    const { POST } = await import("@/app/api/votes/route");
+    const response = await POST(
+      new Request("http://localhost/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "cm1234567890abcdef",
+          attending: false,
+        }),
+      })
+    );
+
+    expect(response.status).toBe(201);
+    // findFirst should NOT have been called because attending=false skips the one-per-day check
+    expect(mockPrisma.vote.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("checks one-per-day uses correct Prisma query shape", async () => {
+    mockAuth.mockResolvedValue(memberSession("member-1"));
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "cm2target0session0b",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      votingDeadline: new Date("2099-01-01"),
+      weekDate: new Date("2026-03-09"),
+      recurringSlot: { dayOfWeek: 2, startHour: 10 },
+      customDay: null,
+    });
+    mockPrisma.vote.count.mockResolvedValue(0);
+    mockPrisma.vote.findFirst.mockResolvedValue(null);
+    mockPrisma.vote.upsert.mockResolvedValue({
+      id: "v-query-check",
+      sessionId: "cm2target0session0b",
+      userId: "member-1",
+      attending: true,
+      votedAt: new Date(),
+    });
+
+    const { POST } = await import("@/app/api/votes/route");
+    await POST(
+      new Request("http://localhost/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "cm2target0session0b",
+          attending: true,
+        }),
+      })
+    );
+
+    // Verify the findFirst query filters correctly
+    expect(mockPrisma.vote.findFirst).toHaveBeenCalledWith({
+      where: {
+        userId: "member-1",
+        attending: true,
+        sessionId: { not: "cm2target0session0b" },
+        session: {
+          weekDate: new Date("2026-03-09"),
+          OR: [
+            { recurringSlot: { dayOfWeek: 2 } },
+            { customDay: 2 },
+          ],
+        },
+      },
+    });
+  });
+
+  it("full-session check counts only attending:true votes", async () => {
+    mockAuth.mockResolvedValue(memberSession("member-1"));
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "cm1234567890abcdef",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      votingDeadline: new Date("2099-01-01"),
+      weekDate: new Date("2026-03-09"),
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+    });
+    mockPrisma.vote.count.mockResolvedValue(10);
+    mockPrisma.vote.findFirst.mockResolvedValue(null);
+    mockPrisma.vote.upsert.mockResolvedValue({
+      id: "v-count-check",
+      sessionId: "cm1234567890abcdef",
+      userId: "member-1",
+      attending: true,
+      votedAt: new Date(),
+    });
+
+    const { POST } = await import("@/app/api/votes/route");
+    await POST(
+      new Request("http://localhost/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "cm1234567890abcdef",
+          attending: true,
+        }),
+      })
+    );
+
+    // Verify count query filters only attending:true
+    expect(mockPrisma.vote.count).toHaveBeenCalledWith({
+      where: { sessionId: "cm1234567890abcdef", attending: true },
+    });
   });
 });
 

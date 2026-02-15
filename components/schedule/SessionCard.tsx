@@ -23,6 +23,7 @@ export function SessionCard({
   currentUserId,
 }: SessionCardProps): React.ReactElement {
   const time = formatTime(session.recurringSlot?.startHour ?? session.customStartHour ?? 0);
+  const comingCount = session.votes.filter((v) => v.attending).length;
   const memberCount = session.members.length;
   const trainerNames = session.trainers.map((t) => t.user.name).join(", ");
   const isCancelled = session.status === "CANCELLED";
@@ -77,7 +78,8 @@ export function SessionCard({
       {/* Footer: member count + voting info */}
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-surface-500">
-          {memberCount}/{MAX_CLASS_SIZE} members
+          {session.votingEnabled ? comingCount : memberCount}/{MAX_CLASS_SIZE}{" "}
+          {session.votingEnabled ? "coming" : "members"}
         </span>
         {showVotingIndicator && userVote !== undefined && userVote !== null && (
           <Badge

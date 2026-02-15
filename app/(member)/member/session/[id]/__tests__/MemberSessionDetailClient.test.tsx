@@ -325,4 +325,387 @@ describe("MemberSessionDetailClient", () => {
       });
     });
   });
+
+  // ===== Additional edge case and display tests =====
+
+  it("displays correct attendance counts (coming, not coming, no vote yet)", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({
+          totalMembers: 10,
+          votesCount: { coming: 3, notComing: 2 },
+        })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    // Coming count
+    expect(screen.getByText("3")).toBeTruthy();
+    // Not coming count
+    expect(screen.getByText("2")).toBeTruthy();
+    // No vote yet = 10 - 3 - 2 = 5
+    expect(screen.getByText("5")).toBeTruthy();
+  });
+
+  it("displays 'Voting Open' badge when voting is enabled and deadline not passed", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({
+          votingEnabled: true,
+          votingDeadline: "2099-01-01T00:00:00.000Z",
+        })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("Voting Open")).toBeTruthy();
+  });
+
+  it("displays 'Voting Closed' badge when deadline has passed", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({
+          votingEnabled: true,
+          votingDeadline: "2020-01-01T00:00:00.000Z",
+        })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("Voting Closed")).toBeTruthy();
+  });
+
+  it("shows error toast when vote API returns error", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: "Voting deadline has passed" }),
+    });
+
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    fireEvent.click(screen.getByText("I'm Coming"));
+
+    await waitFor(() => {
+      expect(mockAddToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "error",
+          title: "Failed to vote",
+        })
+      );
+    });
+  });
+
+  it("shows network error toast when fetch throws", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error("Network failure")
+    );
+
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    fireEvent.click(screen.getByText("I'm Coming"));
+
+    await waitFor(() => {
+      expect(mockAddToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "error",
+          title: "Network error",
+        })
+      );
+    });
+  });
+
+  it("'Not Coming' button is NOT disabled when hasComingVoteOnSameDay is true and no existing vote", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={true}
+      />
+    );
+
+    const notComingButton = screen.getByText("Not Coming").closest("button");
+    expect(notComingButton).toBeTruthy();
+    expect(notComingButton!.disabled).toBe(false);
+  });
+
+  it("displays workout title and details", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({
+          workoutTitle: "Strength & Power",
+          workoutDetails: "Deadlifts, squats, bench press",
+        })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("Strength & Power")).toBeTruthy();
+    expect(screen.getByText("Deadlifts, squats, bench press")).toBeTruthy();
+  });
+
+  it("renders Back button", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("Back")).toBeTruthy();
+  });
+
+  it("calls router.back when Back button is clicked", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    fireEvent.click(screen.getByText("Back"));
+    expect(mockBack).toHaveBeenCalled();
+  });
+
+  it("shows 'You can change your vote' hint after voting", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={true}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("You can change your vote until the deadline.")).toBeTruthy();
+  });
+
+  it("shows '✓ Not Coming' button when already voted Not Coming", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={false}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("✓ Not Coming")).toBeTruthy();
+  });
+
+  it("displays group member names", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({
+          memberNames: ["Alice", "Bob", "Charlie"],
+        })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("Alice")).toBeTruthy();
+    expect(screen.getByText("Bob")).toBeTruthy();
+    expect(screen.getByText("Charlie")).toBeTruthy();
+    expect(screen.getByText("3 members")).toBeTruthy();
+  });
+
+  it("displays trainer names with avatar initial", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({
+          trainerNames: ["Coach Smith"],
+        })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("Coach Smith")).toBeTruthy();
+    expect(screen.getByText("C")).toBeTruthy(); // avatar initial
+  });
+
+  it("shows 'No members assigned' when memberNames is empty", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({ memberNames: [] })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("No members assigned")).toBeTruthy();
+  });
+
+  it("shows 'No trainer assigned' when trainerNames is empty", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({ trainerNames: [] })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("No trainer assigned")).toBeTruthy();
+  });
+
+  it("shows success toast after successful Coming vote", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: { attending: true } }),
+    });
+
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    fireEvent.click(screen.getByText("I'm Coming"));
+
+    await waitFor(() => {
+      expect(mockAddToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "success",
+          title: "You're marked as coming!",
+        })
+      );
+    });
+  });
+
+  it("shows success toast after successful Not Coming vote", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: { attending: false } }),
+    });
+
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    fireEvent.click(screen.getByText("Not Coming"));
+
+    await waitFor(() => {
+      expect(mockAddToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "success",
+          title: "You're marked as not coming",
+        })
+      );
+    });
+  });
+
+  it("refreshes router after successful vote", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: { attending: true } }),
+    });
+
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    fireEvent.click(screen.getByText("I'm Coming"));
+
+    await waitFor(() => {
+      expect(mockRefresh).toHaveBeenCalled();
+    });
+  });
+
+  it("shows CANCELLED badge and no voting section for cancelled sessions", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({ status: "CANCELLED" })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("CANCELLED")).toBeTruthy();
+    expect(screen.queryByText("Your Attendance")).toBeNull();
+  });
+
+  it("shows 'Not coming' in vote display when previously voted Not Coming after deadline", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({
+          votingDeadline: "2020-01-01T00:00:00.000Z",
+        })}
+        myVote={false}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("You voted:")).toBeTruthy();
+    const notComingSpans = screen.getAllByText("Not coming");
+    const voteSpan = notComingSpans.find((el) =>
+      el.classList.contains("text-error-400")
+    );
+    expect(voteSpan).toBeTruthy();
+  });
 });
