@@ -65,12 +65,12 @@ export function VotingPrompt({
 
       <div className="flex gap-3">
         <Button
-          variant={currentVote === true ? "primary" : "secondary"}
+          variant={currentVote === true ? "success" : "secondary"}
           size="sm"
           disabled={isDisabled}
           loading={loading === "yes"}
           onClick={() => handleVote(true)}
-          className={currentVote === true ? "ring-2 ring-primary-500/50" : ""}
+          className={currentVote === true ? "ring-2 ring-success-500/50" : ""}
         >
           <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
             <path

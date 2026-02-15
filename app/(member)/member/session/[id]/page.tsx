@@ -26,16 +26,6 @@ export default async function MemberSessionDetailPage({
     where: { id },
     include: {
       recurringSlot: true,
-      members: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
-      },
       trainers: {
         include: {
           user: {
@@ -52,6 +42,11 @@ export default async function MemberSessionDetailPage({
           userId: true,
           attending: true,
           votedAt: true,
+          user: {
+            select: {
+              name: true,
+            },
+          },
         },
       },
     },
@@ -66,16 +61,10 @@ export default async function MemberSessionDetailPage({
     (v) => v.userId === authSession.user.id
   );
 
-  // Count all active/trial members for the vote pool
-  const totalActiveMembers = await prisma.user.count({
-    where: {
-      role: "MEMBER",
-      status: { in: ["ACTIVE", "TRIAL"] },
-    },
-  });
-
-  // Count "Coming" votes for this session to check if full
-  const comingVoteCount = session.votes.filter((v) => v.attending).length;
+  // Get "Coming" votes for this session
+  const comingVotes = session.votes.filter((v) => v.attending);
+  const comingVoteCount = comingVotes.length;
+  const comingMemberNames = comingVotes.map((v) => v.user.name);
 
   // Check if this member already voted "Coming" on another session on the same day
   const sessionDay = session.recurringSlot?.dayOfWeek ?? session.customDay;
@@ -112,12 +101,10 @@ export default async function MemberSessionDetailPage({
         } : null,
         customDay: session.customDay,
         customStartHour: session.customStartHour,
-        memberNames: session.members.map((m) => m.user.name),
         trainerNames: session.trainers.map((t) => t.user.name),
-        totalMembers: totalActiveMembers,
+        comingMemberNames,
         votesCount: {
           coming: comingVoteCount,
-          notComing: session.votes.filter((v) => !v.attending).length,
         },
       }}
       myVote={myVote ? myVote.attending : null}

@@ -3,7 +3,7 @@
 import { forwardRef } from "react";
 import { Spinner } from "./Spinner";
 
-type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
+type ButtonVariant = "primary" | "secondary" | "danger" | "success" | "ghost";
 type ButtonSize = "sm" | "md" | "lg";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -21,6 +21,8 @@ const variantClasses: Record<ButtonVariant, string> = {
     "bg-surface-700 text-surface-100 hover:bg-surface-600 focus-visible:ring-surface-500 border border-surface-600 disabled:bg-surface-700/50",
   danger:
     "bg-error-600 text-white hover:bg-error-700 focus-visible:ring-error-500 disabled:bg-error-600/50",
+  success:
+    "bg-success-600 text-white hover:bg-success-700 focus-visible:ring-success-500 disabled:bg-success-600/50",
   ghost:
     "bg-transparent text-surface-300 hover:bg-surface-800 hover:text-surface-100 focus-visible:ring-surface-500 disabled:text-surface-500",
 };

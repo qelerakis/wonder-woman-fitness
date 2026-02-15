@@ -24,12 +24,10 @@ interface SessionData {
   } | null;
   customDay: number | null;
   customStartHour: number | null;
-  memberNames: string[];
   trainerNames: string[];
-  totalMembers: number;
+  comingMemberNames: string[];
   votesCount: {
     coming: number;
-    notComing: number;
   };
 }
 
@@ -56,7 +54,8 @@ export function MemberSessionDetailClient(
   const time = formatTime(startHour);
   const isCancelled = session.status === "CANCELLED";
   const deadlinePassed = new Date(session.votingDeadline) <= new Date();
-  const canVote = session.votingEnabled && !deadlinePassed && !isCancelled && !isFull;
+  const votingActive = session.votingEnabled && !deadlinePassed;
+  const canVote = votingActive && !isCancelled && !isFull;
 
   async function handleVote(attending: boolean): Promise<void> {
     setVoting(true);
@@ -160,26 +159,40 @@ export function MemberSessionDetailClient(
                     <div className="flex gap-3">
                       <Button
                         variant={
-                          currentVote === true ? "primary" : "secondary"
+                          currentVote === true ? "success" : "secondary"
                         }
                         size="sm"
                         onClick={() => handleVote(true)}
                         loading={voting}
                         disabled={hasComingVoteOnSameDay && currentVote !== true}
+                        className={currentVote === true ? "ring-2 ring-success-500/50" : ""}
                       >
-                        {currentVote === true ? "✓ I'm Coming" : "I'm Coming"}
+                        <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                          <path
+                            fillRule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        I&apos;m Coming
                       </Button>
                       <Button
                         variant={
-                          currentVote === false ? "danger" : "ghost"
+                          currentVote === false ? "danger" : "secondary"
                         }
                         size="sm"
                         onClick={() => handleVote(false)}
                         loading={voting}
+                        className={currentVote === false ? "ring-2 ring-error-500/50" : ""}
                       >
-                        {currentVote === false
-                          ? "✓ Not Coming"
-                          : "Not Coming"}
+                        <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                          <path
+                            fillRule="evenodd"
+                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        Not Coming
                       </Button>
                     </div>
                     {hasComingVoteOnSameDay && currentVote !== true && (
@@ -224,56 +237,34 @@ export function MemberSessionDetailClient(
 
         {/* Right column */}
         <div className="space-y-6">
-          {/* Attendance Summary */}
-          <Card>
-            <CardHeader title="Attendance" />
-            <div className="mt-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-surface-400">Coming</span>
-                <span className="text-sm font-medium text-success-400">
-                  {session.votesCount.coming}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-surface-400">Not coming</span>
-                <span className="text-sm font-medium text-error-400">
-                  {session.votesCount.notComing}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-surface-400">No vote yet</span>
-                <span className="text-sm font-medium text-surface-500">
-                  {session.totalMembers -
-                    session.votesCount.coming -
-                    session.votesCount.notComing}
-                </span>
-              </div>
-            </div>
-          </Card>
-
-          {/* Group Members */}
-          <Card>
-            <CardHeader
-              title="Group Members"
-              description={`${session.memberNames.length} members`}
-            />
-            {session.memberNames.length === 0 ? (
-              <p className="mt-4 text-sm text-surface-500">
-                No members assigned
-              </p>
-            ) : (
-              <div className="mt-4 space-y-1.5">
-                {session.memberNames.map((name) => (
-                  <div
-                    key={name}
-                    className="rounded-md bg-surface-900/50 px-3 py-1.5"
-                  >
-                    <p className="text-sm text-surface-300">{name}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
+          {/* Who's Coming — shown when voting is active */}
+          {votingActive && (
+            <Card>
+              <CardHeader
+                title="Who's Coming"
+                description={`${session.votesCount.coming} confirmed`}
+              />
+              {session.comingMemberNames.length === 0 ? (
+                <p className="mt-4 text-sm text-surface-500">
+                  No one has confirmed yet
+                </p>
+              ) : (
+                <div className="mt-4 space-y-1.5">
+                  {session.comingMemberNames.map((name) => (
+                    <div
+                      key={name}
+                      className="flex items-center gap-2 rounded-md bg-success-600/10 px-3 py-1.5"
+                    >
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-success-700 text-xs font-bold text-white">
+                        {name.charAt(0).toUpperCase()}
+                      </div>
+                      <p className="text-sm text-surface-200">{name}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          )}
 
           {/* Trainers */}
           <Card>

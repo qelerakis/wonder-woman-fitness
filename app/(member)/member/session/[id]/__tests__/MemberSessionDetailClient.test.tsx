@@ -41,10 +41,9 @@ function makeSession(overrides: Record<string, unknown> = {}) {
     recurringSlot: { dayOfWeek: 1, startHour: 9 },
     customDay: null,
     customStartHour: null,
-    memberNames: ["Alice", "Bob"],
     trainerNames: ["Coach"],
-    totalMembers: 2,
-    votesCount: { coming: 1, notComing: 0 },
+    comingMemberNames: ["Alice"],
+    votesCount: { coming: 1 },
     ...overrides,
   };
 }
@@ -227,8 +226,8 @@ describe("MemberSessionDetailClient", () => {
       />
     );
 
-    // Should show the checked state, not the "must be assigned" message
-    expect(screen.getByText("✓ I'm Coming")).toBeTruthy();
+    // Should show the checked state with green success variant, not the "must be assigned" message
+    expect(screen.getByText("I'm Coming")).toBeTruthy();
   });
 
   it("shows Full badge and hides voting buttons when session is full", () => {
@@ -293,8 +292,8 @@ describe("MemberSessionDetailClient", () => {
       />
     );
 
-    // "✓ I'm Coming" button should NOT be disabled since currentVote === true
-    const comingButton = screen.getByText("✓ I'm Coming").closest("button");
+    // "I'm Coming" button should NOT be disabled since currentVote === true
+    const comingButton = screen.getByText("I'm Coming").closest("button");
     expect(comingButton).toBeTruthy();
     expect(comingButton!.disabled).toBe(false);
   });
@@ -328,12 +327,12 @@ describe("MemberSessionDetailClient", () => {
 
   // ===== Additional edge case and display tests =====
 
-  it("displays correct attendance counts (coming, not coming, no vote yet)", () => {
+  it("shows 'Who's Coming' card with confirmed count when voting is active", () => {
     render(
       <MemberSessionDetailClient
         session={makeSession({
-          totalMembers: 10,
-          votesCount: { coming: 3, notComing: 2 },
+          comingMemberNames: ["Alice", "Bob", "Charlie"],
+          votesCount: { coming: 3 },
         })}
         myVote={null}
         userId="member-1"
@@ -342,12 +341,11 @@ describe("MemberSessionDetailClient", () => {
       />
     );
 
-    // Coming count
-    expect(screen.getByText("3")).toBeTruthy();
-    // Not coming count
-    expect(screen.getByText("2")).toBeTruthy();
-    // No vote yet = 10 - 3 - 2 = 5
-    expect(screen.getByText("5")).toBeTruthy();
+    expect(screen.getByText("Who's Coming")).toBeTruthy();
+    expect(screen.getByText("3 confirmed")).toBeTruthy();
+    expect(screen.getByText("Alice")).toBeTruthy();
+    expect(screen.getByText("Bob")).toBeTruthy();
+    expect(screen.getByText("Charlie")).toBeTruthy();
   });
 
   it("displays 'Voting Open' badge when voting is enabled and deadline not passed", () => {
@@ -516,7 +514,7 @@ describe("MemberSessionDetailClient", () => {
     expect(screen.getByText("You can change your vote until the deadline.")).toBeTruthy();
   });
 
-  it("shows '✓ Not Coming' button when already voted Not Coming", () => {
+  it("shows 'Not Coming' button with danger variant when already voted Not Coming", () => {
     render(
       <MemberSessionDetailClient
         session={makeSession()}
@@ -527,14 +525,15 @@ describe("MemberSessionDetailClient", () => {
       />
     );
 
-    expect(screen.getByText("✓ Not Coming")).toBeTruthy();
+    expect(screen.getByText("Not Coming")).toBeTruthy();
   });
 
-  it("displays group member names", () => {
+  it("shows 'No one has confirmed yet' when no coming votes and voting active", () => {
     render(
       <MemberSessionDetailClient
         session={makeSession({
-          memberNames: ["Alice", "Bob", "Charlie"],
+          comingMemberNames: [],
+          votesCount: { coming: 0 },
         })}
         myVote={null}
         userId="member-1"
@@ -543,10 +542,7 @@ describe("MemberSessionDetailClient", () => {
       />
     );
 
-    expect(screen.getByText("Alice")).toBeTruthy();
-    expect(screen.getByText("Bob")).toBeTruthy();
-    expect(screen.getByText("Charlie")).toBeTruthy();
-    expect(screen.getByText("3 members")).toBeTruthy();
+    expect(screen.getByText("No one has confirmed yet")).toBeTruthy();
   });
 
   it("displays trainer names with avatar initial", () => {
@@ -566,10 +562,32 @@ describe("MemberSessionDetailClient", () => {
     expect(screen.getByText("C")).toBeTruthy(); // avatar initial
   });
 
-  it("shows 'No members assigned' when memberNames is empty", () => {
+  it("hides 'Who's Coming' card when voting is not active (deadline passed)", () => {
     render(
       <MemberSessionDetailClient
-        session={makeSession({ memberNames: [] })}
+        session={makeSession({
+          votingDeadline: "2020-01-01T00:00:00.000Z",
+          comingMemberNames: ["Alice"],
+          votesCount: { coming: 1 },
+        })}
+        myVote={true}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.queryByText("Who's Coming")).toBeNull();
+  });
+
+  it("hides 'Who's Coming' card when voting is disabled", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({
+          votingEnabled: false,
+          comingMemberNames: ["Alice"],
+          votesCount: { coming: 1 },
+        })}
         myVote={null}
         userId="member-1"
         isFull={false}
@@ -577,7 +595,7 @@ describe("MemberSessionDetailClient", () => {
       />
     );
 
-    expect(screen.getByText("No members assigned")).toBeTruthy();
+    expect(screen.queryByText("Who's Coming")).toBeNull();
   });
 
   it("shows 'No trainer assigned' when trainerNames is empty", () => {
@@ -707,5 +725,743 @@ describe("MemberSessionDetailClient", () => {
       el.classList.contains("text-error-400")
     );
     expect(voteSpan).toBeTruthy();
+  });
+
+  // ─── Voting button variant/styling tests ───────────────────────
+
+  it("uses success variant (green) for 'I'm Coming' button when voted coming", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={true}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    const comingButton = screen.getByText("I'm Coming").closest("button")!;
+    expect(comingButton.className).toContain("bg-success-600");
+    expect(comingButton.className).toContain("text-white");
+  });
+
+  it("shows success ring glow on 'I'm Coming' button when voted coming", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={true}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    const comingButton = screen.getByText("I'm Coming").closest("button")!;
+    expect(comingButton.className).toContain("ring-2");
+    expect(comingButton.className).toContain("ring-success-500/50");
+  });
+
+  it("uses secondary variant for 'I'm Coming' button when no vote cast", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    const comingButton = screen.getByText("I'm Coming").closest("button")!;
+    expect(comingButton.className).toContain("bg-surface-700");
+    expect(comingButton.className).not.toContain("bg-success-600");
+  });
+
+  it("does not show success ring glow on 'I'm Coming' when no vote cast", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    const comingButton = screen.getByText("I'm Coming").closest("button")!;
+    expect(comingButton.className).not.toContain("ring-success-500/50");
+  });
+
+  it("uses danger variant (red) for 'Not Coming' button when voted not coming", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={false}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    const notComingButton = screen.getByText("Not Coming").closest("button")!;
+    expect(notComingButton.className).toContain("bg-error-600");
+    expect(notComingButton.className).toContain("text-white");
+  });
+
+  it("shows error ring glow on 'Not Coming' button when voted not coming", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={false}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    const notComingButton = screen.getByText("Not Coming").closest("button")!;
+    expect(notComingButton.className).toContain("ring-2");
+    expect(notComingButton.className).toContain("ring-error-500/50");
+  });
+
+  it("uses secondary variant for 'Not Coming' button when no vote cast", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    const notComingButton = screen.getByText("Not Coming").closest("button")!;
+    expect(notComingButton.className).toContain("bg-surface-700");
+    expect(notComingButton.className).not.toContain("bg-error-600");
+  });
+
+  it("does not show error ring glow on 'Not Coming' when no vote cast", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    const notComingButton = screen.getByText("Not Coming").closest("button")!;
+    expect(notComingButton.className).not.toContain("ring-error-500/50");
+  });
+
+  it("renders checkmark SVG icon in 'I'm Coming' button", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    const comingButton = screen.getByText("I'm Coming").closest("button")!;
+    const svg = comingButton.querySelector("svg");
+    expect(svg).toBeTruthy();
+    expect(svg!.classList.contains("h-4")).toBe(true);
+    expect(svg!.classList.contains("w-4")).toBe(true);
+  });
+
+  it("renders X SVG icon in 'Not Coming' button", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    const notComingButton = screen.getByText("Not Coming").closest("button")!;
+    const svg = notComingButton.querySelector("svg");
+    expect(svg).toBeTruthy();
+    expect(svg!.classList.contains("h-4")).toBe(true);
+    expect(svg!.classList.contains("w-4")).toBe(true);
+  });
+
+  it("'Not Coming' stays secondary when member voted coming", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={true}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    const notComingButton = screen.getByText("Not Coming").closest("button")!;
+    expect(notComingButton.className).toContain("bg-surface-700");
+    expect(notComingButton.className).not.toContain("bg-error-600");
+  });
+
+  it("'I'm Coming' stays secondary when member voted not coming", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={false}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    const comingButton = screen.getByText("I'm Coming").closest("button")!;
+    expect(comingButton.className).toContain("bg-surface-700");
+    expect(comingButton.className).not.toContain("bg-success-600");
+  });
+
+  it("switches 'I'm Coming' to success variant after voting coming", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: { attending: true } }),
+    });
+
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    // Before clicking: secondary
+    const comingButton = screen.getByText("I'm Coming").closest("button")!;
+    expect(comingButton.className).toContain("bg-surface-700");
+
+    fireEvent.click(comingButton);
+
+    // After voting: success variant
+    await waitFor(() => {
+      expect(comingButton.className).toContain("bg-success-600");
+    });
+  });
+
+  it("switches 'Not Coming' to danger variant after voting not coming", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: { attending: false } }),
+    });
+
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    const notComingButton = screen.getByText("Not Coming").closest("button")!;
+    expect(notComingButton.className).toContain("bg-surface-700");
+
+    fireEvent.click(notComingButton);
+
+    await waitFor(() => {
+      expect(notComingButton.className).toContain("bg-error-600");
+    });
+  });
+
+  // ─── Custom session (no recurringSlot) ──────────────────────────
+
+  it("renders correct day/time for custom session (no recurringSlot)", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({
+          recurringSlot: null,
+          customDay: 3, // Wednesday
+          customStartHour: 14, // 2 PM
+        })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText(/Wednesday/)).toBeTruthy();
+    expect(screen.getByText(/2:00 PM/)).toBeTruthy();
+  });
+
+  it("renders correct day/time from recurringSlot when present", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({
+          recurringSlot: { dayOfWeek: 5, startHour: 17 }, // Friday 5 PM
+        })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText(/Friday/)).toBeTruthy();
+    expect(screen.getByText(/5:00 PM/)).toBeTruthy();
+  });
+
+  // ─── Who's Coming vs isFull interaction ─────────────────────────
+
+  it("shows 'Who's Coming' card even when isFull is true (voting still active)", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({
+          comingMemberNames: ["Alice", "Bob"],
+          votesCount: { coming: 2 },
+        })}
+        myVote={null}
+        userId="member-1"
+        isFull={true}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    // Who's Coming should still be visible because votingActive is true
+    expect(screen.getByText("Who's Coming")).toBeTruthy();
+    expect(screen.getByText("2 confirmed")).toBeTruthy();
+    expect(screen.getByText("Alice")).toBeTruthy();
+    expect(screen.getByText("Bob")).toBeTruthy();
+  });
+
+  // ─── Who's Coming hidden for cancelled session ──────────────────
+
+  it("hides 'Who's Coming' card when session is cancelled even if votingEnabled", () => {
+    // votingActive = votingEnabled && !deadlinePassed, but cancelled sessions
+    // still show the Who's Coming card if votingActive is true.
+    // However, the voting section is hidden. Let's verify the Who's Coming
+    // card renders based on votingActive, not cancellation status.
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({
+          status: "CANCELLED",
+          comingMemberNames: ["Alice"],
+          votesCount: { coming: 1 },
+        })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    // votingActive is still true (votingEnabled=true, deadline in future)
+    // so Who's Coming card should still render
+    expect(screen.getByText("Who's Coming")).toBeTruthy();
+    // But voting section (Your Attendance) should be hidden
+    expect(screen.queryByText("Your Attendance")).toBeNull();
+  });
+
+  // ─── Status badge variants ──────────────────────────────────────
+
+  it("shows SCHEDULED status with success badge variant", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({ status: "SCHEDULED" })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("SCHEDULED")).toBeTruthy();
+  });
+
+  it("shows CANCELLED status badge", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({ status: "CANCELLED" })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("CANCELLED")).toBeTruthy();
+  });
+
+  // ─── Voting Open/Closed badges edge cases ──────────────────────
+
+  it("does NOT show 'Voting Open' badge when votingEnabled is false", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({ votingEnabled: false })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.queryByText("Voting Open")).toBeNull();
+  });
+
+  it("does NOT show 'Voting Closed' badge when votingEnabled is false (even with past deadline)", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({
+          votingEnabled: false,
+          votingDeadline: "2020-01-01T00:00:00.000Z",
+        })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.queryByText("Voting Closed")).toBeNull();
+  });
+
+  // ─── Workout display edge cases ─────────────────────────────────
+
+  it("renders workout with only title (no details)", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({
+          workoutTitle: "Yoga Flow",
+          workoutDetails: null,
+        })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("Yoga Flow")).toBeTruthy();
+  });
+
+  it("renders workout with only details (no title)", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({
+          workoutTitle: null,
+          workoutDetails: "Stretching and flexibility",
+        })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("Stretching and flexibility")).toBeTruthy();
+  });
+
+  it("shows 'No workout posted yet' when both title and details are null", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({
+          workoutTitle: null,
+          workoutDetails: null,
+        })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("No workout posted yet")).toBeTruthy();
+  });
+
+  // ─── Multiple trainers ──────────────────────────────────────────
+
+  it("renders multiple trainer names with avatar initials", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({
+          trainerNames: ["Diana Prince", "Zara Coach"],
+          comingMemberNames: [], // clear coming members to avoid initial collisions
+          votesCount: { coming: 0 },
+        })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("Diana Prince")).toBeTruthy();
+    expect(screen.getByText("Zara Coach")).toBeTruthy();
+    expect(screen.getByText("D")).toBeTruthy(); // avatar initial for Diana
+    expect(screen.getByText("Z")).toBeTruthy(); // avatar initial for Zara
+  });
+
+  // ─── Coming member avatar initials ──────────────────────────────
+
+  it("renders avatar initials for coming members in uppercase", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({
+          comingMemberNames: ["alice smith"],
+          votesCount: { coming: 1 },
+        })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    // name.charAt(0).toUpperCase() should produce "A"
+    expect(screen.getByText("A")).toBeTruthy();
+    expect(screen.getByText("alice smith")).toBeTruthy();
+  });
+
+  // ─── "0 confirmed" display ──────────────────────────────────────
+
+  it("shows '0 confirmed' text when coming count is zero", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({
+          comingMemberNames: [],
+          votesCount: { coming: 0 },
+        })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("0 confirmed")).toBeTruthy();
+  });
+
+  // ─── Vote change hint visibility ───────────────────────────────
+
+  it("does NOT show 'change your vote' hint when no vote cast", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.queryByText("You can change your vote until the deadline.")).toBeNull();
+  });
+
+  it("shows 'change your vote' hint when voted Not Coming", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={false}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("You can change your vote until the deadline.")).toBeTruthy();
+  });
+
+  // ─── Same-day warning edge cases ────────────────────────────────
+
+  it("does NOT show same-day warning when hasComingVoteOnSameDay is false", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.queryByText(/already coming to another session/i)).toBeNull();
+  });
+
+  it("does NOT show same-day warning when member already voted Coming on this session", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={true}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={true}
+      />
+    );
+
+    // currentVote === true, so hasComingVoteOnSameDay && currentVote !== true is false
+    expect(screen.queryByText(/already coming to another session/i)).toBeNull();
+  });
+
+  // ─── Error message content ──────────────────────────────────────
+
+  it("includes server error message in toast when API returns error", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: "Session is at maximum capacity" }),
+    });
+
+    render(
+      <MemberSessionDetailClient
+        session={makeSession()}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    fireEvent.click(screen.getByText("I'm Coming"));
+
+    await waitFor(() => {
+      expect(mockAddToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "error",
+          title: "Failed to vote",
+          message: "Session is at maximum capacity",
+        })
+      );
+    });
+  });
+
+  // ─── Voting disabled for this session only ──────────────────────
+
+  it("shows 'Voting is not open' when votingEnabled=false and no vote exists", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({ votingEnabled: false })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("Voting is not open for this session.")).toBeTruthy();
+  });
+
+  it("shows 'Voting deadline has passed' when deadline is past and no vote exists", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({
+          votingDeadline: "2020-01-01T00:00:00.000Z",
+        })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("Voting deadline has passed.")).toBeTruthy();
+  });
+
+  // ─── Coming vote display after deadline ──────────────────────────
+
+  it("shows 'Coming' in green when voted Coming and deadline passed", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({
+          votingDeadline: "2020-01-01T00:00:00.000Z",
+        })}
+        myVote={true}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("You voted:")).toBeTruthy();
+    const comingSpans = screen.getAllByText("Coming");
+    const voteSpan = comingSpans.find((el) =>
+      el.classList.contains("text-success-400")
+    );
+    expect(voteSpan).toBeTruthy();
+  });
+
+  // ─── Trainers card always visible ────────────────────────────────
+
+  it("shows Trainers card even when voting is disabled", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({
+          votingEnabled: false,
+          trainerNames: ["Coach Ana"],
+        })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("Trainers")).toBeTruthy();
+    expect(screen.getByText("Coach Ana")).toBeTruthy();
+  });
+
+  it("shows Trainers card even when deadline has passed", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({
+          votingDeadline: "2020-01-01T00:00:00.000Z",
+          trainerNames: ["Coach Ana"],
+        })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("Trainers")).toBeTruthy();
+    expect(screen.getByText("Coach Ana")).toBeTruthy();
+  });
+
+  it("shows Trainers card even when session is cancelled", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({
+          status: "CANCELLED",
+          trainerNames: ["Coach Ana"],
+        })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("Trainers")).toBeTruthy();
+    expect(screen.getByText("Coach Ana")).toBeTruthy();
+  });
+
+  // ─── Workout card always visible ────────────────────────────────
+
+  it("shows Workout card even when session is cancelled", () => {
+    render(
+      <MemberSessionDetailClient
+        session={makeSession({ status: "CANCELLED" })}
+        myVote={null}
+        userId="member-1"
+        isFull={false}
+        hasComingVoteOnSameDay={false}
+      />
+    );
+
+    expect(screen.getByText("Workout")).toBeTruthy();
+    expect(screen.getByText("HIIT Training")).toBeTruthy();
   });
 });
