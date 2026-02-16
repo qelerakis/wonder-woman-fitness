@@ -11,6 +11,9 @@ import { format } from "date-fns";
 import { DAY_NAMES, VOTING_URGENCY_HOURS } from "@/lib/constants";
 import { formatTime } from "@/components/schedule/SessionCard";
 
+// Mirrors getTimeUntilDeadline from lib/voting-logic.ts.
+// Cannot import directly because voting-logic.ts imports from @/generated/prisma/client,
+// which is incompatible with "use client" components (see CLAUDE.md gotcha #12).
 function getTimeUntil(deadline: Date, now: Date): { hours: number; minutes: number; isPast: boolean } {
   const diff = deadline.getTime() - now.getTime();
   if (diff < 0) return { hours: 0, minutes: 0, isPast: true };
@@ -71,7 +74,8 @@ export function MemberSessionDetailClient(
   const deadline = new Date(session.votingDeadline);
   const deadlinePassed = deadline <= now;
   const timeUntil = getTimeUntil(deadline, now);
-  const isUrgent = !timeUntil.isPast && timeUntil.hours < VOTING_URGENCY_HOURS;
+  const hoursUntilDeadline = (deadline.getTime() - now.getTime()) / (1000 * 60 * 60);
+  const isUrgent = !timeUntil.isPast && hoursUntilDeadline <= VOTING_URGENCY_HOURS;
   const votingActive = session.votingEnabled && !deadlinePassed;
   const canVote = votingActive && !isCancelled && !isFull;
 

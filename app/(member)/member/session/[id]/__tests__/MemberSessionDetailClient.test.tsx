@@ -1616,5 +1616,441 @@ describe("MemberSessionDetailClient", () => {
 
       vi.useRealTimers();
     });
+
+    it("shows 0h Xm countdown when less than 1 hour remains", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-03-08T08:35:00.000Z"));
+
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingDeadline: "2026-03-08T09:00:00.000Z",
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      expect(screen.getByText(/Closes in 0h 25m/)).toBeTruthy();
+
+      vi.useRealTimers();
+    });
+
+    it("shows 0h 0m countdown when less than 1 minute remains", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-03-08T08:59:30.000Z"));
+
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingDeadline: "2026-03-08T09:00:00.000Z",
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      expect(screen.getByText(/Closes in 0h 0m/)).toBeTruthy();
+
+      vi.useRealTimers();
+    });
+
+    it("applies warning color at exactly 6 hours boundary (consistent with SessionCard)", () => {
+      vi.useFakeTimers();
+      // Exactly 6 hours before deadline
+      vi.setSystemTime(new Date("2026-03-08T03:00:00.000Z"));
+
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingDeadline: "2026-03-08T09:00:00.000Z",
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      const countdownEl = screen.getByText(/Closes in/);
+      expect(countdownEl.className).toContain("text-warning-400");
+
+      vi.useRealTimers();
+    });
+
+    it("shows absolute date when 6 hours and 1 second away (just outside urgency boundary)", () => {
+      vi.useFakeTimers();
+      // 6 hours and 1 second before deadline
+      vi.setSystemTime(new Date("2026-03-08T02:59:59.000Z"));
+
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingDeadline: "2026-03-08T09:00:00.000Z",
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      // Should show absolute date format "Closes <Day>, <Mon> <d> at ...", NOT "Closes in Xh Ym"
+      expect(screen.queryByText(/Closes in/)).toBeNull();
+      expect(screen.getByText(/Closes \w{3},/)).toBeTruthy();
+
+      vi.useRealTimers();
+    });
+
+    it("absolute deadline text uses 'EEE, MMM d at h:mm a' format", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-03-07T09:00:00.000Z"));
+
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingDeadline: "2026-03-08T09:00:00.000Z",
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      // Verify the format pattern: "Closes <Day>, <Mon> <d> at <h>:<mm> <AM/PM>"
+      const closesEl = screen.getByText(/Closes \w{3}, \w{3} \d{1,2} at \d{1,2}:\d{2} [AP]M/);
+      expect(closesEl).toBeTruthy();
+
+      vi.useRealTimers();
+    });
+
+    it("countdown updates after multiple timer ticks", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-03-08T06:00:00.000Z"));
+
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingDeadline: "2026-03-08T09:00:00.000Z",
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      expect(screen.getByText(/Closes in 3h 0m/)).toBeTruthy();
+
+      // Advance 1 minute
+      act(() => {
+        vi.advanceTimersByTime(60_000);
+      });
+
+      expect(screen.getByText(/Closes in 2h 59m/)).toBeTruthy();
+
+      // Advance another 59 minutes (1 hour total elapsed)
+      act(() => {
+        vi.advanceTimersByTime(59 * 60_000);
+      });
+
+      expect(screen.getByText(/Closes in 2h 0m/)).toBeTruthy();
+
+      vi.useRealTimers();
+    });
+
+    it("deadline text disappears when timer advances past deadline", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-03-08T08:58:00.000Z"));
+
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingDeadline: "2026-03-08T09:00:00.000Z",
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      // Should see countdown
+      expect(screen.getByText(/Closes in/)).toBeTruthy();
+
+      // Advance 3 minutes past deadline
+      act(() => {
+        vi.advanceTimersByTime(3 * 60_000);
+      });
+
+      // Deadline text should be gone
+      expect(screen.queryByText(/Closes/)).toBeNull();
+
+      vi.useRealTimers();
+    });
+
+    it("vote buttons disappear when timer advances past deadline", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-03-08T08:59:30.000Z"));
+
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingDeadline: "2026-03-08T09:00:00.000Z",
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      // Vote buttons should be present before deadline
+      expect(screen.getByText("I'm Coming")).toBeTruthy();
+      expect(screen.getByText("Not Coming")).toBeTruthy();
+
+      // Advance past deadline
+      act(() => {
+        vi.advanceTimersByTime(60_000);
+      });
+
+      // Vote buttons should be gone after deadline
+      expect(screen.queryByText("I'm Coming")).toBeNull();
+      expect(screen.queryByText("Not Coming")).toBeNull();
+      expect(screen.getByText("Voting deadline has passed.")).toBeTruthy();
+
+      vi.useRealTimers();
+    });
+
+    it("hint text includes actual deadline date when user has voted", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-03-07T09:00:00.000Z"));
+
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingDeadline: "2026-03-08T09:00:00.000Z",
+          })}
+          myVote={true}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      // Should contain an actual formatted date, not generic "the deadline"
+      expect(screen.queryByText("You can change your vote until the deadline.")).toBeNull();
+      // Verify it has the format pattern with day name, month, date, and time
+      expect(screen.getByText(/You can change your vote until \w{3}, \w{3} \d{1,2} at \d{1,2}:\d{2} [AP]M/)).toBeTruthy();
+
+      vi.useRealTimers();
+    });
+
+    it("hint text with 'not coming' vote also includes actual deadline", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-03-07T09:00:00.000Z"));
+
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingDeadline: "2026-03-08T09:00:00.000Z",
+          })}
+          myVote={false}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      // Verify actual date is shown in hint, not generic "the deadline"
+      expect(screen.getByText(/You can change your vote until \w{3}, \w{3} \d{1,2} at \d{1,2}:\d{2} [AP]M/)).toBeTruthy();
+
+      vi.useRealTimers();
+    });
+
+    it("shows absolute date with non-muted color for header text when > 6h", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-03-07T09:00:00.000Z"));
+
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingDeadline: "2026-03-08T09:00:00.000Z",
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      const closesEl = screen.getByText(/Closes Sun/);
+      expect(closesEl.className).toContain("text-surface-400");
+      expect(closesEl.className).not.toContain("text-warning-400");
+
+      vi.useRealTimers();
+    });
+
+    it("deadline text coexists with Voting Open badge", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-03-07T09:00:00.000Z"));
+
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingDeadline: "2026-03-08T09:00:00.000Z",
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      // Both should be present simultaneously
+      expect(screen.getByText("Voting Open")).toBeTruthy();
+      expect(screen.getByText(/Closes/)).toBeTruthy();
+
+      vi.useRealTimers();
+    });
+
+    it("does not show deadline text when session is cancelled (even if voting active)", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-03-07T09:00:00.000Z"));
+
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            status: "CANCELLED",
+            votingDeadline: "2026-03-08T09:00:00.000Z",
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      // The "Voting Open" badge and deadline text should still show in header
+      // (votingActive is based on votingEnabled && !deadlinePassed, not cancellation)
+      // but the voting section (Your Attendance) is hidden
+      expect(screen.getByText("Voting Open")).toBeTruthy();
+      expect(screen.getByText(/Closes/)).toBeTruthy();
+      // But attendance section should be hidden
+      expect(screen.queryByText("Your Attendance")).toBeNull();
+
+      vi.useRealTimers();
+    });
+
+    it("countdown transitions from non-urgent to urgent as time passes", () => {
+      vi.useFakeTimers();
+      // Start at 6h 2m before deadline (non-urgent)
+      vi.setSystemTime(new Date("2026-03-08T02:58:00.000Z"));
+
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingDeadline: "2026-03-08T09:00:00.000Z",
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      // Should show absolute date (> 6h away)
+      expect(screen.getByText(/Closes Sun/)).toBeTruthy();
+      expect(screen.queryByText(/Closes in/)).toBeNull();
+
+      // Advance 3 minutes to 5h 59m (urgent territory)
+      act(() => {
+        vi.advanceTimersByTime(3 * 60_000);
+      });
+
+      // Should now show countdown (< 6h away)
+      expect(screen.getByText(/Closes in 5h 59m/)).toBeTruthy();
+
+      vi.useRealTimers();
+    });
+
+    it("does not show deadline when session is full (isFull=true)", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-03-07T09:00:00.000Z"));
+
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingDeadline: "2026-03-08T09:00:00.000Z",
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={true}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      // Header deadline text should still show (it's based on votingActive, not isFull)
+      expect(screen.getByText(/Closes/)).toBeTruthy();
+      // But voting buttons are replaced with "Full" badge
+      expect(screen.getByText("Full")).toBeTruthy();
+      expect(screen.queryByText("I'm Coming")).toBeNull();
+
+      vi.useRealTimers();
+    });
+
+    it("PM deadline formats correctly in hint text", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-03-07T09:00:00.000Z"));
+
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingDeadline: "2026-03-08T15:30:00.000Z",
+          })}
+          myVote={true}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      // Should include PM in the formatted time
+      const hintEl = screen.getByText(/You can change your vote until/);
+      expect(hintEl.textContent).toMatch(/PM/);
+
+      vi.useRealTimers();
+    });
+
+    it("timer interval cleans up on unmount (no memory leak)", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-03-08T06:00:00.000Z"));
+
+      const clearIntervalSpy = vi.spyOn(global, "clearInterval");
+
+      const { unmount } = render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingDeadline: "2026-03-08T09:00:00.000Z",
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      unmount();
+
+      expect(clearIntervalSpy).toHaveBeenCalled();
+
+      clearIntervalSpy.mockRestore();
+      vi.useRealTimers();
+    });
   });
 });
