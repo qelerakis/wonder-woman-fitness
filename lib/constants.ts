@@ -17,6 +17,7 @@ export const PAYMENT_REMINDER_DAYS = [1, 7, 11] as const;
 
 // ===== VOTING CONFIGURATION =====
 export const VOTING_DEADLINE_HOURS_BEFORE = 24;
+export const VOTING_URGENCY_HOURS = 6; // Switch to countdown format when deadline is this close
 
 // ===== SCHEDULE CONFIGURATION =====
 export const SLOT_START_HOUR = 7;  // 7 AM
