@@ -718,6 +718,188 @@ describe("SessionCard", () => {
     });
   });
 
+  // ─── Voting Deadline Display ──────────────────────────────────────
+
+  describe("voting deadline display", () => {
+    it("shows deadline text when voting is active and user has not voted", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-02-09T12:00:00.000Z"));
+
+      const session = makeSession({
+        votingEnabled: true,
+        votingDeadline: new Date("2026-02-10T08:00:00.000Z"),
+      });
+      render(
+        <SessionCard
+          session={session}
+          basePath="/member/session"
+          showVotingIndicator={true}
+          currentUserId="member-99"
+        />
+      );
+
+      expect(screen.getByText(/^by /i)).toBeDefined();
+
+      vi.useRealTimers();
+    });
+
+    it("hides deadline text when user has already voted", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-02-09T12:00:00.000Z"));
+
+      const session = makeSession({
+        votingEnabled: true,
+        votingDeadline: new Date("2026-02-10T08:00:00.000Z"),
+      });
+      render(
+        <SessionCard
+          session={session}
+          basePath="/member/session"
+          showVotingIndicator={true}
+          currentUserId="member-1"
+        />
+      );
+
+      expect(screen.queryByText(/^by /i)).toBeNull();
+
+      vi.useRealTimers();
+    });
+
+    it("hides deadline text when showVotingIndicator is false", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-02-09T12:00:00.000Z"));
+
+      const session = makeSession({
+        votingEnabled: true,
+        votingDeadline: new Date("2026-02-10T08:00:00.000Z"),
+      });
+      render(
+        <SessionCard
+          session={session}
+          basePath="/member/session"
+          showVotingIndicator={false}
+          currentUserId="member-99"
+        />
+      );
+
+      expect(screen.queryByText(/^by /i)).toBeNull();
+
+      vi.useRealTimers();
+    });
+
+    it("hides deadline text when voting deadline has passed", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-02-11T00:00:00.000Z"));
+
+      const session = makeSession({
+        votingEnabled: true,
+        votingDeadline: new Date("2026-02-10T08:00:00.000Z"),
+      });
+      render(
+        <SessionCard
+          session={session}
+          basePath="/member/session"
+          showVotingIndicator={true}
+          currentUserId="member-99"
+        />
+      );
+
+      expect(screen.queryByText(/^by /i)).toBeNull();
+
+      vi.useRealTimers();
+    });
+
+    it("applies warning color when deadline is within 6 hours", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-02-10T05:00:00.000Z"));
+
+      const session = makeSession({
+        votingEnabled: true,
+        votingDeadline: new Date("2026-02-10T08:00:00.000Z"),
+      });
+      render(
+        <SessionCard
+          session={session}
+          basePath="/member/session"
+          showVotingIndicator={true}
+          currentUserId="member-99"
+        />
+      );
+
+      const deadlineText = screen.getByText(/^by /i);
+      expect(deadlineText.className).toContain("text-warning-400");
+
+      vi.useRealTimers();
+    });
+
+    it("applies muted color when deadline is more than 6 hours away", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-02-09T12:00:00.000Z"));
+
+      const session = makeSession({
+        votingEnabled: true,
+        votingDeadline: new Date("2026-02-10T08:00:00.000Z"),
+      });
+      render(
+        <SessionCard
+          session={session}
+          basePath="/member/session"
+          showVotingIndicator={true}
+          currentUserId="member-99"
+        />
+      );
+
+      const deadlineText = screen.getByText(/^by /i);
+      expect(deadlineText.className).toContain("text-surface-500");
+
+      vi.useRealTimers();
+    });
+
+    it("hides deadline text when votingEnabled is false", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-02-09T12:00:00.000Z"));
+
+      const session = makeSession({
+        votingEnabled: false,
+        votingDeadline: new Date("2026-02-10T08:00:00.000Z"),
+      });
+      render(
+        <SessionCard
+          session={session}
+          basePath="/member/session"
+          showVotingIndicator={true}
+          currentUserId="member-99"
+        />
+      );
+
+      expect(screen.queryByText(/^by /i)).toBeNull();
+
+      vi.useRealTimers();
+    });
+
+    it("hides deadline text when votingDeadline is null", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-02-09T12:00:00.000Z"));
+
+      const session = makeSession({
+        votingEnabled: true,
+        votingDeadline: null,
+      });
+      render(
+        <SessionCard
+          session={session}
+          basePath="/member/session"
+          showVotingIndicator={true}
+          currentUserId="member-99"
+        />
+      );
+
+      expect(screen.queryByText(/^by /i)).toBeNull();
+
+      vi.useRealTimers();
+    });
+  });
+
   // ─── formatTime Utility ──────────────────────────────────────────
 
   describe("formatTime", () => {

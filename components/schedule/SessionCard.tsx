@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { format } from "date-fns";
 import { Badge } from "@/components/ui/Badge";
-import { MAX_CLASS_SIZE } from "@/lib/constants";
+import { MAX_CLASS_SIZE, VOTING_URGENCY_HOURS } from "@/lib/constants";
 import type { SessionWithDetails } from "@/lib/session-generation";
 
 interface SessionCardProps {
@@ -28,10 +29,19 @@ export function SessionCard({
   const trainerNames = session.trainers.map((t) => t.user.name).join(", ");
   const isCancelled = session.status === "CANCELLED";
 
+  // Voting deadline display
+  const deadline = session.votingDeadline ? new Date(session.votingDeadline) : null;
+  const now = new Date();
+  const deadlineInFuture = deadline ? deadline > now : false;
+  const hoursUntilDeadline = deadline ? (deadline.getTime() - now.getTime()) / (1000 * 60 * 60) : Infinity;
+  const isUrgent = hoursUntilDeadline <= VOTING_URGENCY_HOURS;
+
   // Voting status for current user
   const userVote = currentUserId
     ? session.votes.find((v) => v.userId === currentUserId)
     : null;
+
+  const showDeadline = showVotingIndicator && session.votingEnabled && !isCancelled && deadlineInFuture && !userVote;
 
   return (
     <Link
@@ -88,6 +98,11 @@ export function SessionCard({
           >
             {userVote.attending ? "Going" : "Not going"}
           </Badge>
+        )}
+        {showDeadline && deadline && (
+          <span className={`text-xs ${isUrgent ? "text-warning-400" : "text-surface-500"}`}>
+            by {format(deadline, "EEE h a")}
+          </span>
         )}
       </div>
     </Link>
