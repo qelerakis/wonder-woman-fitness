@@ -59,8 +59,9 @@ export function DashboardClient(props: DashboardClientProps): React.ReactElement
   const [lockedCount, setLockedCount] = useState(initialLockedCount);
   const [popularSlots, setPopularSlots] = useState(initialPopularSlots);
 
-  const now = new Date();
-  const isCurrentMonth = viewMonth === now.getMonth() && viewYear === now.getFullYear();
+  const [currentMonth] = useState(() => new Date().getMonth());
+  const [currentYear] = useState(() => new Date().getFullYear());
+  const isCurrentMonth = viewMonth === currentMonth && viewYear === currentYear;
 
   const monthLabel = format(new Date(viewYear, viewMonth, 1), "MMMM yyyy");
 
@@ -135,7 +136,8 @@ export function DashboardClient(props: DashboardClientProps): React.ReactElement
           <div className="mt-1 flex items-center gap-1">
             <button
               onClick={handlePrevMonth}
-              className="rounded p-0.5 text-surface-400 transition-colors hover:text-surface-100"
+              disabled={loading}
+              className="rounded p-0.5 text-surface-400 transition-colors hover:text-surface-100 disabled:opacity-30 disabled:cursor-not-allowed"
               aria-label="Previous month"
             >
               <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -145,7 +147,7 @@ export function DashboardClient(props: DashboardClientProps): React.ReactElement
             <span className="text-sm text-surface-400">{monthLabel} overview</span>
             <button
               onClick={handleNextMonth}
-              disabled={isCurrentMonth}
+              disabled={isCurrentMonth || loading}
               className="rounded p-0.5 text-surface-400 transition-colors hover:text-surface-100 disabled:opacity-30 disabled:cursor-not-allowed"
               aria-label="Next month"
             >
