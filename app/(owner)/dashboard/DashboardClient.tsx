@@ -1,10 +1,13 @@
 "use client";
 
+import { useState, useCallback } from "react";
+import { format } from "date-fns";
 import Link from "next/link";
 import { MetricCard } from "@/components/analytics/MetricCard";
 import { AttendanceChart } from "@/components/analytics/AttendanceChart";
 import { RevenueChart } from "@/components/analytics/RevenueChart";
 import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/Toast";
 import type { SlotData } from "@/components/analytics/AttendanceChart";
 
 interface DashboardClientProps {
@@ -17,32 +20,140 @@ interface DashboardClientProps {
   gracePeriodCount: number;
   lockedCount: number;
   popularSlots: SlotData[];
-  monthLabel: string;
+  initialMonth: number;  // 0-11
+  initialYear: number;   // e.g. 2026
 }
 
 function formatCurrency(amount: number): string {
   return `${amount.toLocaleString()} MKD`;
 }
 
-export function DashboardClient({
-  totalActive,
-  trialCount,
-  totalRevenue,
-  membershipRevenue,
-  privateRevenue,
-  outstandingCount,
-  gracePeriodCount,
-  lockedCount,
-  popularSlots,
-  monthLabel,
-}: DashboardClientProps): React.ReactElement {
+export function DashboardClient(props: DashboardClientProps): React.ReactElement {
+  const {
+    totalActive: initialTotalActive,
+    trialCount: initialTrialCount,
+    totalRevenue: initialTotalRevenue,
+    membershipRevenue: initialMembershipRevenue,
+    privateRevenue: initialPrivateRevenue,
+    outstandingCount: initialOutstandingCount,
+    gracePeriodCount: initialGracePeriodCount,
+    lockedCount: initialLockedCount,
+    popularSlots: initialPopularSlots,
+    initialMonth,
+    initialYear,
+  } = props;
+
+  const { addToast } = useToast();
+  const [viewMonth, setViewMonth] = useState(initialMonth);
+  const [viewYear, setViewYear] = useState(initialYear);
+  const [loading, setLoading] = useState(false);
+
+  // Dashboard data state
+  const [totalActive, setTotalActive] = useState(initialTotalActive);
+  const [trialCount, setTrialCount] = useState(initialTrialCount);
+  const [totalRevenue, setTotalRevenue] = useState(initialTotalRevenue);
+  const [membershipRevenue, setMembershipRevenue] = useState(initialMembershipRevenue);
+  const [privateRevenue, setPrivateRevenue] = useState(initialPrivateRevenue);
+  const [outstandingCount, setOutstandingCount] = useState(initialOutstandingCount);
+  const [gracePeriodCount, setGracePeriodCount] = useState(initialGracePeriodCount);
+  const [lockedCount, setLockedCount] = useState(initialLockedCount);
+  const [popularSlots, setPopularSlots] = useState(initialPopularSlots);
+
+  const now = new Date();
+  const isCurrentMonth = viewMonth === now.getMonth() && viewYear === now.getFullYear();
+
+  const monthLabel = format(new Date(viewYear, viewMonth, 1), "MMMM yyyy");
+
+  const fetchDashboard = useCallback(async (month: number, year: number): Promise<void> => {
+    setLoading(true);
+    try {
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const startDate = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+      const endDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
+      const res = await fetch(`/api/analytics?startDate=${startDate}&endDate=${endDate}`);
+      if (res.ok) {
+        const json = await res.json();
+        const data = json.data;
+        setTotalActive(data.memberEngagement.totalActiveMembers);
+        setTrialCount(0); // Analytics API doesn't return trial count; only relevant for current month
+        setTotalRevenue(data.financial.totalRevenue);
+        setMembershipRevenue(data.financial.membershipRevenue);
+        setPrivateRevenue(data.financial.privateSessionRevenue);
+        setOutstandingCount(data.financial.latePayers.length + data.financial.outstandingMembers.length);
+        setGracePeriodCount(data.financial.latePayers.length);
+        setLockedCount(data.financial.outstandingMembers.length);
+        setPopularSlots(
+          data.classPerformance.popularSlots.map((s: { day: string; hour: number; avgAttendance: number; avgFillRate: number; sessionCount: number }) => ({
+            day: s.day,
+            hour: s.hour,
+            avgAttendance: s.avgAttendance,
+            avgFillRate: s.avgFillRate,
+            sessionCount: s.sessionCount,
+          }))
+        );
+      } else {
+        addToast({ type: "error", title: "Failed to load dashboard data" });
+      }
+    } catch {
+      addToast({ type: "error", title: "Failed to load dashboard data" });
+    } finally {
+      setLoading(false);
+    }
+  }, [addToast]);
+
+  function handlePrevMonth(): void {
+    let newMonth = viewMonth - 1;
+    let newYear = viewYear;
+    if (newMonth < 0) {
+      newMonth = 11;
+      newYear -= 1;
+    }
+    setViewMonth(newMonth);
+    setViewYear(newYear);
+    fetchDashboard(newMonth, newYear);
+  }
+
+  function handleNextMonth(): void {
+    if (isCurrentMonth) return;
+    let newMonth = viewMonth + 1;
+    let newYear = viewYear;
+    if (newMonth > 11) {
+      newMonth = 0;
+      newYear += 1;
+    }
+    setViewMonth(newMonth);
+    setViewYear(newYear);
+    fetchDashboard(newMonth, newYear);
+  }
+
   return (
     <div className="space-y-6">
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-surface-100">Dashboard</h1>
-          <p className="mt-1 text-sm text-surface-400">{monthLabel} overview</p>
+          <div className="mt-1 flex items-center gap-1">
+            <button
+              onClick={handlePrevMonth}
+              className="rounded p-0.5 text-surface-400 transition-colors hover:text-surface-100"
+              aria-label="Previous month"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+            </button>
+            <span className="text-sm text-surface-400">{monthLabel} overview</span>
+            <button
+              onClick={handleNextMonth}
+              disabled={isCurrentMonth}
+              className="rounded p-0.5 text-surface-400 transition-colors hover:text-surface-100 disabled:opacity-30 disabled:cursor-not-allowed"
+              aria-label="Next month"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
         </div>
         <div className="flex gap-2">
           <Link href="/owner/schedule">
@@ -59,7 +170,7 @@ export function DashboardClient({
       </div>
 
       {/* Metric cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 transition-opacity ${loading ? "opacity-50" : ""}`}>
         <MetricCard
           title="Active Members"
           value={totalActive}
@@ -107,7 +218,7 @@ export function DashboardClient({
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className={`grid grid-cols-1 gap-6 lg:grid-cols-2 transition-opacity ${loading ? "opacity-50" : ""}`}>
         <AttendanceChart slots={popularSlots} />
         <RevenueChart
           membershipRevenue={membershipRevenue}

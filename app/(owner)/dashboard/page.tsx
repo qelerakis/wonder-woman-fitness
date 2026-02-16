@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getPaymentStatus } from "@/lib/payment-logic";
 import type { PaymentRecord } from "@/lib/payment-logic";
-import { startOfMonth, endOfMonth, format } from "date-fns";
+import { startOfMonth, endOfMonth } from "date-fns";
 import { DashboardClient } from "./DashboardClient";
 
 export const metadata = {
@@ -168,7 +168,8 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
       gracePeriodCount={gracePeriodCount}
       lockedCount={lockedCount}
       popularSlots={popularSlots}
-      monthLabel={format(now, "MMMM yyyy")}
+      initialMonth={now.getMonth()}
+      initialYear={now.getFullYear()}
     />
   );
 }
