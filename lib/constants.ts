@@ -99,6 +99,9 @@ export const CRON_SCHEDULES = {
 // ===== EMAIL CONFIGURATION =====
 export const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@wonderwomanfitness.mk';
 
+// ===== PAYMENTS FILTER CONFIGURATION =====
+export const PAYMENTS_START_YEAR = 2025; // Earliest year shown in payments year dropdown
+
 // ===== ANALYTICS DATE RANGES =====
 export const ANALYTICS_DATE_RANGES = {
   THIS_WEEK: 'this_week',

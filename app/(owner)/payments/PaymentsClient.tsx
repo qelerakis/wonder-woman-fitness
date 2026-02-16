@@ -12,6 +12,7 @@ import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
 import { PaymentStatusBadge } from "@/components/payment/PaymentStatusBadge";
 import { useToast } from "@/components/ui/Toast";
+import { PAYMENTS_START_YEAR } from "@/lib/constants";
 import type { PaymentStatus } from "@/lib/constants";
 
 interface PaymentItem {
@@ -80,13 +81,12 @@ export function PaymentsClient(
   const [displayedPayments, setDisplayedPayments] = useState<PaymentItem[]>(initialPayments);
   const [loadingPayments, setLoadingPayments] = useState(false);
 
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
+  const [currentMonth] = useState(() => new Date().getMonth());
+  const [currentYear] = useState(() => new Date().getFullYear());
 
   const yearOptions = useMemo(() => {
     const options: { value: string; label: string }[] = [];
-    for (let y = 2025; y <= currentYear; y++) {
+    for (let y = PAYMENTS_START_YEAR; y <= currentYear; y++) {
       options.push({ value: String(y), label: String(y) });
     }
     return options;
@@ -103,7 +103,12 @@ export function PaymentsClient(
       const endDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
       const res = await fetch(`/api/payments?startDate=${startDate}&endDate=${endDate}`);
       if (res.ok) {
-        const json = await res.json() as { data: Array<{
+        const json = await res.json();
+        if (!json.data) {
+          addToast({ type: "error", title: "Unexpected response format" });
+          return;
+        }
+        const data = json.data as Array<{
           id: string;
           amount: number | string;
           paidAt: string;
@@ -112,8 +117,8 @@ export function PaymentsClient(
           notes: string | null;
           user: { id: string; name: string };
           recordedBy: { id: string; name: string } | null;
-        }> };
-        setDisplayedPayments(json.data.map((p) => ({
+        }>;
+        setDisplayedPayments(data.map((p) => ({
           id: p.id,
           amount: Number(p.amount),
           paidAt: p.paidAt,

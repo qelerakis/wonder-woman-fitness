@@ -75,6 +75,10 @@ export function DashboardClient(props: DashboardClientProps): React.ReactElement
       if (res.ok) {
         const json = await res.json();
         const data = json.data;
+        if (!data) {
+          addToast({ type: "error", title: "Unexpected response format" });
+          return;
+        }
         setTotalActive(data.memberEngagement.totalActiveMembers);
         setTrialCount(0); // Analytics API doesn't return trial count; only relevant for current month
         setTotalRevenue(data.financial.totalRevenue);
