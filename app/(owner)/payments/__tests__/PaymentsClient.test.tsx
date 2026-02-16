@@ -1194,4 +1194,145 @@ describe("PaymentsClient", () => {
       expect(options[11].textContent).toBe("December");
     });
   });
+
+  // ===== Edit Payment Flow =====
+
+  describe("edit payment flow", () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it("renders edit buttons on each payment row", async () => {
+      await renderPaymentsClient();
+      const editButtons = screen.getAllByLabelText(/^Edit payment for/);
+      expect(editButtons).toHaveLength(samplePayments.length);
+    });
+
+    it("opens modal with pre-filled data when edit button is clicked", async () => {
+      await renderPaymentsClient();
+      const editButtons = screen.getAllByLabelText(/^Edit payment for/);
+      fireEvent.click(editButtons[0]);
+
+      expect(screen.getByText("Edit Payment")).toBeTruthy();
+      expect(screen.getByText("Update Payment")).toBeTruthy();
+
+      const memberSelect = screen.getByLabelText("Member") as HTMLSelectElement;
+      expect(memberSelect.disabled).toBe(true);
+    });
+
+    it("submits PATCH request when editing", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ data: {} }),
+      });
+
+      await renderPaymentsClient();
+      const editButtons = screen.getAllByLabelText(/^Edit payment for/);
+      fireEvent.click(editButtons[0]);
+
+      const submitButton = screen.getByText("Update Payment");
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalledWith(
+          `/api/payments/${samplePayments[0].id}`,
+          expect.objectContaining({ method: "PATCH" })
+        );
+      });
+    });
+
+    it("shows success toast after editing", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ data: {} }),
+      });
+
+      await renderPaymentsClient();
+      const editButtons = screen.getAllByLabelText(/^Edit payment for/);
+      fireEvent.click(editButtons[0]);
+      fireEvent.click(screen.getByText("Update Payment"));
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledWith(
+          expect.objectContaining({ type: "success", title: "Payment updated" })
+        );
+      });
+    });
+  });
+
+  // ===== Delete Payment Flow =====
+
+  describe("delete payment flow", () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it("renders delete buttons on each payment row", async () => {
+      await renderPaymentsClient();
+      const deleteButtons = screen.getAllByLabelText(/^Delete payment for/);
+      expect(deleteButtons).toHaveLength(samplePayments.length);
+    });
+
+    it("opens confirmation modal when delete button is clicked", async () => {
+      await renderPaymentsClient();
+      const deleteButtons = screen.getAllByLabelText(/^Delete payment for/);
+      fireEvent.click(deleteButtons[0]);
+
+      expect(screen.getByText("Delete Payment")).toBeTruthy();
+      expect(screen.getByText(/cannot be undone/)).toBeTruthy();
+    });
+
+    it("closes confirmation modal on Cancel", async () => {
+      await renderPaymentsClient();
+      const deleteButtons = screen.getAllByLabelText(/^Delete payment for/);
+      fireEvent.click(deleteButtons[0]);
+
+      fireEvent.click(screen.getByText("Cancel"));
+      expect(screen.queryByText(/cannot be undone/)).toBeNull();
+    });
+
+    it("sends DELETE request on confirm", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ data: { id: "pay-1" } }),
+      });
+
+      await renderPaymentsClient();
+      const deleteButtons = screen.getAllByLabelText(/^Delete payment for/);
+      fireEvent.click(deleteButtons[0]);
+
+      // Find the Delete button inside the confirmation modal (not the icon button)
+      const modalButtons = screen.getAllByRole("button");
+      const confirmBtn = modalButtons.find((btn) => btn.textContent === "Delete");
+      fireEvent.click(confirmBtn!);
+
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalledWith(
+          `/api/payments/${samplePayments[0].id}`,
+          expect.objectContaining({ method: "DELETE" })
+        );
+      });
+    });
+
+    it("shows success toast after deleting", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ data: { id: "pay-1" } }),
+      });
+
+      await renderPaymentsClient();
+      const deleteButtons = screen.getAllByLabelText(/^Delete payment for/);
+      fireEvent.click(deleteButtons[0]);
+
+      const modalButtons = screen.getAllByRole("button");
+      const confirmBtn = modalButtons.find((btn) => btn.textContent === "Delete");
+      fireEvent.click(confirmBtn!);
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledWith(
+          expect.objectContaining({ type: "success", title: "Payment deleted" })
+        );
+      });
+    });
+  });
 });
