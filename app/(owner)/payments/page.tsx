@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { startOfMonth, endOfMonth } from "date-fns";
 import { getPaymentStatus } from "@/lib/payment-logic";
 import type { PaymentRecord } from "@/lib/payment-logic";
 import { PaymentsClient } from "./PaymentsClient";
@@ -15,8 +16,15 @@ export default async function OwnerPaymentsPage(): Promise<React.ReactElement> {
     redirect("/login");
   }
 
+  const now = new Date();
+  const monthStart = startOfMonth(now);
+  const monthEnd = endOfMonth(now);
+
   const [payments, members, allPayments] = await Promise.all([
     prisma.payment.findMany({
+      where: {
+        paidAt: { gte: monthStart, lte: monthEnd },
+      },
       orderBy: { paidAt: "desc" },
       select: {
         id: true,
@@ -32,7 +40,6 @@ export default async function OwnerPaymentsPage(): Promise<React.ReactElement> {
           select: { name: true },
         },
       },
-      take: 100,
     }),
     prisma.user.findMany({
       where: { role: "MEMBER", status: { not: "DEPARTED" } },
@@ -56,8 +63,6 @@ export default async function OwnerPaymentsPage(): Promise<React.ReactElement> {
       },
     }),
   ]);
-
-  const now = new Date();
 
   // Compute payment status for each member
   const memberStatuses = members.map((member) => {
@@ -129,6 +134,8 @@ export default async function OwnerPaymentsPage(): Promise<React.ReactElement> {
         totalMembers: members.length,
       }}
       currentUserId={session.user.id}
+      initialMonth={now.getMonth()}
+      initialYear={now.getFullYear()}
     />
   );
 }

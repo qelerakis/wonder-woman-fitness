@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { format } from "date-fns";
+import { format, getDaysInMonth } from "date-fns";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -45,16 +45,122 @@ interface PaymentsClientProps {
   members: MemberStatus[];
   summary: PaymentsSummary;
   currentUserId: string;
+  initialMonth: number;
+  initialYear: number;
 }
 
 export function PaymentsClient(
   props: PaymentsClientProps
 ): React.ReactElement {
-  const { payments, members, summary } = props;
+  const { payments: initialPayments, members, summary, initialMonth, initialYear } = props;
   const router = useRouter();
   const { addToast } = useToast();
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Filter state
+  const [filterMonth, setFilterMonth] = useState<number | null>(initialMonth);
+  const [filterYear, setFilterYear] = useState<number | null>(initialYear);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [displayedPayments, setDisplayedPayments] = useState<PaymentItem[]>(initialPayments);
+  const [loadingPayments, setLoadingPayments] = useState(false);
+
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  const yearOptions = useMemo(() => {
+    const options: { value: string; label: string }[] = [];
+    for (let y = 2025; y <= currentYear; y++) {
+      options.push({ value: String(y), label: String(y) });
+    }
+    return options;
+  }, [currentYear]);
+
+  const monthOptions = useMemo(() => {
+    return [
+      { value: "0", label: "January" },
+      { value: "1", label: "February" },
+      { value: "2", label: "March" },
+      { value: "3", label: "April" },
+      { value: "4", label: "May" },
+      { value: "5", label: "June" },
+      { value: "6", label: "July" },
+      { value: "7", label: "August" },
+      { value: "8", label: "September" },
+      { value: "9", label: "October" },
+      { value: "10", label: "November" },
+      { value: "11", label: "December" },
+    ];
+  }, []);
+
+  const fetchPayments = useCallback(async (month: number | null, year: number | null): Promise<void> => {
+    if (month === null || year === null) return;
+    setLoadingPayments(true);
+    try {
+      const startDate = new Date(year, month, 1).toISOString();
+      const endDate = new Date(year, month, getDaysInMonth(new Date(year, month)), 23, 59, 59, 999).toISOString();
+      const res = await fetch(`/api/payments?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`);
+      if (res.ok) {
+        const json = await res.json() as { data: Array<{
+          id: string;
+          amount: number | string;
+          paidAt: string;
+          periodStart: string;
+          periodEnd: string;
+          notes: string | null;
+          user: { id: string; name: string };
+          recordedBy: { id: string; name: string } | null;
+        }> };
+        setDisplayedPayments(json.data.map((p) => ({
+          id: p.id,
+          amount: Number(p.amount),
+          paidAt: p.paidAt,
+          periodStart: p.periodStart,
+          periodEnd: p.periodEnd,
+          notes: p.notes,
+          memberName: p.user.name,
+          memberId: p.user.id,
+          recordedBy: p.recordedBy?.name || null,
+        })));
+      }
+    } catch {
+      addToast({ type: "error", title: "Failed to load payments" });
+    } finally {
+      setLoadingPayments(false);
+    }
+  }, [addToast]);
+
+  function handleMonthChange(value: string): void {
+    const month = value === "" ? null : Number(value);
+    setFilterMonth(month);
+    fetchPayments(month, filterYear);
+  }
+
+  function handleYearChange(value: string): void {
+    const year = value === "" ? null : Number(value);
+    setFilterYear(year);
+    fetchPayments(filterMonth, year);
+  }
+
+  function handleClearFilters(): void {
+    setFilterMonth(currentMonth);
+    setFilterYear(currentYear);
+    setSearchQuery("");
+    fetchPayments(currentMonth, currentYear);
+  }
+
+  const visiblePayments = useMemo(() => {
+    if (!searchQuery.trim()) return displayedPayments;
+    const q = searchQuery.toLowerCase();
+    return displayedPayments.filter((p) => p.memberName.toLowerCase().includes(q));
+  }, [displayedPayments, searchQuery]);
+
+  const hasActiveFilter = filterMonth !== currentMonth || filterYear !== currentYear || searchQuery.trim() !== "";
+
+  const filterLabel = filterMonth !== null
+    ? `${monthOptions[filterMonth]?.label ?? ""} ${filterYear ?? ""}`
+    : "";
 
   // Payment form state
   const [selectedMember, setSelectedMember] = useState("");
@@ -122,6 +228,7 @@ export function PaymentsClient(
         setShowPaymentModal(false);
         resetForm();
         router.refresh();
+        fetchPayments(filterMonth, filterYear);
       } else {
         const data: { error: string } = await res.json();
         addToast({
@@ -158,6 +265,44 @@ export function PaymentsClient(
         >
           Record Payment
         </Button>
+      </div>
+
+      {/* Filter bar */}
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-surface-700 bg-surface-800/50 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <Select
+            options={monthOptions}
+            value={filterMonth !== null ? String(filterMonth) : ""}
+            onChange={(e) => handleMonthChange(e.target.value)}
+            className="w-[130px] !py-1.5 text-sm"
+            aria-label="Filter by month"
+          />
+          <Select
+            options={yearOptions}
+            value={filterYear !== null ? String(filterYear) : ""}
+            onChange={(e) => handleYearChange(e.target.value)}
+            className="w-[90px] !py-1.5 text-sm"
+            aria-label="Filter by year"
+          />
+        </div>
+        <div className="ml-auto flex items-center gap-3">
+          <input
+            type="text"
+            placeholder="Search by name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-[180px] rounded-lg border border-surface-600 bg-surface-800 px-3 py-1.5 text-sm text-surface-100 placeholder:text-surface-500 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1 focus:ring-offset-surface-900 hover:border-surface-500"
+            aria-label="Search payments by member name"
+          />
+          {hasActiveFilter && (
+            <button
+              onClick={handleClearFilters}
+              className="text-sm text-surface-500 transition-colors hover:text-primary-300"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Summary cards */}
@@ -241,18 +386,18 @@ export function PaymentsClient(
         <div className="px-6 py-4">
           <CardHeader
             title="Payment History"
-            description={`${payments.length} recent payments`}
+            description={`${visiblePayments.length} payments${filterMonth !== null ? ` in ${filterLabel}` : ""}`}
           />
         </div>
 
-        {payments.length === 0 ? (
+        {visiblePayments.length === 0 ? (
           <div className="py-12 text-center">
             <p className="text-sm text-surface-500">
               No payments recorded yet
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className={`overflow-x-auto transition-opacity ${loadingPayments ? "opacity-50" : ""}`}>
             <table className="w-full">
               <thead>
                 <tr className="border-y border-surface-700 text-left">
@@ -274,7 +419,7 @@ export function PaymentsClient(
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-700/50">
-                {payments.map((payment) => (
+                {visiblePayments.map((payment) => (
                   <tr
                     key={payment.id}
                     className="transition-colors hover:bg-surface-800/80"
@@ -298,7 +443,7 @@ export function PaymentsClient(
                       {format(new Date(payment.paidAt), "MMM d, yyyy")}
                     </td>
                     <td className="hidden px-6 py-3 text-sm text-surface-500 md:table-cell">
-                      {payment.recordedBy || "—"}
+                      {payment.recordedBy || "\u2014"}
                     </td>
                   </tr>
                 ))}
