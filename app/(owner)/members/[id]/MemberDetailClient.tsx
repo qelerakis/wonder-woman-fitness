@@ -411,6 +411,9 @@ export function MemberDetailClient(
               recordedBy: p.recordedBy ?? undefined,
             }))}
             showRecordedBy
+            editable
+            memberName={member.name}
+            onPaymentChange={() => router.refresh()}
           />
         </div>
       </div>
