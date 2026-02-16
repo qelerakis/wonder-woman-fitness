@@ -13,8 +13,8 @@
 | **Email**          | Resend                         | Latest   | Simple API, excellent deliverability, built-in React Email support for templated emails. Free tier covers MVP volume. |
 | **File Storage**   | Cloudinary                     | Latest   | Member photo uploads with automatic resizing/optimization. No need to manage S3 buckets and CDN configuration for a single-gym app. |
 | **Cron / Jobs**    | Vercel Cron Jobs               | —        | Serverless cron for automated payment reminders (day 1, 7, 11) and trial expiration checks. No separate worker process to maintain. |
-| **Charts**         | Recharts                       | 2.x      | React-native charting library. Composable, lightweight, good Tailwind integration. Covers line, bar, pie, and area charts needed for the dashboard. |
-| **Validation**     | Zod                            | 3.x      | Runtime schema validation shared between client forms and API routes. Single source of truth for data shapes. |
+| **Charts**         | Recharts                       | 3.x      | React-native charting library. Composable, lightweight, good Tailwind integration. Covers line, bar, pie, and area charts needed for the dashboard. |
+| **Validation**     | Zod                            | 4.x      | Runtime schema validation shared between client forms and API routes. Single source of truth for data shapes. |
 | **Hosting**        | Vercel (app) + Neon (database) | —        | Vercel for zero-config Next.js deployment with edge functions. Neon for serverless Postgres with branching (useful for staging). Both have generous free tiers. |
 | **Password Hash**  | bcrypt                         | 5.x      | Industry standard for password hashing with automatic salt generation.                                  |
 
@@ -26,24 +26,27 @@
 wonder-woman-fitness/
 ├── prisma/
 │   ├── schema.prisma              # Database schema (9 models, 4 enums)
-│   ├── migrations/                # Version-controlled migrations
 │   └── seed.ts                    # Seed script (owner account, sample data)
 ├── generated/
-│   └── prisma/                    # Prisma 7 generated client (adapter pattern)
+│   └── prisma/                    # Prisma 7 generated client (adapter pattern, gitignored)
 ├── app/                           # Next.js App Router (no src/ prefix)
 │   ├── (auth)/                    # Auth routes
+│   │   ├── layout.tsx                     # Auth layout wrapper
 │   │   ├── login/page.tsx
 │   │   ├── register/page.tsx
 │   │   └── forgot-password/page.tsx
+│   ├── (locked)/                  # Locked member route group
+│   │   └── member/
+│   │       └── locked/page.tsx            # Payment lockout screen
 │   ├── (member)/                  # Member-facing routes
-│   │   ├── member/
-│   │   │   ├── schedule/page.tsx          # Weekly calendar with voting
-│   │   │   ├── session/[id]/page.tsx      # Session detail + vote modal
-│   │   │   ├── profile/page.tsx           # Edit profile + photo upload
-│   │   │   ├── notifications/page.tsx     # Notification center
-│   │   │   ├── stop-training/page.tsx     # Voluntary departure flow
-│   │   │   ├── departed/page.tsx          # Motivational banner + rejoin
-│   │   │   └── locked/page.tsx            # Payment lockout screen
+│   │   ├── layout.tsx                     # Member layout with navigation
+│   │   └── member/
+│   │       ├── schedule/page.tsx          # Weekly calendar with voting
+│   │       ├── session/[id]/page.tsx      # Session detail + vote modal
+│   │       ├── profile/page.tsx           # Edit profile + photo upload
+│   │       ├── notifications/page.tsx     # Notification center
+│   │       ├── stop-training/page.tsx     # Voluntary departure flow
+│   │       └── departed/page.tsx          # Motivational banner + rejoin
 │   ├── (trainer)/                 # Trainer-facing routes
 │   │   ├── my-schedule/page.tsx           # Trainer's assigned sessions
 │   │   └── trainer/
@@ -97,10 +100,10 @@ wonder-woman-fitness/
 │   │       ├── trial-expiration/route.ts  # Daily at 6 AM
 │   │       └── voting-deadline/route.ts   # Hourly
 │   ├── globals.css                # Tailwind v4 CSS config (@theme directive)
-│   ├── layout.tsx                 # Root layout (Header, auth provider)
-│   └── middleware.ts              # Role-based routing + payment lockout
+│   └── layout.tsx                 # Root layout (Header, auth provider)
 ├── components/
-│   ├── ui/                        # 9 primitives (Badge, Button, Card, Input, Modal, Select, Spinner, Textarea, Toast)
+│   ├── ui/                        # 9 primitives (Badge, Button, Card, Input, Modal, Select,
+│   │                              #   Spinner, Textarea, Toast)
 │   ├── schedule/                  # 9 components (WeeklyCalendar, SessionCard, CreateSessionModal,
 │   │                              #   DeleteRecurringSlotModal, VotingPrompt, VoteSummary,
 │   │                              #   WorkoutDisplay, WorkoutEditor, AssignmentToggleList)
@@ -125,14 +128,18 @@ wonder-woman-fitness/
 │   ├── notifications.ts           # dispatchNotification() email + in-app
 │   └── __tests__/                 # 4 business logic test files (103 tests)
 ├── types/
-│   └── index.ts                   # Shared TypeScript types + Zod schemas
+│   ├── index.ts                   # Shared TypeScript types + Zod schemas
+│   └── __tests__/
+│       └── session-schemas.test.ts # Zod validation tests
 ├── hooks/                         # Custom React hooks
+│   ├── useNotifications.ts        # Real-time notification polling
+│   └── usePaymentStatus.ts        # Payment status fetching & display
 ├── docs/
-│   └── plans/                     # 7 design/plan documents
-├── public/
-│   └── images/                    # Logo, branding assets
-├── .env.local                     # Environment variables
+│   └── plans/                     # 11 design/plan documents
+├── middleware.ts                   # Role-based routing + departed redirect
+├── .env.local                     # Environment variables (gitignored)
 ├── next.config.ts                 # serverExternalPackages: prisma, pg, bcrypt
+├── prisma.config.ts               # Prisma 7 configuration (adapter pattern)
 ├── vercel.json                    # 3 cron job definitions
 ├── vitest.config.ts               # Test configuration
 ├── package.json
@@ -310,7 +317,7 @@ In-app notifications are fetched client-side by polling `GET /api/notifications?
 |--------------------------|-------------------|------------------------------------------------------------------------|
 | `payment-reminders`      | Daily at 9:00 AM  | Check all active members. Send reminders on day 1, 7. Lock out on day 11. |
 | `trial-expiration`       | Daily at 6:00 AM  | Check trial members. Notify owner 2 days before. Transition expired trials to ACTIVE. |
-| `voting-deadline`        | Hourly            | Lock voting on sessions where deadline has passed.                     |
+| `voting-deadline`        | Daily at midnight | Lock voting on sessions where deadline has passed.                     |
 
 Cron routes are secured with a `CRON_SECRET` header that Vercel injects automatically.
 
@@ -376,7 +383,7 @@ Cron routes are secured with a `CRON_SECRET` header that Vercel injects automati
 
 ### 5.9 Route Groups for Role Separation
 
-**Decision**: Use Next.js route groups — `(auth)`, `(member)`, `(trainer)`, `(owner)` — to organize pages by role.
+**Decision**: Use Next.js route groups — `(auth)`, `(locked)`, `(member)`, `(trainer)`, `(owner)` — to organize pages by role.
 
 **Why**: This keeps each role's UI cleanly separated in the codebase while sharing a single `layout.tsx`. The parentheses in the folder name mean these don't affect the URL structure. Middleware maps the user's role to the allowed route group. This makes it impossible to accidentally expose an owner page to a member.
 
@@ -517,7 +524,8 @@ Middleware uses `auth.config.ts`. Server components and API routes use `auth.ts`
 
 ### 9.6 Test Suite
 
-358 automated tests across 15 files using Vitest:
-- **Business logic** (4 files, 103 tests): payment-logic, voting-logic, session-generation, carry-forward
-- **API routes** (8 files, 200 tests): members, sessions, payments, votes, session-trainers, session-members, private-sessions, recurring-slots
-- **UI components** (3 files, 55 tests): Modal, CreateSessionModal, session-schemas, SessionCard, VoteModal, MemberScheduleClient
+615 automated tests across 19 files using Vitest (~6s):
+- **Business logic** (4 files, 116 tests): payment-logic (29), voting-logic (38), session-generation (24), carry-forward (25)
+- **API routes** (8 files, 235 tests): sessions (78), private-sessions (43), votes (31), recurring-slots (21), session-members (19), members (16), session-trainers (14), payments (13)
+- **UI components** (6 files, 247 tests): MemberSessionDetailClient (76), SessionCard (58), Button (40), VotingPrompt (30), Modal (28), CreateSessionModal (15)
+- **Type validation** (1 file, 17 tests): session-schemas

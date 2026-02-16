@@ -165,7 +165,7 @@
    - Should show 3 cron jobs from `vercel.json`:
      - Payment reminders (9 AM daily)
      - Trial expiration (6 AM daily)
-     - Voting deadline (hourly)
+     - Voting deadline (daily at midnight)
 
 2. **Test Cron Endpoints**
 

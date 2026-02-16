@@ -8,13 +8,13 @@
 
 Wonder Woman Fitness is a web-based boutique fitness studio management platform. It has three user roles (Owner, Trainer, Member) and handles scheduling, attendance voting, cash payment tracking, notifications, and analytics for a single gym.
 
-**Project status**: Feature-complete (February 14, 2026). All MVP features + post-MVP additions implemented and tested. 358 tests passing. Production build succeeds.
+**Project status**: Feature-complete (February 16, 2026). All MVP features + post-MVP additions implemented and tested. 615 tests passing. Production build succeeds.
 
 **Key documents** — read these first:
 - `PRD.md` — What was built and why (includes implementation status)
 - `ARCHITECTURE.md` — How the system is designed, tech stack, data flow, and design decisions
 - `DEPLOYMENT.md` — Production deployment guide (Vercel + Neon + Resend + Cloudinary)
-- `docs/plans/` — 7 design and implementation plan documents
+- `docs/plans/` — 11 design and implementation plan documents
 
 ---
 
@@ -346,7 +346,7 @@ CRON_SECRET=              # Random 32+ char string for securing cron endpoints
 10. **Max class size is 20.** Always validate before adding members to a session. The constant is in `lib/constants.ts`.
 11. **Trial period is exactly 14 days.** After that, the first grace period starts from `trialEndsAt`, not from the 1st of the month.
 12. **Client components cannot import from `@/generated/prisma/client`** — use local type aliases instead.
-13. **Route groups are invisible in URL.** `(owner)`, `(trainer)`, `(member)` don't appear in paths. Use role-prefixed paths: `/owner/schedule`, `/member/schedule`, `/trainer/session/[id]`.
+13. **Route groups are invisible in URL.** `(auth)`, `(locked)`, `(owner)`, `(trainer)`, `(member)` don't appear in paths. Use role-prefixed paths: `/owner/schedule`, `/member/schedule`, `/trainer/session/[id]`. The `(locked)` group handles the payment lockout screen at `/member/locked`.
 14. **Next.js 15 params are async.** Page props use `Promise<{ id: string }>` pattern — always `await` params.
 15. **`serverExternalPackages`** in `next.config.ts` includes `["@prisma/client", "@prisma/adapter-pg", "bcrypt"]`.
 16. **Sessions can be one-off (custom).** When `recurringSlotId` is null, the session uses `customDay` + `customStartHour`.
@@ -355,37 +355,42 @@ CRON_SECRET=              # Random 32+ char string for securing cron endpoints
 
 ## 10. Test Suite
 
-358 tests across 15 files, all passing (~3.7s). Run with `npm test`.
+615 tests across 19 files, all passing (~6s). Run with `npm test`.
 
-### Business Logic (4 files, 103 tests)
+### Business Logic (4 files, 116 tests)
 | File | Tests | What it covers |
 |---|---|---|
+| `voting-logic.test.ts` | 38 | Deadline calculation, eligibility, isFull, same-day constraints |
 | `payment-logic.test.ts` | 29 | Trial, grace period, lockout, overrides, edge cases |
-| `voting-logic.test.ts` | 25 | Deadline calculation, eligibility checks |
-| `session-generation.test.ts` | 24 | Week generation from recurring slots |
 | `session-generation-carry-forward.test.ts` | 25 | Assignment carryover, departed member exclusion |
+| `session-generation.test.ts` | 24 | Week generation from recurring slots |
 
-### API Routes (8 files, 200 tests)
+### API Routes (8 files, 235 tests)
 | File | Tests | What it covers |
 |---|---|---|
-| `sessions.test.ts` | 54 | Recurring, one-off, voting, cancel, generate week |
+| `sessions.test.ts` | 78 | Recurring, one-off, voting, cancel, generate week |
 | `private-sessions.test.ts` | 43 | Full CRUD, payment status |
+| `votes.test.ts` | 31 | Cast, update, deadline enforcement, full/same-day |
 | `recurring-slots.test.ts` | 21 | Create, delete, cascade |
 | `session-members.test.ts` | 19 | Assign/remove members, capacity, vote cleanup |
 | `members.test.ts` | 16 | CRUD, status transitions |
-| `votes.test.ts` | 15 | Cast, update, deadline enforcement |
 | `session-trainers.test.ts` | 14 | Assign/remove trainers, auth |
 | `payments.test.ts` | 13 | Record, advance payments, validation |
 
-### UI Components (3 files, 55 tests)
+### UI Components (6 files, 247 tests)
 | File | Tests | What it covers |
 |---|---|---|
-| `SessionCard.test.tsx` | 39 | Display, voting, assignments, role-based behavior |
+| `MemberSessionDetailClient.test.tsx` | 76 | Session detail, voting UI, full/same-day constraints |
+| `SessionCard.test.tsx` | 58 | Display, voting, assignments, role-based behavior |
+| `Button.test.tsx` | 40 | Variants, sizes, states, accessibility |
+| `VotingPrompt.test.tsx` | 30 | Inline voting modal, vote states, constraints |
 | `Modal.test.tsx` | 28 | Keyboard nav, accessibility, focus trap |
-| `session-schemas.test.tsx` | 17 | Zod validation for sessions |
 | `CreateSessionModal.test.tsx` | 15 | One-off, new recurring, validation |
-| `VoteModal.test.tsx` | 11 | Inline voting modal |
-| `MemberScheduleClient.test.tsx` | 7 | Calendar rendering, assigned vs unassigned |
+
+### Type Validation (1 file, 17 tests)
+| File | Tests | What it covers |
+|---|---|---|
+| `session-schemas.test.ts` | 17 | Zod validation for session creation schemas |
 
 ### Known Lint Warnings (4, pre-existing)
 - `ScheduleClient.tsx`: trainers, members unused
