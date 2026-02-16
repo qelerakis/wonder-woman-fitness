@@ -19,6 +19,8 @@ const mockPrisma = {
   payment: {
     findMany: vi.fn(),
     create: vi.fn(),
+    findUnique: vi.fn(),
+    delete: vi.fn(),
   },
   user: {
     findUnique: vi.fn(),
@@ -324,5 +326,94 @@ describe("POST /api/payments", () => {
     expect(response.status).toBe(201);
     expect(body.data.amount).toBe(2000);
     expect(mockTransaction).toHaveBeenCalledOnce();
+  });
+});
+
+// ===== DELETE /api/payments/[id] =====
+
+function makeParams(id: string): { params: Promise<{ id: string }> } {
+  return { params: Promise.resolve({ id }) };
+}
+
+describe("DELETE /api/payments/[id]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns 401 when not authenticated", async () => {
+    mockAuth.mockResolvedValue(null);
+
+    const { DELETE } = await import("@/app/api/payments/[id]/route");
+    const response = await DELETE(
+      new Request("http://localhost/api/payments/p-1", { method: "DELETE" }),
+      makeParams("p-1")
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(401);
+    expect(body.error).toBe("Unauthorized");
+  });
+
+  it("returns 403 for non-OWNER roles", async () => {
+    mockAuth.mockResolvedValue(trainerSession());
+
+    const { DELETE } = await import("@/app/api/payments/[id]/route");
+    const response = await DELETE(
+      new Request("http://localhost/api/payments/p-1", { method: "DELETE" }),
+      makeParams("p-1")
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.error).toBe("Forbidden");
+  });
+
+  it("returns 404 when payment not found", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.payment.findUnique.mockResolvedValue(null);
+
+    const { DELETE } = await import("@/app/api/payments/[id]/route");
+    const response = await DELETE(
+      new Request("http://localhost/api/payments/p-1", { method: "DELETE" }),
+      makeParams("p-1")
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(body.error).toBe("Payment not found");
+  });
+
+  it("returns 200 with deleted payment id on success", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.payment.findUnique.mockResolvedValue({ id: "p-1" });
+    mockPrisma.payment.delete.mockResolvedValue({ id: "p-1" });
+
+    const { DELETE } = await import("@/app/api/payments/[id]/route");
+    const response = await DELETE(
+      new Request("http://localhost/api/payments/p-1", { method: "DELETE" }),
+      makeParams("p-1")
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data).toEqual({ id: "p-1" });
+    expect(mockPrisma.payment.delete).toHaveBeenCalledWith({
+      where: { id: "p-1" },
+    });
+  });
+
+  it("returns 500 on unexpected error", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.payment.findUnique.mockRejectedValue(new Error("DB down"));
+
+    const { DELETE } = await import("@/app/api/payments/[id]/route");
+    const response = await DELETE(
+      new Request("http://localhost/api/payments/p-1", { method: "DELETE" }),
+      makeParams("p-1")
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(body.error).toBe("Internal server error");
   });
 });
