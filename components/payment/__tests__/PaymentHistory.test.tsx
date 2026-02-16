@@ -111,6 +111,33 @@ describe("PaymentHistory", () => {
       screen.getByLabelText(`Edit payment of ${label2000}`);
       screen.getByLabelText(`Delete payment of ${label2000}`);
     });
+
+    it("does not render recordedBy when showRecordedBy is false", async () => {
+      const { PaymentHistory } = await import("../PaymentHistory");
+      render(<PaymentHistory payments={samplePayments} showRecordedBy={false} />);
+      expect(screen.queryByText("by Owner")).toBeNull();
+    });
+
+    it("does not render notes element when notes is null", async () => {
+      const { PaymentHistory } = await import("../PaymentHistory");
+      const paymentsNoNotes = [{ ...samplePayments[0], notes: null }];
+      render(<PaymentHistory payments={paymentsNoNotes} />);
+      // Only amount, dates should be present — no notes text
+      screen.getByText(label1500);
+    });
+
+    it("renders Payment History header", async () => {
+      const { PaymentHistory } = await import("../PaymentHistory");
+      render(<PaymentHistory payments={samplePayments} />);
+      screen.getByText("Payment History");
+    });
+
+    it("renders correct number of payment rows", async () => {
+      const { PaymentHistory } = await import("../PaymentHistory");
+      render(<PaymentHistory payments={samplePayments} />);
+      const amounts = [screen.getByText(label1500), screen.getByText(label2000)];
+      expect(amounts).toHaveLength(2);
+    });
   });
 
   // ----- Edit Flow -----
@@ -179,6 +206,154 @@ describe("PaymentHistory", () => {
 
       await waitFor(() => {
         screen.getByText("Amount must be a positive number");
+      });
+    });
+
+    it("pre-fills all form fields from second payment", async () => {
+      const { PaymentHistory } = await import("../PaymentHistory");
+      render(<PaymentHistory payments={samplePayments} editable={true} />);
+
+      fireEvent.click(screen.getByLabelText(`Edit payment of ${label2000}`));
+
+      const amountInput = screen.getByLabelText("Amount (MKD)") as HTMLInputElement;
+      expect(amountInput.value).toBe("2000");
+
+      const notesField = screen.getByLabelText("Notes (optional)") as HTMLTextAreaElement;
+      expect(notesField.value).toBe("Cash payment");
+    });
+
+    it("sends correct fields in PATCH body", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: {} }),
+      });
+
+      const { PaymentHistory } = await import("../PaymentHistory");
+      render(<PaymentHistory payments={samplePayments} editable={true} />);
+
+      fireEvent.click(screen.getByLabelText(`Edit payment of ${label1500}`));
+      fireEvent.click(screen.getByText("Update Payment"));
+
+      await waitFor(() => {
+        const fetchCall = mockFetch.mock.calls[0];
+        const body = JSON.parse(fetchCall[1].body);
+        expect(body.amount).toBe(1500);
+        expect(body.paidAt).toBeDefined();
+        expect(body.periodStart).toBeDefined();
+        expect(body.periodEnd).toBeDefined();
+        // Should NOT include userId — edit doesn't change member
+        expect(body.userId).toBeUndefined();
+      });
+    });
+
+    it("shows error toast when edit API returns error", async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        json: async () => ({ error: "Payment not found" }),
+      });
+
+      const { PaymentHistory } = await import("../PaymentHistory");
+      render(<PaymentHistory payments={samplePayments} editable={true} />);
+
+      fireEvent.click(screen.getByLabelText(`Edit payment of ${label1500}`));
+      fireEvent.click(screen.getByText("Update Payment"));
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: "error",
+            title: "Failed to update payment",
+          })
+        );
+      });
+    });
+
+    it("shows network error toast when edit fetch throws", async () => {
+      mockFetch.mockRejectedValue(new Error("Connection failed"));
+
+      const { PaymentHistory } = await import("../PaymentHistory");
+      render(<PaymentHistory payments={samplePayments} editable={true} />);
+
+      fireEvent.click(screen.getByLabelText(`Edit payment of ${label1500}`));
+      fireEvent.click(screen.getByText("Update Payment"));
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledWith(
+          expect.objectContaining({ type: "error", title: "Network error" })
+        );
+      });
+    });
+
+    it("closes edit modal after successful update", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: {} }),
+      });
+
+      const { PaymentHistory } = await import("../PaymentHistory");
+      render(<PaymentHistory payments={samplePayments} editable={true} />);
+
+      fireEvent.click(screen.getByLabelText(`Edit payment of ${label1500}`));
+      expect(screen.getByText("Edit Payment")).toBeTruthy();
+
+      fireEvent.click(screen.getByText("Update Payment"));
+
+      await waitFor(() => {
+        expect(screen.queryByText("Edit Payment")).toBeNull();
+      });
+    });
+
+    it("closes edit modal on Cancel without API call", async () => {
+      const { PaymentHistory } = await import("../PaymentHistory");
+      render(<PaymentHistory payments={samplePayments} editable={true} />);
+
+      fireEvent.click(screen.getByLabelText(`Edit payment of ${label1500}`));
+      expect(screen.getByText("Edit Payment")).toBeTruthy();
+
+      fireEvent.click(screen.getByText("Cancel"));
+
+      await waitFor(() => {
+        expect(screen.queryByText("Edit Payment")).toBeNull();
+      });
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("validates period end before period start", async () => {
+      const { PaymentHistory } = await import("../PaymentHistory");
+      render(<PaymentHistory payments={samplePayments} editable={true} />);
+
+      fireEvent.click(screen.getByLabelText(`Edit payment of ${label1500}`));
+
+      // Set period end before period start
+      const periodStart = screen.getByLabelText("Period Start") as HTMLInputElement;
+      const periodEnd = screen.getByLabelText("Period End") as HTMLInputElement;
+      fireEvent.change(periodStart, { target: { value: "2026-03-01" } });
+      fireEvent.change(periodEnd, { target: { value: "2026-02-01" } });
+
+      fireEvent.click(screen.getByText("Update Payment"));
+
+      await waitFor(() => {
+        screen.getByText("Period end must be after start");
+      });
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("shows success toast after edit", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: {} }),
+      });
+
+      const { PaymentHistory } = await import("../PaymentHistory");
+      render(<PaymentHistory payments={samplePayments} editable={true} />);
+
+      fireEvent.click(screen.getByLabelText(`Edit payment of ${label1500}`));
+      fireEvent.click(screen.getByText("Update Payment"));
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledWith(
+          expect.objectContaining({ type: "success", title: "Payment updated" })
+        );
       });
     });
   });
@@ -277,6 +452,126 @@ describe("PaymentHistory", () => {
           })
         );
       });
+    });
+
+    it("shows delete confirmation without member name when prop not provided", async () => {
+      const { PaymentHistory } = await import("../PaymentHistory");
+      render(<PaymentHistory payments={samplePayments} editable={true} />);
+
+      fireEvent.click(screen.getByLabelText(`Delete payment of ${label1500}`));
+
+      screen.getByText("Delete Payment");
+      screen.getByText(/cannot be undone/);
+      // No member name should appear
+      expect(screen.queryByText("Jane Doe")).toBeNull();
+    });
+
+    it("shows error toast when delete API returns error", async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        json: async () => ({ error: "Forbidden" }),
+      });
+
+      const { PaymentHistory } = await import("../PaymentHistory");
+      render(<PaymentHistory payments={samplePayments} editable={true} />);
+
+      fireEvent.click(screen.getByLabelText(`Delete payment of ${label1500}`));
+      const deleteButton = screen.getByRole("button", { name: "Delete" });
+      fireEvent.click(deleteButton);
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: "error",
+            title: "Failed to delete payment",
+          })
+        );
+      });
+    });
+
+    it("shows network error toast when delete fetch throws", async () => {
+      mockFetch.mockRejectedValue(new Error("Connection failed"));
+
+      const { PaymentHistory } = await import("../PaymentHistory");
+      render(<PaymentHistory payments={samplePayments} editable={true} />);
+
+      fireEvent.click(screen.getByLabelText(`Delete payment of ${label1500}`));
+      const deleteButton = screen.getByRole("button", { name: "Delete" });
+      fireEvent.click(deleteButton);
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledWith(
+          expect.objectContaining({ type: "error", title: "Network error" })
+        );
+      });
+    });
+
+    it("closes confirmation modal after successful delete", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: {} }),
+      });
+
+      const { PaymentHistory } = await import("../PaymentHistory");
+      render(<PaymentHistory payments={samplePayments} editable={true} />);
+
+      fireEvent.click(screen.getByLabelText(`Delete payment of ${label1500}`));
+      expect(screen.getByText(/cannot be undone/)).toBeTruthy();
+
+      const deleteButton = screen.getByRole("button", { name: "Delete" });
+      fireEvent.click(deleteButton);
+
+      await waitFor(() => {
+        expect(screen.queryByText(/cannot be undone/)).toBeNull();
+      });
+    });
+
+    it("can delete second payment by amount", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: {} }),
+      });
+
+      const { PaymentHistory } = await import("../PaymentHistory");
+      render(<PaymentHistory payments={samplePayments} editable={true} />);
+
+      fireEvent.click(screen.getByLabelText(`Delete payment of ${label2000}`));
+
+      const deleteButton = screen.getByRole("button", { name: "Delete" });
+      fireEvent.click(deleteButton);
+
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledWith(
+          "/api/payments/p-2",
+          expect.objectContaining({ method: "DELETE" })
+        );
+      });
+    });
+
+    it("does not call onPaymentChange when delete fails", async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        json: async () => ({ error: "Server error" }),
+      });
+
+      const onPaymentChange = vi.fn();
+      const { PaymentHistory } = await import("../PaymentHistory");
+      render(
+        <PaymentHistory
+          payments={samplePayments}
+          editable={true}
+          onPaymentChange={onPaymentChange}
+        />
+      );
+
+      fireEvent.click(screen.getByLabelText(`Delete payment of ${label1500}`));
+      const deleteButton = screen.getByRole("button", { name: "Delete" });
+      fireEvent.click(deleteButton);
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalled();
+      });
+      expect(onPaymentChange).not.toHaveBeenCalled();
     });
   });
 });
