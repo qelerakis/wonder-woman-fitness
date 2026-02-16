@@ -73,6 +73,9 @@ export function PaymentsClient(
   const { addToast } = useToast();
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [editingPayment, setEditingPayment] = useState<PaymentItem | null>(null);
+  const [deletingPayment, setDeletingPayment] = useState<PaymentItem | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Filter state
   const [filterMonth, setFilterMonth] = useState<number | null>(initialMonth);
@@ -193,6 +196,18 @@ export function PaymentsClient(
     setPayErrors({});
   }
 
+  function handleEditPayment(payment: PaymentItem): void {
+    setEditingPayment(payment);
+    setSelectedMember(payment.memberId);
+    setPayAmount(String(payment.amount));
+    setPayDate(format(new Date(payment.paidAt), "yyyy-MM-dd'T'HH:mm"));
+    setPayPeriodStart(format(new Date(payment.periodStart), "yyyy-MM-dd"));
+    setPayPeriodEnd(format(new Date(payment.periodEnd), "yyyy-MM-dd"));
+    setPayNotes(payment.notes || "");
+    setPayErrors({});
+    setShowPaymentModal(true);
+  }
+
   async function handleRecordPayment(
     e: React.FormEvent
   ): Promise<void> {
@@ -218,22 +233,38 @@ export function PaymentsClient(
 
     setLoading(true);
     try {
-      const res = await fetch("/api/payments", {
-        method: "POST",
+      const isEditing = !!editingPayment;
+      const url = isEditing
+        ? `/api/payments/${editingPayment.id}`
+        : "/api/payments";
+      const method = isEditing ? "PATCH" : "POST";
+      const body = isEditing
+        ? {
+            amount: parsedAmount,
+            paidAt: new Date(payDate).toISOString(),
+            periodStart: payPeriodStart,
+            periodEnd: payPeriodEnd,
+            notes: payNotes.trim() || undefined,
+          }
+        : {
+            userId: selectedMember,
+            amount: parsedAmount,
+            paidAt: new Date(payDate).toISOString(),
+            periodStart: payPeriodStart,
+            periodEnd: payPeriodEnd,
+            notes: payNotes.trim() || undefined,
+          };
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: selectedMember,
-          amount: parsedAmount,
-          paidAt: new Date(payDate).toISOString(),
-          periodStart: payPeriodStart,
-          periodEnd: payPeriodEnd,
-          notes: payNotes.trim() || undefined,
-        }),
+        body: JSON.stringify(body),
       });
 
       if (res.ok) {
-        addToast({ type: "success", title: "Payment recorded" });
+        addToast({ type: "success", title: isEditing ? "Payment updated" : "Payment recorded" });
         setShowPaymentModal(false);
+        setEditingPayment(null);
         resetForm();
         router.refresh();
         fetchPayments(filterMonth, filterYear);
@@ -241,7 +272,7 @@ export function PaymentsClient(
         const data: { error: string } = await res.json();
         addToast({
           type: "error",
-          title: "Failed to record payment",
+          title: isEditing ? "Failed to update payment" : "Failed to record payment",
           message: data.error,
         });
       }
@@ -254,6 +285,33 @@ export function PaymentsClient(
 
   function formatCurrency(amount: number): string {
     return `${amount.toLocaleString()} MKD`;
+  }
+
+  async function handleDeletePayment(): Promise<void> {
+    if (!deletingPayment) return;
+    setDeleteLoading(true);
+    try {
+      const res = await fetch(`/api/payments/${deletingPayment.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        addToast({ type: "success", title: "Payment deleted" });
+        setDeletingPayment(null);
+        router.refresh();
+        fetchPayments(filterMonth, filterYear);
+      } else {
+        const data: { error: string } = await res.json();
+        addToast({
+          type: "error",
+          title: "Failed to delete payment",
+          message: data.error,
+        });
+      }
+    } catch {
+      addToast({ type: "error", title: "Failed to delete payment" });
+    } finally {
+      setDeleteLoading(false);
+    }
   }
 
   return (
@@ -424,6 +482,9 @@ export function PaymentsClient(
                   <th className="hidden px-6 py-3 text-xs font-medium uppercase tracking-wide text-surface-500 md:table-cell">
                     Recorded By
                   </th>
+                  <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-surface-500">
+                    <span className="sr-only">Actions</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-700/50">
@@ -453,6 +514,30 @@ export function PaymentsClient(
                     <td className="hidden px-6 py-3 text-sm text-surface-500 md:table-cell">
                       {payment.recordedBy || "\u2014"}
                     </td>
+                    <td className="px-6 py-3">
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          aria-label={`Edit payment for ${payment.memberName}`}
+                          onClick={() => handleEditPayment(payment)}
+                          className="rounded p-1 text-surface-500 transition-colors hover:bg-surface-700 hover:text-surface-200"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`Delete payment for ${payment.memberName}`}
+                          onClick={() => setDeletingPayment(payment)}
+                          className="rounded p-1 text-surface-500 transition-colors hover:bg-error-900/50 hover:text-error-400"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -466,9 +551,10 @@ export function PaymentsClient(
         isOpen={showPaymentModal}
         onClose={() => {
           setShowPaymentModal(false);
+          setEditingPayment(null);
           resetForm();
         }}
-        title="Record Payment"
+        title={editingPayment ? "Edit Payment" : "Record Payment"}
       >
         <form onSubmit={handleRecordPayment} className="space-y-4">
           <Select
@@ -480,6 +566,7 @@ export function PaymentsClient(
             value={selectedMember}
             onChange={(e) => setSelectedMember(e.target.value)}
             error={payErrors.member}
+            disabled={!!editingPayment}
           />
 
           <Input
@@ -534,13 +621,14 @@ export function PaymentsClient(
 
           <div className="flex items-center gap-2 pt-2">
             <Button type="submit" variant="primary" loading={loading}>
-              Record Payment
+              {editingPayment ? "Update Payment" : "Record Payment"}
             </Button>
             <Button
               type="button"
               variant="ghost"
               onClick={() => {
                 setShowPaymentModal(false);
+                setEditingPayment(null);
                 resetForm();
               }}
             >
@@ -548,6 +636,36 @@ export function PaymentsClient(
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={!!deletingPayment}
+        onClose={() => setDeletingPayment(null)}
+        title="Delete Payment"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-surface-300">
+            Are you sure you want to delete this payment of{" "}
+            <span className="font-medium text-surface-100">
+              {deletingPayment ? formatCurrency(deletingPayment.amount) : ""}
+            </span>{" "}
+            for{" "}
+            <span className="font-medium text-surface-100">
+              {deletingPayment?.memberName}
+            </span>
+            ? This action cannot be undone.
+          </p>
+          <div className="flex items-center gap-2">
+            <Button variant="danger" onClick={handleDeletePayment} loading={deleteLoading}>
+              Delete
+            </Button>
+            <Button variant="ghost" onClick={() => setDeletingPayment(null)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );
