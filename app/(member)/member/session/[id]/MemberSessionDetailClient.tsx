@@ -1,14 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { WorkoutDisplay } from "@/components/schedule/WorkoutDisplay";
 import { useToast } from "@/components/ui/Toast";
-import { DAY_NAMES } from "@/lib/constants";
+import { format } from "date-fns";
+import { DAY_NAMES, VOTING_URGENCY_HOURS } from "@/lib/constants";
 import { formatTime } from "@/components/schedule/SessionCard";
+
+function getTimeUntil(deadline: Date, now: Date): { hours: number; minutes: number; isPast: boolean } {
+  const diff = deadline.getTime() - now.getTime();
+  if (diff < 0) return { hours: 0, minutes: 0, isPast: true };
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  return { hours, minutes, isPast: false };
+}
 
 interface SessionData {
   id: string;
@@ -47,13 +56,22 @@ export function MemberSessionDetailClient(
   const { addToast } = useToast();
   const [voting, setVoting] = useState(false);
   const [currentVote, setCurrentVote] = useState<boolean | null>(myVote);
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(interval);
+  }, []);
 
   const dayOfWeek = session.recurringSlot?.dayOfWeek ?? session.customDay ?? 1;
   const startHour = session.recurringSlot?.startHour ?? session.customStartHour ?? 0;
   const dayName = DAY_NAMES[dayOfWeek] || "Unknown";
   const time = formatTime(startHour);
   const isCancelled = session.status === "CANCELLED";
-  const deadlinePassed = new Date(session.votingDeadline) <= new Date();
+  const deadline = new Date(session.votingDeadline);
+  const deadlinePassed = deadline <= now;
+  const timeUntil = getTimeUntil(deadline, now);
+  const isUrgent = !timeUntil.isPast && timeUntil.hours < VOTING_URGENCY_HOURS;
   const votingActive = session.votingEnabled && !deadlinePassed;
   const canVote = votingActive && !isCancelled && !isFull;
 
@@ -109,9 +127,16 @@ export function MemberSessionDetailClient(
               {session.status}
             </Badge>
             {session.votingEnabled && !deadlinePassed && (
-              <Badge variant="info" size="sm">
-                Voting Open
-              </Badge>
+              <>
+                <Badge variant="info" size="sm">
+                  Voting Open
+                </Badge>
+                <span className={`text-xs ${isUrgent ? "text-warning-400" : "text-surface-400"}`}>
+                  {isUrgent
+                    ? `Closes in ${timeUntil.hours}h ${timeUntil.minutes}m`
+                    : `Closes ${format(deadline, "EEE, MMM d 'at' h:mm a")}`}
+                </span>
+              </>
             )}
             {deadlinePassed && session.votingEnabled && (
               <Badge variant="default" size="sm">
@@ -202,7 +227,8 @@ export function MemberSessionDetailClient(
                     )}
                     {currentVote !== null && (
                       <p className="text-xs text-surface-500">
-                        You can change your vote until the deadline.
+                        You can change your vote until{" "}
+                        {format(deadline, "EEE, MMM d 'at' h:mm a")}.
                       </p>
                     )}
                   </div>

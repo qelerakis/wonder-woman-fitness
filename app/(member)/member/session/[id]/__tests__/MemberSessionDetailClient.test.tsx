@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { MemberSessionDetailClient } from "../MemberSessionDetailClient";
 
 // ===== Mocks =====
@@ -511,7 +511,7 @@ describe("MemberSessionDetailClient", () => {
       />
     );
 
-    expect(screen.getByText("You can change your vote until the deadline.")).toBeTruthy();
+    expect(screen.getByText(/You can change your vote until/)).toBeTruthy();
   });
 
   it("shows 'Not Coming' button with danger variant when already voted Not Coming", () => {
@@ -1258,7 +1258,7 @@ describe("MemberSessionDetailClient", () => {
       />
     );
 
-    expect(screen.queryByText("You can change your vote until the deadline.")).toBeNull();
+    expect(screen.queryByText(/You can change your vote until/)).toBeNull();
   });
 
   it("shows 'change your vote' hint when voted Not Coming", () => {
@@ -1272,7 +1272,7 @@ describe("MemberSessionDetailClient", () => {
       />
     );
 
-    expect(screen.getByText("You can change your vote until the deadline.")).toBeTruthy();
+    expect(screen.getByText(/You can change your vote until/)).toBeTruthy();
   });
 
   // ─── Same-day warning edge cases ────────────────────────────────
@@ -1463,5 +1463,158 @@ describe("MemberSessionDetailClient", () => {
 
     expect(screen.getByText("Workout")).toBeTruthy();
     expect(screen.getByText("HIIT Training")).toBeTruthy();
+  });
+
+  // ─── Voting Deadline Display ──────────────────────────────────────
+
+  describe("voting deadline display", () => {
+    it("shows absolute deadline text when voting is open and more than 6 hours away", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-03-07T09:00:00.000Z"));
+
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingDeadline: "2026-03-08T09:00:00.000Z",
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      // Should show "Closes Sun, Mar 8 at 9:00 AM" (not "Closes in")
+      expect(screen.getByText(/Closes/)).toBeTruthy();
+      expect(screen.queryByText(/Closes in/)).toBeNull();
+
+      vi.useRealTimers();
+    });
+
+    it("shows countdown text when voting is open and within 6 hours", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-03-08T05:30:00.000Z"));
+
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingDeadline: "2026-03-08T09:00:00.000Z",
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      expect(screen.getByText(/Closes in 3h 30m/)).toBeTruthy();
+
+      vi.useRealTimers();
+    });
+
+    it("applies warning color to countdown text when within 6 hours", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-03-08T05:30:00.000Z"));
+
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingDeadline: "2026-03-08T09:00:00.000Z",
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      const countdownEl = screen.getByText(/Closes in/);
+      expect(countdownEl.className).toContain("text-warning-400");
+
+      vi.useRealTimers();
+    });
+
+    it("does not show deadline text when voting is closed", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingDeadline: "2020-01-01T00:00:00.000Z",
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      expect(screen.queryByText(/Closes/)).toBeNull();
+    });
+
+    it("does not show deadline text when votingEnabled is false", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({ votingEnabled: false })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      expect(screen.queryByText(/Closes/)).toBeNull();
+    });
+
+    it("shows actual deadline time in vote change hint text", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-03-07T09:00:00.000Z"));
+
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingDeadline: "2026-03-08T09:00:00.000Z",
+          })}
+          myVote={true}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      // Old text was: "You can change your vote until the deadline."
+      // New text should include actual date instead of "the deadline"
+      expect(screen.queryByText("You can change your vote until the deadline.")).toBeNull();
+      expect(screen.getByText(/You can change your vote until/)).toBeTruthy();
+
+      vi.useRealTimers();
+    });
+
+    it("transitions from open to closed when deadline passes via timer", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-03-08T08:59:30.000Z"));
+
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingDeadline: "2026-03-08T09:00:00.000Z",
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      expect(screen.getByText("Voting Open")).toBeTruthy();
+
+      // Advance past deadline (60s interval fires)
+      act(() => {
+        vi.advanceTimersByTime(60_000);
+      });
+
+      expect(screen.getByText("Voting Closed")).toBeTruthy();
+      expect(screen.queryByText("Voting Open")).toBeNull();
+
+      vi.useRealTimers();
+    });
   });
 });
