@@ -49,6 +49,21 @@ interface PaymentsClientProps {
   initialYear: number;
 }
 
+const MONTH_OPTIONS = [
+  { value: "0", label: "January" },
+  { value: "1", label: "February" },
+  { value: "2", label: "March" },
+  { value: "3", label: "April" },
+  { value: "4", label: "May" },
+  { value: "5", label: "June" },
+  { value: "6", label: "July" },
+  { value: "7", label: "August" },
+  { value: "8", label: "September" },
+  { value: "9", label: "October" },
+  { value: "10", label: "November" },
+  { value: "11", label: "December" },
+];
+
 export function PaymentsClient(
   props: PaymentsClientProps
 ): React.ReactElement {
@@ -77,30 +92,16 @@ export function PaymentsClient(
     return options;
   }, [currentYear]);
 
-  const monthOptions = useMemo(() => {
-    return [
-      { value: "0", label: "January" },
-      { value: "1", label: "February" },
-      { value: "2", label: "March" },
-      { value: "3", label: "April" },
-      { value: "4", label: "May" },
-      { value: "5", label: "June" },
-      { value: "6", label: "July" },
-      { value: "7", label: "August" },
-      { value: "8", label: "September" },
-      { value: "9", label: "October" },
-      { value: "10", label: "November" },
-      { value: "11", label: "December" },
-    ];
-  }, []);
+  const monthOptions = MONTH_OPTIONS;
 
   const fetchPayments = useCallback(async (month: number | null, year: number | null): Promise<void> => {
     if (month === null || year === null) return;
     setLoadingPayments(true);
     try {
-      const startDate = new Date(year, month, 1).toISOString();
-      const endDate = new Date(year, month, getDaysInMonth(new Date(year, month)), 23, 59, 59, 999).toISOString();
-      const res = await fetch(`/api/payments?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`);
+      const daysInMonth = getDaysInMonth(new Date(year, month));
+      const startDate = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+      const endDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
+      const res = await fetch(`/api/payments?startDate=${startDate}&endDate=${endDate}`);
       if (res.ok) {
         const json = await res.json() as { data: Array<{
           id: string;
@@ -123,6 +124,8 @@ export function PaymentsClient(
           memberId: p.user.id,
           recordedBy: p.recordedBy?.name || null,
         })));
+      } else {
+        addToast({ type: "error", title: "Failed to load payments" });
       }
     } catch {
       addToast({ type: "error", title: "Failed to load payments" });
@@ -158,8 +161,8 @@ export function PaymentsClient(
 
   const hasActiveFilter = filterMonth !== currentMonth || filterYear !== currentYear || searchQuery.trim() !== "";
 
-  const filterLabel = filterMonth !== null
-    ? `${monthOptions[filterMonth]?.label ?? ""} ${filterYear ?? ""}`
+  const filterLabel = filterMonth !== null && filterYear !== null
+    ? `${MONTH_OPTIONS[filterMonth].label} ${filterYear}`
     : "";
 
   // Payment form state
