@@ -308,7 +308,7 @@ export function PaymentsClient(
         });
       }
     } catch {
-      addToast({ type: "error", title: "Failed to delete payment" });
+      addToast({ type: "error", title: "Network error" });
     } finally {
       setDeleteLoading(false);
     }

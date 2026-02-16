@@ -1258,6 +1258,130 @@ describe("PaymentsClient", () => {
         );
       });
     });
+
+    it("pre-fills all form fields from payment data", async () => {
+      await renderPaymentsClient();
+      const editButtons = screen.getAllByLabelText(/^Edit payment for/);
+      fireEvent.click(editButtons[1]); // Bob Jones, 2000
+
+      const amountInput = screen.getByLabelText("Amount (MKD)") as HTMLInputElement;
+      expect(amountInput.value).toBe("2000");
+
+      const notesField = screen.getByLabelText("Notes (optional)") as HTMLTextAreaElement;
+      expect(notesField.value).toBe("Paid in cash");
+    });
+
+    it("does not include userId in PATCH body", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ data: {} }),
+      });
+
+      await renderPaymentsClient();
+      const editButtons = screen.getAllByLabelText(/^Edit payment for/);
+      fireEvent.click(editButtons[0]);
+      fireEvent.click(screen.getByText("Update Payment"));
+
+      await waitFor(() => {
+        const fetchCall = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+        const body = JSON.parse(fetchCall[1].body);
+        expect(body.userId).toBeUndefined();
+        expect(body.amount).toBeDefined();
+      });
+    });
+
+    it("shows error toast when edit API returns error", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        json: () => Promise.resolve({ error: "Payment not found" }),
+      });
+
+      await renderPaymentsClient();
+      const editButtons = screen.getAllByLabelText(/^Edit payment for/);
+      fireEvent.click(editButtons[0]);
+      fireEvent.click(screen.getByText("Update Payment"));
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: "error",
+            title: "Failed to update payment",
+          })
+        );
+      });
+    });
+
+    it("shows network error toast when edit fetch throws", async () => {
+      global.fetch = vi.fn().mockRejectedValue(new Error("Network error"));
+
+      await renderPaymentsClient();
+      const editButtons = screen.getAllByLabelText(/^Edit payment for/);
+      fireEvent.click(editButtons[0]);
+      fireEvent.click(screen.getByText("Update Payment"));
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledWith(
+          expect.objectContaining({ type: "error", title: "Network error" })
+        );
+      });
+    });
+
+    it("closes edit modal and resets form on success", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ data: {} }),
+      });
+
+      await renderPaymentsClient();
+      const editButtons = screen.getAllByLabelText(/^Edit payment for/);
+      fireEvent.click(editButtons[0]);
+
+      // Modal should be open
+      expect(screen.getByText("Edit Payment")).toBeTruthy();
+
+      fireEvent.click(screen.getByText("Update Payment"));
+
+      await waitFor(() => {
+        expect(screen.queryByText("Edit Payment")).toBeNull();
+      });
+    });
+
+    it("clears editing state when modal is closed via Cancel", async () => {
+      await renderPaymentsClient();
+      const editButtons = screen.getAllByLabelText(/^Edit payment for/);
+      fireEvent.click(editButtons[0]);
+
+      expect(screen.getByText("Edit Payment")).toBeTruthy();
+
+      // Click Cancel
+      const cancelButtons = screen.getAllByText("Cancel");
+      const modalCancel = cancelButtons[cancelButtons.length - 1];
+      fireEvent.click(modalCancel);
+
+      await waitFor(() => {
+        expect(screen.queryByText("Edit Payment")).toBeNull();
+      });
+
+      // Open the Record Payment modal — it should show "Record Payment" not "Edit Payment"
+      fireEvent.click(screen.getByText("Record Payment"));
+      expect(screen.queryByText("Edit Payment")).toBeNull();
+    });
+
+    it("validates required fields during edit", async () => {
+      await renderPaymentsClient();
+      const editButtons = screen.getAllByLabelText(/^Edit payment for/);
+      fireEvent.click(editButtons[0]);
+
+      // Clear amount
+      const amountInput = screen.getByLabelText("Amount (MKD)") as HTMLInputElement;
+      fireEvent.change(amountInput, { target: { value: "" } });
+
+      fireEvent.click(screen.getByText("Update Payment"));
+
+      await waitFor(() => {
+        expect(screen.getByText("Amount must be a positive number")).toBeTruthy();
+      });
+    });
   });
 
   // ===== Delete Payment Flow =====
@@ -1331,6 +1455,107 @@ describe("PaymentsClient", () => {
       await waitFor(() => {
         expect(mockAddToast).toHaveBeenCalledWith(
           expect.objectContaining({ type: "success", title: "Payment deleted" })
+        );
+      });
+    });
+
+    it("shows member name and amount in confirmation modal", async () => {
+      await renderPaymentsClient();
+      const deleteButtons = screen.getAllByLabelText(/^Delete payment for/);
+      fireEvent.click(deleteButtons[0]);
+
+      // The confirmation paragraph contains the member name and amount
+      const confirmText = screen.getByText(/cannot be undone/);
+      expect(confirmText.textContent).toContain("Alice Smith");
+      expect(confirmText.textContent).toMatch(/1[,.]500 MKD/);
+    });
+
+    it("shows error toast when delete API returns error", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        json: () => Promise.resolve({ error: "Forbidden" }),
+      });
+
+      await renderPaymentsClient();
+      const deleteButtons = screen.getAllByLabelText(/^Delete payment for/);
+      fireEvent.click(deleteButtons[0]);
+
+      const modalButtons = screen.getAllByRole("button");
+      const confirmBtn = modalButtons.find((btn) => btn.textContent === "Delete");
+      fireEvent.click(confirmBtn!);
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: "error",
+            title: "Failed to delete payment",
+          })
+        );
+      });
+    });
+
+    it("shows network error toast when delete fetch throws", async () => {
+      global.fetch = vi.fn().mockRejectedValue(new Error("Network error"));
+
+      await renderPaymentsClient();
+      const deleteButtons = screen.getAllByLabelText(/^Delete payment for/);
+      fireEvent.click(deleteButtons[0]);
+
+      const modalButtons = screen.getAllByRole("button");
+      const confirmBtn = modalButtons.find((btn) => btn.textContent === "Delete");
+      fireEvent.click(confirmBtn!);
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledWith(
+          expect.objectContaining({ type: "error", title: "Network error" })
+        );
+      });
+    });
+
+    it("closes confirmation modal after successful delete", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ data: { id: "pay-1" } }),
+      });
+
+      await renderPaymentsClient();
+      const deleteButtons = screen.getAllByLabelText(/^Delete payment for/);
+      fireEvent.click(deleteButtons[0]);
+
+      expect(screen.getByText(/cannot be undone/)).toBeTruthy();
+
+      const modalButtons = screen.getAllByRole("button");
+      const confirmBtn = modalButtons.find((btn) => btn.textContent === "Delete");
+      fireEvent.click(confirmBtn!);
+
+      await waitFor(() => {
+        expect(screen.queryByText(/cannot be undone/)).toBeNull();
+      });
+    });
+
+    it("can delete different payments in sequence", async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ data: { id: "pay-2" } }),
+      });
+
+      await renderPaymentsClient();
+      // Click delete on second payment (Bob Jones)
+      const deleteButtons = screen.getAllByLabelText(/^Delete payment for/);
+      fireEvent.click(deleteButtons[1]);
+
+      // Verify the confirmation modal shows Bob Jones's info
+      const confirmText = screen.getByText(/cannot be undone/);
+      expect(confirmText.textContent).toContain("Bob Jones");
+
+      const modalButtons = screen.getAllByRole("button");
+      const confirmBtn = modalButtons.find((btn) => btn.textContent === "Delete");
+      fireEvent.click(confirmBtn!);
+
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalledWith(
+          `/api/payments/${samplePayments[1].id}`,
+          expect.objectContaining({ method: "DELETE" })
         );
       });
     });
