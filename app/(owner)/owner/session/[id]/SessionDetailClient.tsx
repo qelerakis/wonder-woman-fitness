@@ -11,6 +11,7 @@ import { VoteSummary } from "@/components/schedule/VoteSummary";
 import { useToast } from "@/components/ui/Toast";
 import { AssignmentToggleList } from "@/components/schedule/AssignmentToggleList";
 import { DeleteRecurringSlotModal } from "@/components/schedule/DeleteRecurringSlotModal";
+import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { DAY_NAMES, MAX_CLASS_SIZE } from "@/lib/constants";
 import { formatTime } from "@/components/schedule/SessionCard";
 import type { VoteMember } from "@/components/schedule/VoteSummary";
@@ -67,6 +68,8 @@ export function SessionDetailClient({
     session.members.map((m) => m.userId)
   );
   const [showDeleteSlotModal, setShowDeleteSlotModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const dayOfWeek = session.recurringSlot?.dayOfWeek ?? session.customDay ?? 1;
   const startHour = session.recurringSlot?.startHour ?? session.customStartHour ?? 0;
@@ -106,10 +109,7 @@ export function SessionDetailClient({
     }
   }
 
-  async function handleCancelSession(): Promise<void> {
-    if (!confirm("Are you sure you want to cancel this session? All members will be notified.")) {
-      return;
-    }
+  async function handleCancelConfirmed(): Promise<void> {
     setCancelling(true);
     try {
       const res = await fetch(`/api/sessions/${session.id}`, {
@@ -118,6 +118,7 @@ export function SessionDetailClient({
         body: JSON.stringify({ status: "CANCELLED" }),
       });
       if (res.ok) {
+        setShowCancelModal(false);
         addToast({ type: "success", title: "Session cancelled" });
         router.refresh();
       } else {
@@ -130,20 +131,14 @@ export function SessionDetailClient({
     }
   }
 
-  async function handleDeleteSession(): Promise<void> {
-    if (
-      !confirm(
-        "Are you sure you want to permanently delete this session? This cannot be undone."
-      )
-    ) {
-      return;
-    }
+  async function handleDeleteConfirmed(): Promise<void> {
     setDeleting(true);
     try {
       const res = await fetch(`/api/sessions/${session.id}`, {
         method: "DELETE",
       });
       if (res.ok) {
+        setShowDeleteModal(false);
         addToast({ type: "success", title: "Session deleted" });
         router.push("/owner/schedule");
       } else {
@@ -254,8 +249,7 @@ export function SessionDetailClient({
             <Button
               variant="danger"
               size="sm"
-              onClick={handleCancelSession}
-              loading={cancelling}
+              onClick={() => setShowCancelModal(true)}
             >
               Cancel Session
             </Button>
@@ -263,8 +257,7 @@ export function SessionDetailClient({
           <Button
             variant="danger"
             size="sm"
-            onClick={handleDeleteSession}
-            loading={deleting}
+            onClick={() => setShowDeleteModal(true)}
           >
             Delete Session
           </Button>
@@ -355,6 +348,26 @@ export function SessionDetailClient({
           )}
         </div>
       </div>
+
+      <ConfirmationModal
+        isOpen={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        onConfirm={handleCancelConfirmed}
+        title="Cancel Session"
+        message="Cancel this session? All assigned members will be notified."
+        confirmLabel="Cancel Session"
+        loading={cancelling}
+      />
+
+      <ConfirmationModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDeleteConfirmed}
+        title="Delete Session"
+        message="Permanently delete this session? This cannot be undone."
+        confirmLabel="Delete"
+        loading={deleting}
+      />
 
       {session.recurringSlotId && session.recurringSlot && (
         <DeleteRecurringSlotModal
