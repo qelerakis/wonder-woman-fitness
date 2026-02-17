@@ -67,8 +67,10 @@ function DatePicker({
     return parsed ?? new Date();
   });
   const [focusedDate, setFocusedDate] = useState<Date | null>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
   const selectedDate = parseDate(value);
@@ -135,14 +137,15 @@ function DatePicker({
     [onChange, isDayDisabled]
   );
 
-  const handleSelectToday = useCallback((): void => {
-    const today = new Date();
-    if (isDayDisabled(today)) return;
-    onChange(formatISO(today));
-    setViewDate(today);
+  const handlePlusOneMonth = useCallback((): void => {
+    const base = selectedDate ?? new Date();
+    const target = addMonths(base, 1);
+    if (isDayDisabled(target)) return;
+    onChange(formatISO(target));
+    setViewDate(target);
     setIsOpen(false);
     setFocusedDate(null);
-  }, [onChange, isDayDisabled]);
+  }, [onChange, isDayDisabled, selectedDate]);
 
   const handleGridKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>): void => {
@@ -227,8 +230,13 @@ function DatePicker({
           aria-expanded={isOpen}
           aria-describedby={describedBy}
           disabled={disabled}
+          ref={triggerRef}
           onClick={() => {
             if (!disabled) {
+              if (!isOpen && triggerRef.current) {
+                const rect = triggerRef.current.getBoundingClientRect();
+                setDropdownPos({ top: rect.bottom + 4, left: rect.left });
+              }
               setIsOpen((prev) => !prev);
               if (!isOpen) {
                 setFocusedDate(selectedDate ?? new Date());
@@ -278,10 +286,11 @@ function DatePicker({
           <div
             role="dialog"
             aria-label="Choose date"
-            className="absolute left-0 top-full z-50 mt-1 w-[280px] rounded-xl border border-surface-600 bg-surface-800 shadow-xl shadow-black/30"
+            style={{ top: dropdownPos.top, left: dropdownPos.left }}
+            className="fixed z-[100] w-[232px] rounded-xl border border-surface-600 bg-surface-800 shadow-xl shadow-black/30"
           >
             {/* Month/Year header with nav arrows */}
-            <div className="flex items-center justify-between px-3 py-2">
+            <div className="flex items-center justify-between px-2 py-1.5">
               <button
                 type="button"
                 onClick={() => setViewDate((d) => subMonths(d, 1))}
@@ -332,11 +341,11 @@ function DatePicker({
             </div>
 
             {/* Weekday headers */}
-            <div className="grid grid-cols-7 px-2">
+            <div className="grid grid-cols-7 px-1.5">
               {WEEKDAY_LABELS.map((day) => (
                 <div
                   key={day}
-                  className="flex h-8 items-center justify-center text-xs font-medium text-surface-500"
+                  className="flex h-6 items-center justify-center text-xs font-medium text-surface-500"
                 >
                   {day}
                 </div>
@@ -346,7 +355,7 @@ function DatePicker({
             {/* Day grid */}
             <div
               ref={gridRef}
-              className="grid grid-cols-7 px-2 pb-1"
+              className="grid grid-cols-7 px-1.5 pb-1"
               role="grid"
               tabIndex={0}
               onKeyDown={handleGridKeyDown}
@@ -361,7 +370,7 @@ function DatePicker({
                   focusedDate !== null && isSameDay(day, focusedDate);
 
                 let dayClasses =
-                  "flex h-8 w-8 items-center justify-center rounded-lg text-sm transition-colors duration-100";
+                  "flex h-7 w-7 items-center justify-center rounded-md text-xs transition-colors duration-100";
 
                 if (isDisabled) {
                   dayClasses += " text-surface-600 cursor-not-allowed";
@@ -413,15 +422,14 @@ function DatePicker({
               })}
             </div>
 
-            {/* Today shortcut */}
-            <div className="border-t border-surface-700 px-3 py-2">
+            {/* +1 Month shortcut */}
+            <div className="border-t border-surface-700 px-2 py-1.5">
               <button
                 type="button"
-                onClick={handleSelectToday}
-                disabled={isDayDisabled(new Date())}
-                className="w-full rounded-lg px-2 py-1 text-center text-sm text-primary-400 transition-colors duration-100 hover:bg-surface-700 hover:text-primary-300 disabled:cursor-not-allowed disabled:text-surface-600"
+                onClick={handlePlusOneMonth}
+                className="w-full rounded-md px-2 py-0.5 text-center text-xs text-primary-400 transition-colors duration-100 hover:bg-surface-700 hover:text-primary-300"
               >
-                Today
+                +1 Month
               </button>
             </div>
           </div>

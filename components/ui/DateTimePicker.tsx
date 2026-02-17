@@ -111,7 +111,9 @@ function DateTimePicker({
   const [selectedMinute, setSelectedMinute] = useState<string>(parsed.minute);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
   const selectedDate = parsed.date;
   const minDate = min ? parseDateOnly(min) : null;
@@ -292,8 +294,13 @@ function DateTimePicker({
           aria-expanded={isOpen}
           aria-describedby={describedBy}
           disabled={disabled}
+          ref={triggerRef}
           onClick={() => {
             if (!disabled) {
+              if (!isOpen && triggerRef.current) {
+                const rect = triggerRef.current.getBoundingClientRect();
+                setDropdownPos({ top: rect.bottom + 4, left: rect.left });
+              }
               setIsOpen((prev) => !prev);
               if (!isOpen) {
                 setFocusedDate(selectedDate ?? new Date());
@@ -346,10 +353,11 @@ function DateTimePicker({
           <div
             role="dialog"
             aria-label="Choose date and time"
-            className="absolute left-0 top-full z-50 mt-1 w-[280px] rounded-xl border border-surface-600 bg-surface-800 shadow-xl shadow-black/30"
+            style={{ top: dropdownPos.top, left: dropdownPos.left }}
+            className="fixed z-[100] w-[232px] rounded-xl border border-surface-600 bg-surface-800 shadow-xl shadow-black/30"
           >
             {/* Month/Year header with nav arrows */}
-            <div className="flex items-center justify-between px-3 py-2">
+            <div className="flex items-center justify-between px-2 py-1.5">
               <button
                 type="button"
                 onClick={() => setViewDate((d) => subMonths(d, 1))}
@@ -400,11 +408,11 @@ function DateTimePicker({
             </div>
 
             {/* Weekday headers */}
-            <div className="grid grid-cols-7 px-2">
+            <div className="grid grid-cols-7 px-1.5">
               {WEEKDAY_LABELS.map((day) => (
                 <div
                   key={day}
-                  className="flex h-8 items-center justify-center text-xs font-medium text-surface-500"
+                  className="flex h-6 items-center justify-center text-xs font-medium text-surface-500"
                 >
                   {day}
                 </div>
@@ -414,7 +422,7 @@ function DateTimePicker({
             {/* Day grid */}
             <div
               ref={gridRef}
-              className="grid grid-cols-7 px-2 pb-1"
+              className="grid grid-cols-7 px-1.5 pb-1"
               role="grid"
               tabIndex={0}
               onKeyDown={handleGridKeyDown}
@@ -429,7 +437,7 @@ function DateTimePicker({
                   focusedDate !== null && isSameDay(day, focusedDate);
 
                 let dayClasses =
-                  "flex h-8 w-8 items-center justify-center rounded-lg text-sm transition-colors duration-100";
+                  "flex h-7 w-7 items-center justify-center rounded-md text-xs transition-colors duration-100";
 
                 if (isDisabled) {
                   dayClasses += " text-surface-600 cursor-not-allowed";
@@ -482,7 +490,7 @@ function DateTimePicker({
             </div>
 
             {/* Time selector */}
-            <div className="border-t border-surface-700 px-3 py-2">
+            <div className="border-t border-surface-700 px-2 py-1.5">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-medium text-surface-400">
                   Time
@@ -491,7 +499,7 @@ function DateTimePicker({
                   value={selectedHour}
                   onChange={(e) => setSelectedHour(e.target.value)}
                   aria-label="Hour"
-                  className="rounded-lg border border-surface-600 bg-surface-900 px-2 py-1 text-sm text-surface-100 focus:ring-1 focus:ring-primary-500"
+                  className="rounded-md border border-surface-600 bg-surface-900 px-1.5 py-0.5 text-xs text-surface-100 focus:ring-1 focus:ring-primary-500"
                 >
                   {HOUR_OPTIONS.map((h) => (
                     <option key={h} value={h}>
@@ -499,12 +507,12 @@ function DateTimePicker({
                     </option>
                   ))}
                 </select>
-                <span className="text-surface-400 font-medium">:</span>
+                <span className="text-surface-400 font-medium text-xs">:</span>
                 <select
                   value={selectedMinute}
                   onChange={(e) => setSelectedMinute(e.target.value)}
                   aria-label="Minute"
-                  className="rounded-lg border border-surface-600 bg-surface-900 px-2 py-1 text-sm text-surface-100 focus:ring-1 focus:ring-primary-500"
+                  className="rounded-md border border-surface-600 bg-surface-900 px-1.5 py-0.5 text-xs text-surface-100 focus:ring-1 focus:ring-primary-500"
                 >
                   {MINUTE_OPTIONS.map((m) => (
                     <option key={m} value={m}>
@@ -520,7 +528,7 @@ function DateTimePicker({
                   type="button"
                   onClick={handleDone}
                   disabled={!pendingDate}
-                  className="w-full rounded-lg bg-primary-600 py-1.5 text-xs font-semibold text-white hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full rounded-md bg-primary-600 py-1 text-xs font-semibold text-white hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Done
                 </button>

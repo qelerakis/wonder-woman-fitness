@@ -323,39 +323,42 @@ describe("DatePicker", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  // ─── Today Shortcut ───────────────────────────────────────
+  // ─── +1 Month Shortcut ───────────────────────────────────
 
-  it("Today shortcut button selects today's date", () => {
+  it("+1 Month shortcut selects the same day one month forward", () => {
     const onChange = vi.fn();
-    render(<DatePicker value="" onChange={onChange} />);
+    render(<DatePicker value="2026-02-17" onChange={onChange} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Select a date" }));
+    fireEvent.click(screen.getByText("Feb 17, 2026"));
 
-    const todayButton = screen.getByRole("button", { name: "Today" });
-    fireEvent.click(todayButton);
+    const plusMonthButton = screen.getByText("+1 Month");
+    fireEvent.click(plusMonthButton);
 
-    expect(onChange).toHaveBeenCalledWith("2026-02-17");
+    expect(onChange).toHaveBeenCalledWith("2026-03-17");
   });
 
-  it("Today shortcut closes the calendar", () => {
-    render(<DatePicker value="" onChange={vi.fn()} />);
+  it("+1 Month shortcut closes the calendar", () => {
+    render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Select a date" }));
+    fireEvent.click(screen.getByText("Feb 17, 2026"));
     expect(screen.getByRole("dialog")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Today" }));
+    fireEvent.click(screen.getByText("+1 Month"));
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("Today shortcut is disabled when today is before min date", () => {
+  it("+1 Month shortcut does nothing when target is after max date", () => {
+    const onChange = vi.fn();
     render(
-      <DatePicker value="" onChange={vi.fn()} min="2026-03-01" />
+      <DatePicker value="2026-02-17" onChange={onChange} max="2026-02-28" />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Select a date" }));
+    fireEvent.click(screen.getByText("Feb 17, 2026"));
 
-    const todayButton = screen.getByRole("button", { name: "Today" });
-    expect(todayButton).toHaveProperty("disabled", true);
+    const plusMonthButton = screen.getByText("+1 Month");
+    fireEvent.click(plusMonthButton);
+
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   // ─── Weekday Headers ──────────────────────────────────────
