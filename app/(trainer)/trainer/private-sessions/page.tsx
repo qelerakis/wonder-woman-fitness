@@ -35,12 +35,11 @@ export default async function TrainerPrivateSessionsPage(): Promise<React.ReactE
   const now = new Date();
   const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const totalRevenue = privateSessions.reduce(
-    (sum, ps) => (ps.paid ? sum + Number(ps.amount) : sum),
-    0
-  );
+  const totalRevenue = privateSessions
+    .filter((ps) => ps.paid && ps.amount != null)
+    .reduce((sum, ps) => sum + Number(ps.amount), 0);
   const thisMonthRevenue = privateSessions
-    .filter((ps) => ps.paid && new Date(ps.scheduledAt) >= thisMonthStart)
+    .filter((ps) => ps.paid && ps.amount != null && new Date(ps.scheduledAt) >= thisMonthStart)
     .reduce((sum, ps) => sum + Number(ps.amount), 0);
   const unpaidCount = privateSessions.filter((ps) => !ps.paid).length;
 

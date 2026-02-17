@@ -78,7 +78,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
     0
   );
   const privateRevenue = privateSessions.reduce(
-    (sum, ps) => sum + Number(ps.amount || 0),
+    (sum, ps) => sum + (ps.amount ? Number(ps.amount) : 0),
     0
   );
   const totalRevenue = membershipRevenue + privateRevenue;
