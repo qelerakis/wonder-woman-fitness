@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useId, useCallback } from "react";
+import { useState, useRef, useEffect, useId, useCallback, useMemo } from "react";
 import {
   format,
   parse,
@@ -73,9 +73,9 @@ function DatePicker({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
-  const selectedDate = parseDate(value);
-  const minDate = min ? parseDate(min) : null;
-  const maxDate = max ? parseDate(max) : null;
+  const selectedDate = useMemo(() => parseDate(value), [value]);
+  const minDate = useMemo(() => (min ? parseDate(min) : null), [min]);
+  const maxDate = useMemo(() => (max ? parseDate(max) : null), [max]);
 
   // Sync viewDate when value changes externally
   useEffect(() => {
@@ -103,19 +103,45 @@ function DatePicker({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
 
-  // Close on Escape
+  // Close on Escape (stopPropagation prevents parent modal from closing too)
   useEffect(() => {
     if (!isOpen) return;
 
     function handleKeyDown(e: KeyboardEvent): void {
       if (e.key === "Escape") {
+        e.stopPropagation();
         setIsOpen(false);
         setFocusedDate(null);
+        triggerRef.current?.focus();
       }
     }
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen]);
+
+  // Close on scroll/resize to prevent stale fixed positioning
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const close = (): void => {
+      setIsOpen(false);
+      setFocusedDate(null);
+    };
+
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [isOpen]);
+
+  // Focus the grid when dropdown opens
+  useEffect(() => {
+    if (isOpen && gridRef.current) {
+      gridRef.current.focus();
+    }
   }, [isOpen]);
 
   const isDayDisabled = useCallback(
@@ -133,6 +159,7 @@ function DatePicker({
       onChange(formatISO(date));
       setIsOpen(false);
       setFocusedDate(null);
+      triggerRef.current?.focus();
     },
     [onChange, isDayDisabled]
   );
@@ -145,6 +172,7 @@ function DatePicker({
     setViewDate(target);
     setIsOpen(false);
     setFocusedDate(null);
+    triggerRef.current?.focus();
   }, [onChange, isDayDisabled, selectedDate]);
 
   const handleGridKeyDown = useCallback(
@@ -189,16 +217,14 @@ function DatePicker({
     [focusedDate, selectedDate, viewDate, isDayDisabled, handleSelectDay]
   );
 
-  // Generate calendar days for the current view month
-  const monthStart = startOfMonth(viewDate);
-  const monthEnd = endOfMonth(viewDate);
-  // Week starts on Monday (weekStartsOn: 1)
-  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-  const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
-  const calendarDays = eachDayOfInterval({
-    start: calendarStart,
-    end: calendarEnd,
-  });
+  // Generate calendar days for the current view month (memoized)
+  const calendarDays = useMemo(() => {
+    const monthStart = startOfMonth(viewDate);
+    const monthEnd = endOfMonth(viewDate);
+    const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+    const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+    return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+  }, [viewDate]);
 
   const displayValue = selectedDate
     ? format(selectedDate, "MMM d, yyyy")

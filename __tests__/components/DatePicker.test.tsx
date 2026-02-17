@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { DatePicker } from "@/components/ui/DatePicker";
 
 // ===== Helpers =====
@@ -451,5 +451,452 @@ describe("DatePicker", () => {
 
     const helpEl = screen.getByText("Pick a date");
     expect(helpEl.id).toBe(describedBy);
+  });
+
+  // ─── Keyboard Navigation ─────────────────────────────────
+
+  describe("keyboard navigation", () => {
+    it("ArrowRight moves focus to the next day", () => {
+      render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
+      openCalendar();
+
+      const grid = screen.getByRole("grid");
+      fireEvent.keyDown(grid, { key: "ArrowRight" });
+
+      // Focused date should now be Feb 18 — verify via visual highlight
+      const feb18 = screen.getByLabelText("Wednesday, February 18, 2026");
+      expect(feb18.className).toContain("bg-surface-700");
+    });
+
+    it("ArrowLeft moves focus to the previous day", () => {
+      render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
+      openCalendar();
+
+      const grid = screen.getByRole("grid");
+      fireEvent.keyDown(grid, { key: "ArrowLeft" });
+
+      const feb16 = screen.getByLabelText("Monday, February 16, 2026");
+      expect(feb16.className).toContain("bg-surface-700");
+    });
+
+    it("ArrowDown moves focus down one week (7 days)", () => {
+      render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
+      openCalendar();
+
+      const grid = screen.getByRole("grid");
+      fireEvent.keyDown(grid, { key: "ArrowDown" });
+
+      const feb24 = screen.getByLabelText("Tuesday, February 24, 2026");
+      expect(feb24.className).toContain("bg-surface-700");
+    });
+
+    it("ArrowUp moves focus up one week (7 days)", () => {
+      render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
+      openCalendar();
+
+      const grid = screen.getByRole("grid");
+      fireEvent.keyDown(grid, { key: "ArrowUp" });
+
+      const feb10 = screen.getByLabelText("Tuesday, February 10, 2026");
+      expect(feb10.className).toContain("bg-surface-700");
+    });
+
+    it("Enter on focused date selects it and calls onChange", () => {
+      const onChange = vi.fn();
+      render(<DatePicker value="2026-02-17" onChange={onChange} />);
+      openCalendar();
+
+      const grid = screen.getByRole("grid");
+      // Move focus right to Feb 18
+      fireEvent.keyDown(grid, { key: "ArrowRight" });
+      // Press Enter to select
+      fireEvent.keyDown(grid, { key: "Enter" });
+
+      expect(onChange).toHaveBeenCalledWith("2026-02-18");
+    });
+
+    it("Space on focused date selects it and calls onChange", () => {
+      const onChange = vi.fn();
+      render(<DatePicker value="2026-02-17" onChange={onChange} />);
+      openCalendar();
+
+      const grid = screen.getByRole("grid");
+      // Move focus right to Feb 18
+      fireEvent.keyDown(grid, { key: "ArrowRight" });
+      // Press Space to select
+      fireEvent.keyDown(grid, { key: " " });
+
+      expect(onChange).toHaveBeenCalledWith("2026-02-18");
+    });
+
+    it("arrow navigation across month boundary updates the view month", () => {
+      // Feb 28, 2026 is the last day of February
+      render(<DatePicker value="2026-02-28" onChange={vi.fn()} />);
+      fireEvent.click(screen.getByText("Feb 28, 2026"));
+      expect(screen.getByText("February 2026")).toBeTruthy();
+
+      const grid = screen.getByRole("grid");
+      // ArrowRight from Feb 28 goes to Mar 1
+      fireEvent.keyDown(grid, { key: "ArrowRight" });
+
+      // View should switch to March
+      expect(screen.getByText("March 2026")).toBeTruthy();
+    });
+
+    it("arrow keys call preventDefault to avoid scroll", () => {
+      render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
+      openCalendar();
+
+      const grid = screen.getByRole("grid");
+
+      // fireEvent.keyDown creates and dispatches a real DOM event.
+      // React's onKeyDown handler calls e.preventDefault() on arrow keys.
+      // After dispatching, we can check the returned event's defaultPrevented.
+      const prevented = fireEvent.keyDown(grid, { key: "ArrowRight" });
+      // fireEvent returns false when preventDefault was called
+      expect(prevented).toBe(false);
+    });
+
+    it("keyboard navigation does NOT select disabled dates with Enter", () => {
+      const onChange = vi.fn();
+      // min is Feb 17, value is Feb 17
+      render(
+        <DatePicker value="2026-02-17" onChange={onChange} min="2026-02-17" />
+      );
+      openCalendar();
+
+      const grid = screen.getByRole("grid");
+      // Move focus left to Feb 16 (disabled because before min)
+      fireEvent.keyDown(grid, { key: "ArrowLeft" });
+      // Try to select with Enter
+      fireEvent.keyDown(grid, { key: "Enter" });
+
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("keyboard navigation does NOT select disabled dates with Space", () => {
+      const onChange = vi.fn();
+      render(
+        <DatePicker value="2026-02-17" onChange={onChange} max="2026-02-17" />
+      );
+      openCalendar();
+
+      const grid = screen.getByRole("grid");
+      // Move focus right to Feb 18 (disabled because after max)
+      fireEvent.keyDown(grid, { key: "ArrowRight" });
+      // Try to select with Space
+      fireEvent.keyDown(grid, { key: " " });
+
+      expect(onChange).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── Focus Management ──────────────────────────────────────
+
+  describe("focus management", () => {
+    it("grid receives focus when dropdown opens", () => {
+      render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
+      openCalendar();
+
+      const grid = screen.getByRole("grid");
+      expect(document.activeElement).toBe(grid);
+    });
+
+    it("focus returns to trigger button after selecting a date", () => {
+      const onChange = vi.fn();
+      render(<DatePicker value="" onChange={onChange} />);
+      openCalendar();
+
+      const feb20 = screen.getByLabelText("Friday, February 20, 2026");
+      fireEvent.click(feb20);
+
+      const trigger = screen.getByRole("button");
+      expect(document.activeElement).toBe(trigger);
+    });
+
+    it("focus returns to trigger button after pressing Escape", () => {
+      render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
+      openCalendar();
+
+      fireEvent.keyDown(document, { key: "Escape" });
+
+      const trigger = screen.getByRole("button");
+      expect(document.activeElement).toBe(trigger);
+    });
+
+    it("focus returns to trigger button after +1 Month shortcut", () => {
+      render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
+      openCalendar();
+
+      fireEvent.click(screen.getByText("+1 Month"));
+
+      const trigger = screen.getByRole("button");
+      expect(document.activeElement).toBe(trigger);
+    });
+  });
+
+  // ─── Escape Key Behavior ───────────────────────────────────
+
+  describe("Escape key behavior", () => {
+    it("Escape calls stopPropagation on the event", () => {
+      render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
+      openCalendar();
+
+      const escEvent = new KeyboardEvent("keydown", {
+        key: "Escape",
+        bubbles: true,
+        cancelable: true,
+      });
+      const stopSpy = vi.spyOn(escEvent, "stopPropagation");
+
+      act(() => {
+        document.dispatchEvent(escEvent);
+      });
+
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(stopSpy).toHaveBeenCalled();
+    });
+  });
+
+  // ─── +1 Month Edge Cases ───────────────────────────────────
+
+  describe("+1 Month edge cases", () => {
+    it("+1 Month with no value set uses today as base", () => {
+      const onChange = vi.fn();
+      // No value set — today is Feb 17, 2026
+      render(<DatePicker value="" onChange={onChange} />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Select a date" }));
+      fireEvent.click(screen.getByText("+1 Month"));
+
+      // Today (Feb 17) + 1 month = Mar 17
+      expect(onChange).toHaveBeenCalledWith("2026-03-17");
+    });
+
+    it("+1 Month on Jan 31 produces Feb 28 (date-fns wraps correctly)", () => {
+      const onChange = vi.fn();
+      render(<DatePicker value="2026-01-31" onChange={onChange} />);
+
+      fireEvent.click(screen.getByText("Jan 31, 2026"));
+      fireEvent.click(screen.getByText("+1 Month"));
+
+      // date-fns addMonths(Jan 31, 1) => Feb 28, 2026 (non-leap year)
+      expect(onChange).toHaveBeenCalledWith("2026-02-28");
+    });
+
+    it("+1 Month when target is within min/max range works", () => {
+      const onChange = vi.fn();
+      render(
+        <DatePicker
+          value="2026-02-17"
+          onChange={onChange}
+          min="2026-01-01"
+          max="2026-12-31"
+        />
+      );
+
+      fireEvent.click(screen.getByText("Feb 17, 2026"));
+      fireEvent.click(screen.getByText("+1 Month"));
+
+      expect(onChange).toHaveBeenCalledWith("2026-03-17");
+    });
+  });
+
+  // ─── Clicking Days Outside Current Month ────────────────────
+
+  describe("clicking days outside current month", () => {
+    it("clicking a day from the previous month selects it and navigates to that month", () => {
+      const onChange = vi.fn();
+      // Feb 2026 starts on Sunday, calendar starts on Mon Jan 26
+      render(<DatePicker value="2026-02-17" onChange={onChange} />);
+      openCalendar();
+
+      const jan26 = screen.getByLabelText("Monday, January 26, 2026");
+      fireEvent.click(jan26);
+
+      expect(onChange).toHaveBeenCalledWith("2026-01-26");
+    });
+
+    it("clicking a day from the next month selects it and navigates to that month", () => {
+      const onChange = vi.fn();
+      render(<DatePicker value="2026-02-17" onChange={onChange} />);
+      openCalendar();
+
+      // Feb 2026 ends on Saturday Feb 28. Calendar continues to Sunday Mar 1
+      const mar1 = screen.getByLabelText("Sunday, March 1, 2026");
+      fireEvent.click(mar1);
+
+      expect(onChange).toHaveBeenCalledWith("2026-03-01");
+    });
+  });
+
+  // ─── Min/Max Boundary Precision ─────────────────────────────
+
+  describe("min/max boundary precision", () => {
+    it("min date itself is selectable (not disabled)", () => {
+      const onChange = vi.fn();
+      render(
+        <DatePicker value="" onChange={onChange} min="2026-02-15" />
+      );
+      openCalendar();
+
+      const minDay = screen.getByLabelText("Sunday, February 15, 2026");
+      expect(minDay).toHaveProperty("disabled", false);
+      fireEvent.click(minDay);
+      expect(onChange).toHaveBeenCalledWith("2026-02-15");
+    });
+
+    it("max date itself is selectable (not disabled)", () => {
+      const onChange = vi.fn();
+      render(
+        <DatePicker value="" onChange={onChange} max="2026-02-20" />
+      );
+      openCalendar();
+
+      const maxDay = screen.getByLabelText("Friday, February 20, 2026");
+      expect(maxDay).toHaveProperty("disabled", false);
+      fireEvent.click(maxDay);
+      expect(onChange).toHaveBeenCalledWith("2026-02-20");
+    });
+
+    it("day exactly one day before min is disabled", () => {
+      const onChange = vi.fn();
+      render(
+        <DatePicker value="" onChange={onChange} min="2026-02-15" />
+      );
+      openCalendar();
+
+      const dayBeforeMin = screen.getByLabelText(
+        "Saturday, February 14, 2026"
+      );
+      expect(dayBeforeMin).toHaveProperty("disabled", true);
+      fireEvent.click(dayBeforeMin);
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("day exactly one day after max is disabled", () => {
+      const onChange = vi.fn();
+      render(
+        <DatePicker value="" onChange={onChange} max="2026-02-20" />
+      );
+      openCalendar();
+
+      const dayAfterMax = screen.getByLabelText(
+        "Saturday, February 21, 2026"
+      );
+      expect(dayAfterMax).toHaveProperty("disabled", true);
+      fireEvent.click(dayAfterMax);
+      expect(onChange).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── External Value Changes ─────────────────────────────────
+
+  describe("external value changes", () => {
+    it("when value prop changes externally, the view month updates", () => {
+      const { rerender } = render(
+        <DatePicker value="2026-02-17" onChange={vi.fn()} />
+      );
+      fireEvent.click(screen.getByText("Feb 17, 2026"));
+      expect(screen.getByText("February 2026")).toBeTruthy();
+
+      // Close calendar to reopen with new value
+      fireEvent.keyDown(document, { key: "Escape" });
+
+      // Change value to a March date
+      rerender(<DatePicker value="2026-03-10" onChange={vi.fn()} />);
+      fireEvent.click(screen.getByText("Mar 10, 2026"));
+
+      expect(screen.getByText("March 2026")).toBeTruthy();
+    });
+
+    it("when value changes from one month to another, calendar shows new month", () => {
+      const { rerender } = render(
+        <DatePicker value="2026-01-15" onChange={vi.fn()} />
+      );
+      fireEvent.click(screen.getByText("Jan 15, 2026"));
+      expect(screen.getByText("January 2026")).toBeTruthy();
+
+      fireEvent.keyDown(document, { key: "Escape" });
+
+      rerender(<DatePicker value="2026-06-20" onChange={vi.fn()} />);
+      fireEvent.click(screen.getByText("Jun 20, 2026"));
+
+      expect(screen.getByText("June 2026")).toBeTruthy();
+    });
+  });
+
+  // ─── Close on Scroll/Resize ─────────────────────────────────
+
+  describe("close on scroll/resize", () => {
+    it("dropdown closes when window scroll event fires", () => {
+      render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
+      openCalendar();
+      expect(screen.getByRole("dialog")).toBeTruthy();
+
+      // The component listens with capture: true, so dispatch on window
+      act(() => {
+        window.dispatchEvent(new Event("scroll"));
+      });
+
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("dropdown closes when window resize event fires", () => {
+      render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
+      openCalendar();
+      expect(screen.getByRole("dialog")).toBeTruthy();
+
+      act(() => {
+        window.dispatchEvent(new Event("resize"));
+      });
+
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+  });
+
+  // ─── Invalid Value Handling ─────────────────────────────────
+
+  describe("invalid value handling", () => {
+    it("invalid date string shows placeholder", () => {
+      render(
+        <DatePicker
+          value="not-a-date"
+          onChange={vi.fn()}
+          placeholder="Select a date"
+        />
+      );
+
+      expect(screen.getByText("Select a date")).toBeTruthy();
+    });
+
+    it("empty string shows placeholder", () => {
+      render(
+        <DatePicker
+          value=""
+          onChange={vi.fn()}
+          placeholder="Choose one"
+        />
+      );
+
+      expect(screen.getByText("Choose one")).toBeTruthy();
+    });
+  });
+
+  // ─── Label Association ──────────────────────────────────────
+
+  describe("label association", () => {
+    it("label's htmlFor matches trigger button's id", () => {
+      render(
+        <DatePicker label="Start Date" value="" onChange={vi.fn()} />
+      );
+
+      const label = screen.getByText("Start Date");
+      const htmlFor = label.getAttribute("for");
+      expect(htmlFor).toBeTruthy();
+
+      const trigger = screen.getByRole("button", { name: "Start Date" });
+      expect(trigger.id).toBe(htmlFor);
+    });
   });
 });

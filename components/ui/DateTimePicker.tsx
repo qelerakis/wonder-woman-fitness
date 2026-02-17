@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useId, useCallback } from "react";
+import { useState, useRef, useEffect, useId, useCallback, useMemo } from "react";
 import {
   format,
   parse,
@@ -99,7 +99,7 @@ function DateTimePicker({
   const errorId = `${triggerId}-error`;
   const helpId = `${triggerId}-help`;
 
-  const parsed = parseDateTimeValue(value);
+  const parsed = useMemo(() => parseDateTimeValue(value), [value]);
 
   const [isOpen, setIsOpen] = useState(false);
   const [viewDate, setViewDate] = useState<Date>(() => {
@@ -116,8 +116,8 @@ function DateTimePicker({
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
   const selectedDate = parsed.date;
-  const minDate = min ? parseDateOnly(min) : null;
-  const maxDate = max ? parseDateOnly(max) : null;
+  const minDate = useMemo(() => (min ? parseDateOnly(min) : null), [min]);
+  const maxDate = useMemo(() => (max ? parseDateOnly(max) : null), [max]);
 
   // Sync state when value changes externally
   useEffect(() => {
@@ -139,6 +139,7 @@ function DateTimePicker({
     }
     setIsOpen(false);
     setFocusedDate(null);
+    triggerRef.current?.focus();
   }, [pendingDate, selectedHour, selectedMinute, onChange]);
 
   // Close on outside click — auto-confirms pending selection
@@ -169,24 +170,56 @@ function DateTimePicker({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen, pendingDate, selectedHour, selectedMinute, onChange]);
 
-  // Close on Escape — without confirming
+  // Close on Escape — without confirming (stopPropagation prevents parent modal from closing too)
   useEffect(() => {
     if (!isOpen) return;
 
     function handleKeyDown(e: KeyboardEvent): void {
       if (e.key === "Escape") {
+        e.stopPropagation();
         setIsOpen(false);
         setFocusedDate(null);
         // Reset pending date to the currently committed value
         setPendingDate(selectedDate);
         setSelectedHour(parsed.hour);
         setSelectedMinute(parsed.minute);
+        triggerRef.current?.focus();
       }
     }
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, selectedDate, parsed.hour, parsed.minute]);
+
+  // Close on scroll/resize to prevent stale fixed positioning
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const close = (): void => {
+      // Auto-confirm pending selection on scroll/resize
+      if (pendingDate) {
+        onChange(
+          formatDateTime(formatISODate(pendingDate), selectedHour, selectedMinute)
+        );
+      }
+      setIsOpen(false);
+      setFocusedDate(null);
+    };
+
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    return () => {
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+    };
+  }, [isOpen, pendingDate, selectedHour, selectedMinute, onChange]);
+
+  // Focus the grid when dropdown opens
+  useEffect(() => {
+    if (isOpen && gridRef.current) {
+      gridRef.current.focus();
+    }
+  }, [isOpen]);
 
   const isDayDisabled = useCallback(
     (date: Date): boolean => {
@@ -205,10 +238,6 @@ function DateTimePicker({
     },
     [isDayDisabled]
   );
-
-  const handleDone = useCallback((): void => {
-    commitAndClose();
-  }, [commitAndClose]);
 
   const handleGridKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>): void => {
@@ -252,16 +281,14 @@ function DateTimePicker({
     [focusedDate, pendingDate, selectedDate, viewDate, isDayDisabled, handleSelectDay]
   );
 
-  // Generate calendar days for the current view month
-  const monthStart = startOfMonth(viewDate);
-  const monthEnd = endOfMonth(viewDate);
-  // Week starts on Monday (weekStartsOn: 1)
-  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-  const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
-  const calendarDays = eachDayOfInterval({
-    start: calendarStart,
-    end: calendarEnd,
-  });
+  // Generate calendar days for the current view month (memoized)
+  const calendarDays = useMemo(() => {
+    const monthStart = startOfMonth(viewDate);
+    const monthEnd = endOfMonth(viewDate);
+    const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+    const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+    return eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+  }, [viewDate]);
 
   const displayValue = selectedDate
     ? format(selectedDate, "MMM d, yyyy") +
@@ -526,7 +553,7 @@ function DateTimePicker({
               <div className="mt-2">
                 <button
                   type="button"
-                  onClick={handleDone}
+                  onClick={commitAndClose}
                   disabled={!pendingDate}
                   className="w-full rounded-md bg-primary-600 py-1 text-xs font-semibold text-white hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
