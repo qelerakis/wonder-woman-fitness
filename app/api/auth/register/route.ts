@@ -18,6 +18,10 @@ export async function POST(req: Request): Promise<Response> {
 
     const { name, phone, email, password } = parsed.data;
 
+    // Hash password first to ensure constant-time response regardless of
+    // whether the email exists (prevents timing-based email enumeration)
+    const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+
     // Check if email already exists
     const existingUser = await prisma.user.findUnique({
       where: { email: email.toLowerCase() },
@@ -30,9 +34,6 @@ export async function POST(req: Request): Promise<Response> {
         { status: 400 }
       );
     }
-
-    // Hash password
-    const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
     // Create user with TRIAL status
     const now = new Date();
