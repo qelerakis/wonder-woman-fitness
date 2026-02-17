@@ -72,6 +72,7 @@ const navLinks: Record<UserRole, NavLink[]> = {
   ],
   TRAINER: [
     { href: "/my-schedule", label: "My Schedule", icon: icons.schedule },
+    { href: "/trainer/payments", label: "Payments", icon: icons.payments },
     { href: "/trainer/private-sessions", label: "Private Sessions", icon: icons.privateSessions },
     { href: "/trainer/notifications", label: "Notifications", icon: icons.notifications },
   ],
