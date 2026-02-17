@@ -204,13 +204,6 @@ function DateTimePicker({
     [isDayDisabled]
   );
 
-  const handleSelectToday = useCallback((): void => {
-    const today = new Date();
-    if (isDayDisabled(today)) return;
-    setPendingDate(today);
-    setViewDate(today);
-  }, [isDayDisabled]);
-
   const handleDone = useCallback((): void => {
     commitAndClose();
   }, [commitAndClose]);
