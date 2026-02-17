@@ -52,6 +52,14 @@ export function PrivateSessionsClient({
   const [notes, setNotes] = useState("");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
+  // Month filter state
+  const [viewMode, setViewMode] = useState<"all" | "month">("all");
+  const [viewMonth, setViewMonth] = useState(() => new Date().getMonth());
+  const [viewYear, setViewYear] = useState(() => new Date().getFullYear());
+  const [filteredSessions, setFilteredSessions] = useState<PrivateSessionItem[]>(sessions);
+  const [filteredSummary, setFilteredSummary] = useState<PrivateSessionsSummary>(summary);
+  const [filterLoading, setFilterLoading] = useState(false);
+
   function resetForm(): void {
     setClientName("");
     setScheduledAt("");
@@ -60,6 +68,87 @@ export function PrivateSessionsClient({
     setExerciseDetails("");
     setNotes("");
     setFormErrors({});
+  }
+
+  function computeSummary(data: PrivateSessionItem[]): PrivateSessionsSummary {
+    const now = new Date();
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const totalRevenue = data
+      .filter((ps) => ps.paid && ps.amount != null && ps.amount > 0)
+      .reduce((sum, ps) => sum + ps.amount, 0);
+    const thisMonthRevenue = data
+      .filter(
+        (ps) => ps.paid && ps.amount != null && ps.amount > 0 && new Date(ps.scheduledAt) >= thisMonthStart
+      )
+      .reduce((sum, ps) => sum + ps.amount, 0);
+    const unpaidCount = data.filter((ps) => !ps.paid).length;
+    return { totalRevenue, thisMonthRevenue, unpaidCount, totalSessions: data.length };
+  }
+
+  async function fetchByMonth(month: number, year: number): Promise<void> {
+    setFilterLoading(true);
+    try {
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const startDate = `${year}-${String(month + 1).padStart(2, "0")}-01T00:00:00.000Z`;
+      const endDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}T23:59:59.999Z`;
+      const res = await fetch(`/api/private-sessions?startDate=${startDate}&endDate=${endDate}`);
+      if (res.ok) {
+        const json: { data: Array<Record<string, unknown>> } = await res.json();
+        const data: PrivateSessionItem[] = json.data.map((ps) => ({
+          id: ps.id as string,
+          clientName: ps.clientName as string,
+          scheduledAt: ps.scheduledAt as string,
+          paid: ps.paid as boolean,
+          amount: Number(ps.amount ?? 0),
+          exerciseDetails: (ps.exerciseDetails as string | null) ?? null,
+          notes: (ps.notes as string | null) ?? null,
+          createdBy: ((ps.createdBy as { name: string }) ?? { name: "" }).name,
+        }));
+        setFilteredSessions(data);
+        setFilteredSummary(computeSummary(data));
+      } else {
+        addToast({ type: "error", title: "Failed to load sessions" });
+      }
+    } catch {
+      addToast({ type: "error", title: "Network error" });
+    } finally {
+      setFilterLoading(false);
+    }
+  }
+
+  function handleShowAll(): void {
+    setViewMode("all");
+    setFilteredSessions(sessions);
+    setFilteredSummary(summary);
+  }
+
+  function handleShowMonth(): void {
+    const month = new Date().getMonth();
+    const year = new Date().getFullYear();
+    setViewMode("month");
+    setViewMonth(month);
+    setViewYear(year);
+    fetchByMonth(month, year);
+  }
+
+  function handlePrevMonth(): void {
+    let newMonth = viewMonth - 1;
+    let newYear = viewYear;
+    if (newMonth < 0) { newMonth = 11; newYear -= 1; }
+    setViewMonth(newMonth);
+    setViewYear(newYear);
+    fetchByMonth(newMonth, newYear);
+  }
+
+  function handleNextMonth(): void {
+    const now = new Date();
+    if (viewMonth === now.getMonth() && viewYear === now.getFullYear()) return;
+    let newMonth = viewMonth + 1;
+    let newYear = viewYear;
+    if (newMonth > 11) { newMonth = 0; newYear += 1; }
+    setViewMonth(newMonth);
+    setViewYear(newYear);
+    fetchByMonth(newMonth, newYear);
   }
 
   async function handleCreate(e: React.FormEvent): Promise<void> {
@@ -147,9 +236,59 @@ export function PrivateSessionsClient({
           <h1 className="text-2xl font-bold text-surface-100">
             Private Sessions
           </h1>
-          <p className="mt-1 text-sm text-surface-400">
-            Track 1-on-1 sessions and revenue
-          </p>
+          <div className="mt-1 flex items-center gap-2">
+            {viewMode === "month" ? (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={handlePrevMonth}
+                  disabled={filterLoading}
+                  className="rounded p-0.5 text-surface-400 transition-colors hover:text-surface-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                  aria-label="Previous month"
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </button>
+                <span className="text-sm text-surface-400">
+                  {format(new Date(viewYear, viewMonth, 1), "MMMM yyyy")}
+                </span>
+                <button
+                  onClick={handleNextMonth}
+                  disabled={filterLoading || (viewMonth === new Date().getMonth() && viewYear === new Date().getFullYear())}
+                  className="rounded p-0.5 text-surface-400 transition-colors hover:text-surface-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                  aria-label="Next month"
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              <p className="text-sm text-surface-400">All sessions</p>
+            )}
+            <div className="flex gap-1">
+              <button
+                onClick={handleShowAll}
+                className={`rounded px-2 py-0.5 text-xs font-medium transition-colors ${
+                  viewMode === "all"
+                    ? "bg-primary-900/50 text-primary-300"
+                    : "text-surface-500 hover:text-surface-300"
+                }`}
+              >
+                All
+              </button>
+              <button
+                onClick={handleShowMonth}
+                className={`rounded px-2 py-0.5 text-xs font-medium transition-colors ${
+                  viewMode === "month"
+                    ? "bg-primary-900/50 text-primary-300"
+                    : "text-surface-500 hover:text-surface-300"
+                }`}
+              >
+                Monthly
+              </button>
+            </div>
+          </div>
         </div>
         <Button
           variant="primary"
@@ -161,13 +300,13 @@ export function PrivateSessionsClient({
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className={`grid grid-cols-2 gap-4 lg:grid-cols-4 transition-opacity ${filterLoading ? "opacity-50" : ""}`}>
         <Card>
           <p className="text-xs font-medium uppercase tracking-wide text-surface-500">
             This Month
           </p>
           <p className="mt-1 text-xl font-bold text-surface-100">
-            {formatCurrency(summary.thisMonthRevenue)}
+            {formatCurrency(filteredSummary.thisMonthRevenue)}
           </p>
         </Card>
         <Card>
@@ -175,7 +314,7 @@ export function PrivateSessionsClient({
             All Time
           </p>
           <p className="mt-1 text-xl font-bold text-surface-100">
-            {formatCurrency(summary.totalRevenue)}
+            {formatCurrency(filteredSummary.totalRevenue)}
           </p>
         </Card>
         <Card>
@@ -183,7 +322,7 @@ export function PrivateSessionsClient({
             Total Sessions
           </p>
           <p className="mt-1 text-xl font-bold text-surface-100">
-            {summary.totalSessions}
+            {filteredSummary.totalSessions}
           </p>
         </Card>
         <Card>
@@ -192,10 +331,10 @@ export function PrivateSessionsClient({
           </p>
           <p
             className={`mt-1 text-xl font-bold ${
-              summary.unpaidCount > 0 ? "text-warning-400" : "text-surface-100"
+              filteredSummary.unpaidCount > 0 ? "text-warning-400" : "text-surface-100"
             }`}
           >
-            {summary.unpaidCount}
+            {filteredSummary.unpaidCount}
           </p>
         </Card>
       </div>
@@ -205,11 +344,11 @@ export function PrivateSessionsClient({
         <div className="px-6 py-4">
           <CardHeader
             title="Sessions"
-            description={`${sessions.length} sessions`}
+            description={`${filteredSessions.length} sessions`}
           />
         </div>
 
-        {sessions.length === 0 ? (
+        {filteredSessions.length === 0 ? (
           <div className="py-12 text-center">
             <p className="text-sm text-surface-500">
               No private sessions recorded yet
@@ -238,7 +377,7 @@ export function PrivateSessionsClient({
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-700/50">
-                {sessions.map((ps) => (
+                {filteredSessions.map((ps) => (
                   <tr
                     key={ps.id}
                     className="transition-colors hover:bg-surface-800/80"
