@@ -117,6 +117,8 @@ export async function POST(req: Request): Promise<Response> {
             sessionId: { not: sessionId },
             session: {
               weekDate: targetSession.weekDate,
+              // Exclude cancelled sessions — votes on them shouldn't block new same-day votes
+              status: { not: "CANCELLED" },
               OR: [
                 { recurringSlot: { dayOfWeek: targetDay } },
                 { customDay: targetDay },

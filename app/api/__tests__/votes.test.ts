@@ -700,6 +700,254 @@ describe("POST /api/votes", () => {
     expect(body.error).toContain("already");
   });
 
+  it("allows Coming vote when existing Coming vote is on a cancelled session same day", async () => {
+    mockAuth.mockResolvedValue(memberSession("member-1"));
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "cm9876543210abcdef",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      votingDeadline: new Date("2099-01-01"),
+      weekDate: new Date("2026-03-09"),
+      recurringSlot: { dayOfWeek: 1, startHour: 11 },
+      customDay: null,
+    });
+    mockPrisma.vote.count.mockResolvedValue(5);
+    // findFirst returns null because cancelled sessions are excluded from query
+    mockPrisma.vote.findFirst.mockResolvedValue(null);
+    mockPrisma.vote.upsert.mockResolvedValue({
+      id: "v-after-cancel",
+      sessionId: "cm9876543210abcdef",
+      userId: "member-1",
+      attending: true,
+      votedAt: new Date(),
+    });
+
+    const { POST } = await import("@/app/api/votes/route");
+    const response = await POST(
+      new Request("http://localhost/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "cm9876543210abcdef",
+          attending: true,
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(body.data.attending).toBe(true);
+    // Verify the query excludes cancelled sessions
+    expect(mockPrisma.vote.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          session: expect.objectContaining({
+            status: { not: "CANCELLED" },
+          }),
+        }),
+      })
+    );
+  });
+
+  it("allows Coming vote on custom (one-off) session when prior Coming was on a cancelled custom session same day", async () => {
+    mockAuth.mockResolvedValue(memberSession("member-1"));
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "cm2custom0new0oneoff",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      votingDeadline: new Date("2099-01-01"),
+      weekDate: new Date("2026-03-09"),
+      recurringSlot: null, // one-off session
+      customDay: 3, // Wednesday
+    });
+    mockPrisma.vote.count.mockResolvedValue(5);
+    // findFirst returns null — the only existing Coming vote was on a cancelled custom session
+    mockPrisma.vote.findFirst.mockResolvedValue(null);
+    mockPrisma.vote.upsert.mockResolvedValue({
+      id: "v-custom-after-cancel",
+      sessionId: "cm2custom0new0oneoff",
+      userId: "member-1",
+      attending: true,
+      votedAt: new Date(),
+    });
+
+    const { POST } = await import("@/app/api/votes/route");
+    const response = await POST(
+      new Request("http://localhost/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "cm2custom0new0oneoff",
+          attending: true,
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(body.data.attending).toBe(true);
+    // Verify findFirst query excludes cancelled sessions for custom day sessions too
+    expect(mockPrisma.vote.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          session: expect.objectContaining({
+            status: { not: "CANCELLED" },
+          }),
+        }),
+      })
+    );
+  });
+
+  it("still blocks Coming vote when existing Coming is on a non-cancelled session same day", async () => {
+    mockAuth.mockResolvedValue(memberSession("member-1"));
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "cm0new0session0today",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      votingDeadline: new Date("2099-01-01"),
+      weekDate: new Date("2026-03-09"),
+      recurringSlot: { dayOfWeek: 1, startHour: 14 },
+      customDay: null,
+    });
+    mockPrisma.vote.count.mockResolvedValue(5);
+    // findFirst returns a vote — existing Coming on a SCHEDULED (not cancelled) session
+    mockPrisma.vote.findFirst.mockResolvedValue({
+      id: "existing-active-vote",
+      sessionId: "cm0other0active0ses",
+      userId: "member-1",
+      attending: true,
+    });
+
+    const { POST } = await import("@/app/api/votes/route");
+    const response = await POST(
+      new Request("http://localhost/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "cm0new0session0today",
+          attending: true,
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toContain("already");
+  });
+
+  it("blocks Coming vote when existing Coming is on a COMPLETED session same day (not cancelled)", async () => {
+    mockAuth.mockResolvedValue(memberSession("member-1"));
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "cm0new0session0today",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      votingDeadline: new Date("2099-01-01"),
+      weekDate: new Date("2026-03-09"),
+      recurringSlot: { dayOfWeek: 1, startHour: 16 },
+      customDay: null,
+    });
+    mockPrisma.vote.count.mockResolvedValue(3);
+    // findFirst returns a vote — COMPLETED sessions are NOT excluded (only CANCELLED are)
+    mockPrisma.vote.findFirst.mockResolvedValue({
+      id: "existing-completed-vote",
+      sessionId: "cm0completed0sesion",
+      userId: "member-1",
+      attending: true,
+    });
+
+    const { POST } = await import("@/app/api/votes/route");
+    const response = await POST(
+      new Request("http://localhost/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "cm0new0session0today",
+          attending: true,
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toContain("already");
+  });
+
+  it("allows Coming vote when multiple cancelled sessions exist on same day", async () => {
+    mockAuth.mockResolvedValue(memberSession("member-1"));
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "cm0new0session0third",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      votingDeadline: new Date("2099-01-01"),
+      weekDate: new Date("2026-03-09"),
+      recurringSlot: { dayOfWeek: 1, startHour: 17 },
+      customDay: null,
+    });
+    mockPrisma.vote.count.mockResolvedValue(2);
+    // findFirst returns null — both existing Coming votes were on cancelled sessions
+    mockPrisma.vote.findFirst.mockResolvedValue(null);
+    mockPrisma.vote.upsert.mockResolvedValue({
+      id: "v-after-multi-cancel",
+      sessionId: "cm0new0session0third",
+      userId: "member-1",
+      attending: true,
+      votedAt: new Date(),
+    });
+
+    const { POST } = await import("@/app/api/votes/route");
+    const response = await POST(
+      new Request("http://localhost/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "cm0new0session0third",
+          attending: true,
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(body.data.attending).toBe(true);
+  });
+
+  it("blocks Coming vote when one cancelled and one active Coming vote exist on same day", async () => {
+    mockAuth.mockResolvedValue(memberSession("member-1"));
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "cm0yet0another0sess",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      votingDeadline: new Date("2099-01-01"),
+      weekDate: new Date("2026-03-09"),
+      recurringSlot: { dayOfWeek: 1, startHour: 18 },
+      customDay: null,
+    });
+    mockPrisma.vote.count.mockResolvedValue(5);
+    // findFirst returns a vote — one cancelled session is filtered out, but an active one remains
+    mockPrisma.vote.findFirst.mockResolvedValue({
+      id: "existing-active-vote",
+      sessionId: "cm0still0active0ses",
+      userId: "member-1",
+      attending: true,
+    });
+
+    const { POST } = await import("@/app/api/votes/route");
+    const response = await POST(
+      new Request("http://localhost/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "cm0yet0another0sess",
+          attending: true,
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toContain("already");
+  });
+
   it("allows Coming vote on custom session when no existing Coming on that day", async () => {
     mockAuth.mockResolvedValue(memberSession("member-1"));
     mockPrisma.session.findUnique.mockResolvedValue({
@@ -816,6 +1064,7 @@ describe("POST /api/votes", () => {
         sessionId: { not: "cm2target0session0b" },
         session: {
           weekDate: new Date("2026-03-09"),
+          status: { not: "CANCELLED" },
           OR: [
             { recurringSlot: { dayOfWeek: 2 } },
             { customDay: 2 },

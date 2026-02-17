@@ -76,6 +76,8 @@ export default async function MemberSessionDetailPage({
           sessionId: { not: session.id },
           session: {
             weekDate: session.weekDate,
+            // Exclude cancelled sessions — votes on them shouldn't block new same-day votes
+            status: { not: "CANCELLED" },
             OR: [
               { recurringSlot: { dayOfWeek: sessionDay } },
               { customDay: sessionDay },
