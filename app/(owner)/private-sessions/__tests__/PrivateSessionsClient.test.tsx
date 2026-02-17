@@ -21,6 +21,40 @@ vi.mock("@/components/ui/Toast", () => ({
   useToast: () => ({ addToast: mockAddToast }),
 }));
 
+// Mock DatePicker to render a simple input for testing
+vi.mock("@/components/ui/DatePicker", () => ({
+  DatePicker: ({ label, value, onChange, error }: { label?: string; value: string; onChange: (v: string) => void; error?: string }) => (
+    <div>
+      {label && <label htmlFor={label}>{label}</label>}
+      <input
+        id={label}
+        aria-label={label}
+        type="date"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      {error && <span role="alert">{error}</span>}
+    </div>
+  ),
+}));
+
+// Mock DateTimePicker to render a simple input for testing
+vi.mock("@/components/ui/DateTimePicker", () => ({
+  DateTimePicker: ({ label, value, onChange, error }: { label?: string; value: string; onChange: (v: string) => void; error?: string }) => (
+    <div>
+      {label && <label htmlFor={label}>{label}</label>}
+      <input
+        id={label}
+        aria-label={label}
+        type="datetime-local"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      {error && <span role="alert">{error}</span>}
+    </div>
+  ),
+}));
+
 // ===== Helpers =====
 
 function fmtCurrency(n: number): string {
