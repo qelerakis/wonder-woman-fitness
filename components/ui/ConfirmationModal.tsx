@@ -10,7 +10,6 @@ interface ConfirmationModalProps {
   title: string;
   message: string;
   confirmLabel: string;
-  confirmVariant?: "danger";
   loading?: boolean;
 }
 
@@ -21,7 +20,6 @@ export function ConfirmationModal({
   title,
   message,
   confirmLabel,
-  confirmVariant = "danger",
   loading = false,
 }: ConfirmationModalProps): React.ReactElement | null {
   return (
@@ -30,7 +28,7 @@ export function ConfirmationModal({
         <p className="text-sm text-surface-300">{message}</p>
         <div className="flex items-center gap-2">
           <Button
-            variant={confirmVariant}
+            variant="danger"
             size="sm"
             onClick={onConfirm}
             loading={loading}
