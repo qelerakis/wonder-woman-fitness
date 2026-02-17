@@ -6,6 +6,8 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { DateTimePicker } from "@/components/ui/DateTimePicker";
 import { Textarea } from "@/components/ui/Textarea";
 import { useToast } from "@/components/ui/Toast";
 
@@ -256,26 +258,23 @@ export function PaymentHistory({
             onChange={(e) => setEditAmount(e.target.value)}
             error={editErrors.amount}
           />
-          <Input
+          <DateTimePicker
             label="Paid At"
-            type="datetime-local"
             value={editPaidAt}
-            onChange={(e) => setEditPaidAt(e.target.value)}
+            onChange={(v) => setEditPaidAt(v)}
             error={editErrors.paidAt}
           />
           <div className="grid grid-cols-2 gap-3">
-            <Input
+            <DatePicker
               label="Period Start"
-              type="date"
               value={editPeriodStart}
-              onChange={(e) => setEditPeriodStart(e.target.value)}
+              onChange={(v) => setEditPeriodStart(v)}
               error={editErrors.periodStart}
             />
-            <Input
+            <DatePicker
               label="Period End"
-              type="date"
               value={editPeriodEnd}
-              onChange={(e) => setEditPeriodEnd(e.target.value)}
+              onChange={(v) => setEditPeriodEnd(v)}
               error={editErrors.periodEnd}
             />
           </div>

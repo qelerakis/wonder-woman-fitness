@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Input } from "@/components/ui/Input";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { Button } from "@/components/ui/Button";
 import { format, subMonths, startOfMonth, endOfMonth, subWeeks, startOfWeek, endOfWeek } from "date-fns";
 
@@ -103,17 +103,15 @@ export function DateRangeFilter({
 
       {/* Custom date inputs */}
       <div className="flex items-end gap-2">
-        <Input
+        <DatePicker
           label="From"
-          type="date"
           value={localStart}
-          onChange={(e) => setLocalStart(e.target.value)}
+          onChange={(v) => setLocalStart(v)}
         />
-        <Input
+        <DatePicker
           label="To"
-          type="date"
           value={localEnd}
-          onChange={(e) => setLocalEnd(e.target.value)}
+          onChange={(v) => setLocalEnd(v)}
         />
         <Button
           variant="secondary"

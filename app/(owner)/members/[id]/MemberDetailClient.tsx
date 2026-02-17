@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { DateTimePicker } from "@/components/ui/DateTimePicker";
 import { Textarea } from "@/components/ui/Textarea";
 import { PaymentStatusBadge } from "@/components/payment/PaymentStatusBadge";
 import { PaymentHistory } from "@/components/payment/PaymentHistory";
@@ -448,27 +450,24 @@ export function MemberDetailClient(
             error={payErrors.amount}
           />
 
-          <Input
+          <DateTimePicker
             label="Paid At"
-            type="datetime-local"
             value={payDate}
-            onChange={(e) => setPayDate(e.target.value)}
+            onChange={(v) => setPayDate(v)}
             error={payErrors.paidAt}
           />
 
           <div className="grid grid-cols-2 gap-3">
-            <Input
+            <DatePicker
               label="Period Start"
-              type="date"
               value={payPeriodStart}
-              onChange={(e) => setPayPeriodStart(e.target.value)}
+              onChange={(v) => setPayPeriodStart(v)}
               error={payErrors.periodStart}
             />
-            <Input
+            <DatePicker
               label="Period End"
-              type="date"
               value={payPeriodEnd}
-              onChange={(e) => setPayPeriodEnd(e.target.value)}
+              onChange={(v) => setPayPeriodEnd(v)}
               error={payErrors.periodEnd}
             />
           </div>

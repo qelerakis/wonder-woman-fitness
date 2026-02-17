@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
+import { DateTimePicker } from "@/components/ui/DateTimePicker";
 import { Textarea } from "@/components/ui/Textarea";
 import { Select } from "@/components/ui/Select";
 import { useToast } from "@/components/ui/Toast";
@@ -468,11 +469,10 @@ export function PrivateSessionsClient({
             error={formErrors.clientName}
           />
 
-          <Input
+          <DateTimePicker
             label="Scheduled At"
-            type="datetime-local"
             value={scheduledAt}
-            onChange={(e) => setScheduledAt(e.target.value)}
+            onChange={(v) => setScheduledAt(v)}
             error={formErrors.scheduledAt}
           />
 

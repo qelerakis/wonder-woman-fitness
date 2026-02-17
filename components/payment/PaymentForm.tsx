@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { Input } from "@/components/ui/Input";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { DateTimePicker } from "@/components/ui/DateTimePicker";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
 import { format } from "date-fns";
@@ -106,27 +108,24 @@ export function PaymentForm({
         error={errors.amount}
       />
 
-      <Input
+      <DateTimePicker
         label="Paid At"
-        type="datetime-local"
         value={paidAt}
-        onChange={(e) => setPaidAt(e.target.value)}
+        onChange={(v) => setPaidAt(v)}
         error={errors.paidAt}
       />
 
       <div className="grid grid-cols-2 gap-3">
-        <Input
+        <DatePicker
           label="Period Start"
-          type="date"
           value={periodStart}
-          onChange={(e) => setPeriodStart(e.target.value)}
+          onChange={(v) => setPeriodStart(v)}
           error={errors.periodStart}
         />
-        <Input
+        <DatePicker
           label="Period End"
-          type="date"
           value={periodEnd}
-          onChange={(e) => setPeriodEnd(e.target.value)}
+          onChange={(v) => setPeriodEnd(v)}
           error={errors.periodEnd}
         />
       </div>
