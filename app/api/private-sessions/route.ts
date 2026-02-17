@@ -94,6 +94,19 @@ export async function POST(req: Request): Promise<Response> {
       );
     }
 
+    // Validate trainerId references an actual trainer (owner-only)
+    let createdById = session.user.id;
+    if (role === "OWNER" && parsed.data.trainerId) {
+      const trainer = await prisma.user.findFirst({
+        where: { id: parsed.data.trainerId, role: "TRAINER" },
+        select: { id: true },
+      });
+      if (!trainer) {
+        return Response.json({ error: "Invalid trainer ID" }, { status: 400 });
+      }
+      createdById = parsed.data.trainerId;
+    }
+
     const privateSession = await prisma.privateSession.create({
       data: {
         clientName: parsed.data.clientName,
@@ -102,9 +115,7 @@ export async function POST(req: Request): Promise<Response> {
         amount: parsed.data.amount,
         exerciseDetails: parsed.data.exerciseDetails,
         notes: parsed.data.notes,
-        createdById: (role === "OWNER" && parsed.data.trainerId)
-          ? parsed.data.trainerId
-          : session.user.id,
+        createdById,
         ...(parsed.data.paid ? { paidAt: new Date(), paidMarkedById: session.user.id } : {}),
       },
       select: {

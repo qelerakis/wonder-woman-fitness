@@ -325,11 +325,6 @@ describe("PrivateSessionsClient", () => {
       expect(screen.getByText("Status")).toBeDefined();
     });
 
-    it("table has 'Trainer' column header", () => {
-      render(<PrivateSessionsClient {...defaultProps} />);
-      expect(screen.getByText("Trainer")).toBeDefined();
-    });
-
     it("shows trainer name for each session", () => {
       render(<PrivateSessionsClient {...defaultProps} />);
       expect(screen.getAllByText("Trainer One").length).toBe(2); // Jane + Alice

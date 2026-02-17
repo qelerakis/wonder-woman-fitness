@@ -23,6 +23,9 @@ const mockPrisma = {
     update: vi.fn(),
     delete: vi.fn(),
   },
+  user: {
+    findFirst: vi.fn(),
+  },
 };
 vi.mock("@/lib/prisma", () => ({
   prisma: mockPrisma,
@@ -483,6 +486,7 @@ describe("POST /api/private-sessions", () => {
 
   it("uses trainerId as createdById when provided by owner", async () => {
     mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.user.findFirst.mockResolvedValue({ id: "cm0trainer99000000" });
     mockPrisma.privateSession.create.mockResolvedValue({
       ...SAMPLE_PRIVATE_SESSION,
       createdById: "cm0trainer99000000",
@@ -494,6 +498,20 @@ describe("POST /api/private-sessions", () => {
 
     const createCallArgs = mockPrisma.privateSession.create.mock.calls[0][0];
     expect(createCallArgs.data.createdById).toBe("cm0trainer99000000");
+  });
+
+  it("returns 400 when trainerId does not reference a valid trainer", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.user.findFirst.mockResolvedValue(null);
+
+    const body = { ...VALID_POST_BODY, trainerId: "cm0nonexistent00000" };
+    const { POST } = await import("@/app/api/private-sessions/route");
+    const res = await POST(makePostRequest(body));
+
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toBe("Invalid trainer ID");
+    expect(mockPrisma.privateSession.create).not.toHaveBeenCalled();
   });
 
   it("ignores trainerId when request is from a trainer (not owner)", async () => {
