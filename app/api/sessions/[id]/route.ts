@@ -110,17 +110,8 @@ export async function PATCH(
       return Response.json({ error: "Session not found" }, { status: 404 });
     }
 
-    // Trainers can only update sessions they're assigned to
-    if (role === "TRAINER") {
-      const isAssigned = existingSession.trainers.some(
-        (t) => t.userId === session.user.id
-      );
-      if (!isAssigned) {
-        return Response.json({ error: "Forbidden" }, { status: 403 });
-      }
-    }
-
-    const body = await req.json();
+    // Parse and validate request body
+    const body: unknown = await req.json();
     const parsed = SessionUpdateSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -128,6 +119,30 @@ export async function PATCH(
         { error: parsed.error.flatten() },
         { status: 400 }
       );
+    }
+
+    // Trainers can only update sessions they're assigned to, and only workout fields
+    if (role === "TRAINER") {
+      const isAssigned = existingSession.trainers.some(
+        (t) => t.userId === session.user.id
+      );
+      if (!isAssigned) {
+        return Response.json({ error: "Forbidden" }, { status: 403 });
+      }
+
+      const trainerAllowedFields = ["workoutTitle", "workoutDetails"];
+      const requestedFields = Object.keys(parsed.data).filter(
+        (key) => parsed.data[key as keyof typeof parsed.data] !== undefined
+      );
+      const hasRestrictedFields = requestedFields.some(
+        (f) => !trainerAllowedFields.includes(f)
+      );
+      if (hasRestrictedFields) {
+        return Response.json(
+          { error: "Trainers can only update workout details" },
+          { status: 403 }
+        );
+      }
     }
 
     const updateData: Record<string, unknown> = {};

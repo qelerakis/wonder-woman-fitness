@@ -776,6 +776,91 @@ describe("PATCH /api/sessions/[id]", () => {
 
     expect(dispatchNotificationToMany).not.toHaveBeenCalled();
   });
+
+  it("returns 403 when trainer tries to cancel a session", async () => {
+    mockAuth.mockResolvedValue(trainerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      trainers: [{ userId: "trainer-1" }],
+      members: [],
+      votes: [],
+      recurringSlot: null,
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "CANCELLED" }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.error).toBe("Trainers can only update workout details");
+  });
+
+  it("returns 403 when trainer tries to toggle voting", async () => {
+    mockAuth.mockResolvedValue(trainerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      trainers: [{ userId: "trainer-1" }],
+      members: [],
+      votes: [],
+      recurringSlot: null,
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ votingEnabled: true }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body.error).toBe("Trainers can only update workout details");
+  });
+
+  it("allows trainer to update workout details only", async () => {
+    mockAuth.mockResolvedValue(trainerSession());
+    const sessionData = {
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      workoutTitle: null,
+      workoutDetails: null,
+      trainers: [{ userId: "trainer-1" }],
+      members: [],
+      votes: [],
+      recurringSlot: null,
+    };
+    mockPrisma.session.findUnique.mockResolvedValue(sessionData);
+    mockPrisma.session.update.mockResolvedValue({
+      ...sessionData,
+      workoutTitle: "AMRAP 20",
+      workoutDetails: "Burpees and deadlifts",
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    const response = await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workoutTitle: "AMRAP 20", workoutDetails: "Burpees and deadlifts" }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(response.status).toBe(200);
+  });
 });
 
 // ===== DELETE /api/sessions/[id] =====
@@ -1216,7 +1301,7 @@ describe("PATCH /api/sessions/[id] — trainer voting toggle", () => {
     vi.clearAllMocks();
   });
 
-  it("trainer can enable voting on their assigned session", async () => {
+  it("trainer cannot enable voting on their assigned session", async () => {
     mockAuth.mockResolvedValue(trainerSession("trainer-1"));
     mockPrisma.session.findUnique.mockResolvedValue({
       id: "s-1",
@@ -1228,14 +1313,6 @@ describe("PATCH /api/sessions/[id] — trainer voting toggle", () => {
       recurringSlot: { dayOfWeek: 1, startHour: 9 },
       customDay: null,
       customStartHour: null,
-    });
-    mockPrisma.session.update.mockResolvedValue({
-      id: "s-1",
-      status: "SCHEDULED",
-      votingEnabled: true,
-      workoutTitle: null,
-      recurringSlot: { dayOfWeek: 1, startHour: 9 },
-      members: [],
     });
 
     const { PATCH } = await import("@/app/api/sessions/[id]/route");
@@ -1249,16 +1326,12 @@ describe("PATCH /api/sessions/[id] — trainer voting toggle", () => {
     );
     const body = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(body.data.votingEnabled).toBe(true);
-    expect(mockPrisma.session.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ votingEnabled: true }),
-      })
-    );
+    expect(response.status).toBe(403);
+    expect(body.error).toBe("Trainers can only update workout details");
+    expect(mockPrisma.session.update).not.toHaveBeenCalled();
   });
 
-  it("trainer can disable voting on their assigned session", async () => {
+  it("trainer cannot disable voting on their assigned session", async () => {
     mockAuth.mockResolvedValue(trainerSession("trainer-1"));
     mockPrisma.session.findUnique.mockResolvedValue({
       id: "s-1",
@@ -1270,14 +1343,6 @@ describe("PATCH /api/sessions/[id] — trainer voting toggle", () => {
       recurringSlot: { dayOfWeek: 1, startHour: 9 },
       customDay: null,
       customStartHour: null,
-    });
-    mockPrisma.session.update.mockResolvedValue({
-      id: "s-1",
-      status: "SCHEDULED",
-      votingEnabled: false,
-      workoutTitle: null,
-      recurringSlot: { dayOfWeek: 1, startHour: 9 },
-      members: [],
     });
 
     const { PATCH } = await import("@/app/api/sessions/[id]/route");
@@ -1291,13 +1356,9 @@ describe("PATCH /api/sessions/[id] — trainer voting toggle", () => {
     );
     const body = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(body.data.votingEnabled).toBe(false);
-    expect(mockPrisma.session.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ votingEnabled: false }),
-      })
-    );
+    expect(response.status).toBe(403);
+    expect(body.error).toBe("Trainers can only update workout details");
+    expect(mockPrisma.session.update).not.toHaveBeenCalled();
   });
 
   it("trainer cannot toggle voting on session they are NOT assigned to", async () => {
@@ -1381,7 +1442,7 @@ describe("PATCH /api/sessions/[id] — trainer voting toggle", () => {
     expect(body.data.votingEnabled).toBe(true);
   });
 
-  it("trainer can update workout AND voting in same PATCH", async () => {
+  it("trainer cannot update workout AND voting in same PATCH", async () => {
     mockAuth.mockResolvedValue(trainerSession("trainer-1"));
     mockPrisma.session.findUnique.mockResolvedValue({
       id: "s-1",
@@ -1393,14 +1454,6 @@ describe("PATCH /api/sessions/[id] — trainer voting toggle", () => {
       recurringSlot: { dayOfWeek: 1, startHour: 9 },
       customDay: null,
       customStartHour: null,
-    });
-    mockPrisma.session.update.mockResolvedValue({
-      id: "s-1",
-      status: "SCHEDULED",
-      votingEnabled: true,
-      workoutTitle: "Leg Day",
-      recurringSlot: { dayOfWeek: 1, startHour: 9 },
-      members: [],
     });
 
     const { PATCH } = await import("@/app/api/sessions/[id]/route");
@@ -1414,27 +1467,19 @@ describe("PATCH /api/sessions/[id] — trainer voting toggle", () => {
     );
     const body = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(body.data.votingEnabled).toBe(true);
-    expect(body.data.workoutTitle).toBe("Leg Day");
-    expect(mockPrisma.session.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          votingEnabled: true,
-          workoutTitle: "Leg Day",
-        }),
-      })
-    );
+    expect(response.status).toBe(403);
+    expect(body.error).toBe("Trainers can only update workout details");
+    expect(mockPrisma.session.update).not.toHaveBeenCalled();
   });
 
-  it("PATCH returns updated session data with votingEnabled value", async () => {
-    mockAuth.mockResolvedValue(trainerSession("trainer-1"));
+  it("PATCH returns updated session data with votingEnabled value (owner)", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
     mockPrisma.session.findUnique.mockResolvedValue({
       id: "s-1",
       status: "SCHEDULED",
       votingEnabled: false,
       workoutTitle: null,
-      trainers: [{ userId: "trainer-1" }],
+      trainers: [],
       members: [],
       recurringSlot: { dayOfWeek: 2, startHour: 10 },
       customDay: null,
@@ -1468,7 +1513,7 @@ describe("PATCH /api/sessions/[id] — trainer voting toggle", () => {
     expect(body.data.recurringSlot).toBeDefined();
   });
 
-  it("trainer can toggle voting on a cancelled session", async () => {
+  it("trainer cannot toggle voting on a cancelled session", async () => {
     mockAuth.mockResolvedValue(trainerSession("trainer-1"));
     mockPrisma.session.findUnique.mockResolvedValue({
       id: "s-1",
@@ -1480,14 +1525,6 @@ describe("PATCH /api/sessions/[id] — trainer voting toggle", () => {
       recurringSlot: { dayOfWeek: 1, startHour: 9 },
       customDay: null,
       customStartHour: null,
-    });
-    mockPrisma.session.update.mockResolvedValue({
-      id: "s-1",
-      status: "CANCELLED",
-      votingEnabled: true,
-      workoutTitle: null,
-      recurringSlot: { dayOfWeek: 1, startHour: 9 },
-      members: [],
     });
 
     const { PATCH } = await import("@/app/api/sessions/[id]/route");
@@ -1501,10 +1538,9 @@ describe("PATCH /api/sessions/[id] — trainer voting toggle", () => {
     );
     const body = await response.json();
 
-    // API does not reject voting changes on cancelled sessions
-    expect(response.status).toBe(200);
-    expect(body.data.votingEnabled).toBe(true);
-    expect(body.data.status).toBe("CANCELLED");
+    expect(response.status).toBe(403);
+    expect(body.error).toBe("Trainers can only update workout details");
+    expect(mockPrisma.session.update).not.toHaveBeenCalled();
   });
 });
 
@@ -1955,7 +1991,7 @@ describe("PATCH /api/sessions/[id] — enabling voting clears members", () => {
     });
   });
 
-  it("deletes all session members when voting is enabled by trainer", async () => {
+  it("trainer cannot enable voting (restricted to workout fields)", async () => {
     mockAuth.mockResolvedValue(trainerSession("trainer-1"));
     mockPrisma.session.findUnique.mockResolvedValue({
       id: "s-1",
@@ -1972,15 +2008,6 @@ describe("PATCH /api/sessions/[id] — enabling voting clears members", () => {
       customDay: null,
       customStartHour: null,
     });
-    mockPrisma.sessionMember.deleteMany.mockResolvedValue({ count: 3 });
-    mockPrisma.session.update.mockResolvedValue({
-      id: "s-1",
-      status: "SCHEDULED",
-      votingEnabled: true,
-      workoutTitle: null,
-      recurringSlot: { dayOfWeek: 1, startHour: 9 },
-      members: [],
-    });
 
     const { PATCH } = await import("@/app/api/sessions/[id]/route");
     const response = await PATCH(
@@ -1992,10 +2019,10 @@ describe("PATCH /api/sessions/[id] — enabling voting clears members", () => {
       { params: Promise.resolve({ id: "s-1" }) }
     );
 
-    expect(response.status).toBe(200);
-    expect(mockPrisma.sessionMember.deleteMany).toHaveBeenCalledWith({
-      where: { sessionId: "s-1" },
-    });
+    expect(response.status).toBe(403);
+    const body = await response.json();
+    expect(body.error).toBe("Trainers can only update workout details");
+    expect(mockPrisma.sessionMember.deleteMany).not.toHaveBeenCalled();
   });
 
   it("does NOT delete members when voting is already enabled (no-op toggle)", async () => {
@@ -2237,7 +2264,7 @@ describe("PATCH /api/sessions/[id] — disabling voting clears votes", () => {
     });
   });
 
-  it("deletes all votes when voting is disabled by trainer", async () => {
+  it("trainer cannot disable voting (restricted to workout fields)", async () => {
     mockAuth.mockResolvedValue(trainerSession("trainer-1"));
     mockPrisma.session.findUnique.mockResolvedValue({
       id: "s-1",
@@ -2250,15 +2277,6 @@ describe("PATCH /api/sessions/[id] — disabling voting clears votes", () => {
       customDay: null,
       customStartHour: null,
     });
-    mockPrisma.vote.deleteMany.mockResolvedValue({ count: 3 });
-    mockPrisma.session.update.mockResolvedValue({
-      id: "s-1",
-      status: "SCHEDULED",
-      votingEnabled: false,
-      workoutTitle: null,
-      recurringSlot: { dayOfWeek: 1, startHour: 9 },
-      members: [],
-    });
 
     const { PATCH } = await import("@/app/api/sessions/[id]/route");
     const response = await PATCH(
@@ -2270,10 +2288,10 @@ describe("PATCH /api/sessions/[id] — disabling voting clears votes", () => {
       { params: Promise.resolve({ id: "s-1" }) }
     );
 
-    expect(response.status).toBe(200);
-    expect(mockPrisma.vote.deleteMany).toHaveBeenCalledWith({
-      where: { sessionId: "s-1" },
-    });
+    expect(response.status).toBe(403);
+    const body = await response.json();
+    expect(body.error).toBe("Trainers can only update workout details");
+    expect(mockPrisma.vote.deleteMany).not.toHaveBeenCalled();
   });
 
   it("does NOT delete votes when voting is already disabled (no-op toggle)", async () => {
