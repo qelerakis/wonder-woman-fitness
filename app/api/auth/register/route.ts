@@ -26,8 +26,8 @@ export async function POST(req: Request): Promise<Response> {
 
     if (existingUser) {
       return Response.json(
-        { error: "An account with this email already exists" },
-        { status: 409 }
+        { error: "Registration failed. Please try again or contact support." },
+        { status: 400 }
       );
     }
 
