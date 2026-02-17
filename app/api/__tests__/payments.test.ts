@@ -244,8 +244,8 @@ describe("POST /api/payments", () => {
     expect(response.status).toBe(401);
   });
 
-  it("returns 403 for non-OWNER roles", async () => {
-    mockAuth.mockResolvedValue(trainerSession());
+  it("returns 403 for MEMBER role", async () => {
+    mockAuth.mockResolvedValue(memberSession());
 
     const { POST } = await import("@/app/api/payments/route");
     const response = await POST(
@@ -263,6 +263,53 @@ describe("POST /api/payments", () => {
     );
 
     expect(response.status).toBe(403);
+  });
+
+  it("allows TRAINER to create payments", async () => {
+    mockAuth.mockResolvedValue(trainerSession());
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: "cm1234567890abcdef",
+      role: "MEMBER",
+    });
+    const createdPayment = {
+      id: "p-2",
+      userId: "cm1234567890abcdef",
+      amount: 1500,
+      paidAt: new Date("2025-03-15"),
+      periodStart: new Date("2025-03-01"),
+      periodEnd: new Date("2025-03-31"),
+      notes: null,
+      createdAt: new Date(),
+      user: { id: "cm1234567890abcdef", name: "Bob" },
+    };
+    mockTransaction.mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) => {
+      const mockTx = {
+        payment: {
+          create: vi.fn().mockResolvedValue(createdPayment),
+        },
+      };
+      return cb(mockTx);
+    });
+
+    const { POST } = await import("@/app/api/payments/route");
+    const response = await POST(
+      new Request("http://localhost/api/payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: "cm1234567890abcdef",
+          amount: 1500,
+          paidAt: "2025-03-15T00:00:00.000Z",
+          periodStart: "2025-03-01",
+          periodEnd: "2025-03-31",
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(body.data.amount).toBe(1500);
+    expect(mockTransaction).toHaveBeenCalledOnce();
   });
 
   it("returns 400 for invalid body (missing required fields)", async () => {

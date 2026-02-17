@@ -2,7 +2,7 @@
  * Payments API — GET list, POST record
  *
  * GET /api/payments — Owner: all payments (filterable). Trainer: read-only status view.
- * POST /api/payments — Owner records a cash payment.
+ * POST /api/payments — Owner or Trainer records a cash payment.
  */
 
 import { auth } from "@/lib/auth";
@@ -96,7 +96,8 @@ export async function POST(req: Request): Promise<Response> {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if ((session.user.role as string) !== "OWNER") {
+    const role = session.user.role as string;
+    if (role !== "OWNER" && role !== "TRAINER") {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 
