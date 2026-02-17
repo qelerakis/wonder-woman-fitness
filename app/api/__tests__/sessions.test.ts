@@ -73,9 +73,40 @@ vi.mock("@/lib/prisma", () => ({
   prisma: mockPrisma,
 }));
 
-vi.mock("@/lib/notifications", () => ({
-  dispatchNotificationToMany: vi.fn().mockResolvedValue([]),
-}));
+vi.mock("@/lib/notifications", () => {
+  // Inline DAY_NAMES to avoid importing from modules that depend on Prisma
+  const DAY_NAMES = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  return {
+    dispatchNotificationToMany: vi.fn().mockResolvedValue([]),
+    getSessionNotificationRecipients: (session: {
+      votingEnabled: boolean;
+      members: { user: { id: string } }[];
+      votes?: { userId: string; attending: boolean }[];
+    }): string[] => {
+      if (session.votingEnabled && session.votes) {
+        return session.votes
+          .filter((v: { attending: boolean }) => v.attending)
+          .map((v: { userId: string }) => v.userId);
+      }
+      return session.members.map((m: { user: { id: string } }) => m.user.id);
+    },
+    formatSessionForNotification: (
+      weekDate: Date,
+      dayOfWeek: number,
+      startHour: number
+    ): { dayName: string; dateStr: string } => {
+      const dayName = DAY_NAMES[dayOfWeek] || "Unknown";
+      // Replicate getSessionDateTime logic (same as mockGetSessionDateTime)
+      const d = new Date(weekDate);
+      d.setUTCDate(d.getUTCDate() + dayOfWeek - 1);
+      d.setUTCHours(startHour, 0, 0, 0);
+      // Format as "MMM d" (e.g., "Mar 11")
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const dateStr = `${months[d.getUTCMonth()]} ${d.getUTCDate()}`;
+      return { dayName, dateStr };
+    },
+  };
+});
 
 // ===== Helpers =====
 
@@ -427,8 +458,11 @@ describe("PATCH /api/sessions/[id]", () => {
     mockPrisma.session.findUnique.mockResolvedValue({
       id: "s-1",
       status: "SCHEDULED",
+      votingEnabled: false,
+      weekDate: new Date("2026-03-09T00:00:00.000Z"),
       trainers: [],
       members: [{ user: { id: "m-1", name: "Alice" } }],
+      votes: [],
       recurringSlot: { dayOfWeek: 3, startHour: 18 },
     });
     mockPrisma.session.update.mockResolvedValue({
@@ -451,6 +485,131 @@ describe("PATCH /api/sessions/[id]", () => {
 
     expect(response.status).toBe(200);
     expect(body.data.status).toBe("CANCELLED");
+  });
+
+  it("cancelling a voting-enabled session notifies attending voters", async () => {
+    const { dispatchNotificationToMany } = await import("@/lib/notifications");
+
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      weekDate: new Date("2026-03-09T00:00:00.000Z"),
+      trainers: [],
+      members: [],
+      votes: [
+        { userId: "m-1", attending: true, id: "v-1", votedAt: new Date() },
+        { userId: "m-2", attending: false, id: "v-2", votedAt: new Date() },
+        { userId: "m-3", attending: true, id: "v-3", votedAt: new Date() },
+      ],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+    });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "CANCELLED",
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "CANCELLED" }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(dispatchNotificationToMany).toHaveBeenCalledWith(
+      ["m-1", "m-3"],
+      "CLASS_CANCELLED",
+      expect.stringContaining("Monday"),
+      expect.stringContaining("cancelled")
+    );
+  });
+
+  it("cancelling a non-voting session still notifies assigned members", async () => {
+    const { dispatchNotificationToMany } = await import("@/lib/notifications");
+
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      weekDate: new Date("2026-03-09T00:00:00.000Z"),
+      trainers: [],
+      members: [
+        { user: { id: "m-1", name: "Alice" } },
+        { user: { id: "m-2", name: "Bob" } },
+      ],
+      votes: [],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+    });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "CANCELLED",
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "CANCELLED" }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(dispatchNotificationToMany).toHaveBeenCalledWith(
+      ["m-1", "m-2"],
+      "CLASS_CANCELLED",
+      expect.stringContaining("Monday"),
+      expect.stringContaining("cancelled")
+    );
+  });
+
+  it("cancel notification includes the specific date", async () => {
+    const { dispatchNotificationToMany } = await import("@/lib/notifications");
+
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      weekDate: new Date("2026-03-09T00:00:00.000Z"),
+      trainers: [],
+      members: [{ user: { id: "m-1", name: "Alice" } }],
+      votes: [],
+      recurringSlot: { dayOfWeek: 3, startHour: 18 },
+    });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "CANCELLED",
+      recurringSlot: { dayOfWeek: 3, startHour: 18 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "CANCELLED" }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    // Wednesday of week starting March 9 = March 11
+    expect(dispatchNotificationToMany).toHaveBeenCalledWith(
+      ["m-1"],
+      "CLASS_CANCELLED",
+      expect.stringContaining("Mar 11"),
+      expect.stringContaining("cancelled")
+    );
   });
 });
 
@@ -502,7 +661,10 @@ describe("DELETE /api/sessions/[id]", () => {
     mockAuth.mockResolvedValue(ownerSession());
     mockPrisma.session.findUnique.mockResolvedValue({
       id: "s-1",
+      votingEnabled: false,
+      weekDate: new Date("2026-03-09T00:00:00.000Z"),
       members: [],
+      votes: [],
       recurringSlot: { dayOfWeek: 1, startHour: 9 },
     });
     mockPrisma.session.delete.mockResolvedValue({});
@@ -534,7 +696,10 @@ describe("DELETE /api/sessions/[id]", () => {
     mockAuth.mockResolvedValue(ownerSession());
     mockPrisma.session.findUnique.mockResolvedValue({
       id: "s-42",
+      votingEnabled: false,
+      weekDate: new Date("2026-03-09T00:00:00.000Z"),
       members: [],
+      votes: [],
       recurringSlot: { dayOfWeek: 5, startHour: 18 },
     });
     mockPrisma.session.delete.mockResolvedValue({});
@@ -554,10 +719,13 @@ describe("DELETE /api/sessions/[id]", () => {
     mockAuth.mockResolvedValue(ownerSession());
     mockPrisma.session.findUnique.mockResolvedValue({
       id: "s-1",
+      votingEnabled: false,
+      weekDate: new Date("2026-03-09T00:00:00.000Z"),
       members: [
         { user: { id: "m-1" } },
         { user: { id: "m-2" } },
       ],
+      votes: [],
       recurringSlot: { dayOfWeek: 1, startHour: 9 },
     });
     mockPrisma.session.delete.mockResolvedValue({});
@@ -572,6 +740,67 @@ describe("DELETE /api/sessions/[id]", () => {
       ["m-1", "m-2"],
       "SESSION_DELETED",
       expect.stringContaining("Monday"),
+      expect.any(String)
+    );
+  });
+
+  it("deleting a voting-enabled session notifies attending voters", async () => {
+    const { dispatchNotificationToMany } = await import("@/lib/notifications");
+
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      votingEnabled: true,
+      weekDate: new Date("2026-03-09T00:00:00.000Z"),
+      members: [],
+      votes: [
+        { userId: "m-1", attending: true },
+        { userId: "m-2", attending: false },
+      ],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+    });
+    mockPrisma.session.delete.mockResolvedValue({});
+
+    const { DELETE } = await import("@/app/api/sessions/[id]/route");
+    await DELETE(
+      new Request("http://localhost/api/sessions/s-1", { method: "DELETE" }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    // Should only notify m-1 (attending), not m-2
+    expect(dispatchNotificationToMany).toHaveBeenCalledWith(
+      ["m-1"],
+      "SESSION_DELETED",
+      expect.stringContaining("Monday"),
+      expect.any(String)
+    );
+  });
+
+  it("delete notification includes the specific date", async () => {
+    const { dispatchNotificationToMany } = await import("@/lib/notifications");
+
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      votingEnabled: false,
+      weekDate: new Date("2026-03-09T00:00:00.000Z"),
+      members: [{ user: { id: "m-1" } }],
+      votes: [],
+      recurringSlot: { dayOfWeek: 5, startHour: 14 },
+    });
+    mockPrisma.session.delete.mockResolvedValue({});
+
+    const { DELETE } = await import("@/app/api/sessions/[id]/route");
+    await DELETE(
+      new Request("http://localhost/api/sessions/s-1", { method: "DELETE" }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    // Friday of week starting March 9 = March 13
+    expect(dispatchNotificationToMany).toHaveBeenCalledWith(
+      ["m-1"],
+      "SESSION_DELETED",
+      expect.stringContaining("Mar 13"),
       expect.any(String)
     );
   });

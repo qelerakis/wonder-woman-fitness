@@ -11,8 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { RecurringSlotSchema } from "@/types";
 import { z } from "zod";
 import { getWeekStart } from "@/lib/session-generation";
-import { dispatchNotificationToMany } from "@/lib/notifications";
-import { DAY_NAMES } from "@/lib/constants";
+import { dispatchNotificationToMany, getSessionNotificationRecipients, formatSessionForNotification } from "@/lib/notifications";
 
 export async function GET(): Promise<Response> {
   try {
@@ -151,20 +150,27 @@ export async function DELETE(req: Request): Promise<Response> {
               user: { select: { id: true } },
             },
           },
+          votes: {
+            select: { userId: true, attending: true },
+          },
         },
       });
 
       // Notify members and delete sessions within a transaction
       await prisma.$transaction(async (tx) => {
-        const dayName = DAY_NAMES[existing.dayOfWeek] || "Unknown";
         for (const sess of futureSessions) {
-          const memberIds = sess.members.map((m: { user: { id: string } }) => m.user.id);
-          if (memberIds.length > 0) {
+          const recipientIds = getSessionNotificationRecipients(sess);
+          if (recipientIds.length > 0) {
+            const { dayName, dateStr } = formatSessionForNotification(
+              sess.weekDate,
+              existing.dayOfWeek,
+              existing.startHour
+            );
             await dispatchNotificationToMany(
-              memberIds,
+              recipientIds,
               "SESSION_DELETED",
-              `${dayName} ${existing.startHour}:00 class removed`,
-              `The ${dayName} ${existing.startHour}:00 recurring class has been permanently removed from the schedule.`
+              `${dayName}, ${dateStr} at ${existing.startHour}:00 class removed`,
+              `The ${dayName}, ${dateStr} at ${existing.startHour}:00 recurring class has been permanently removed from the schedule.`
             );
           }
           // Cascade delete handles votes, session_members, session_trainers

@@ -8,8 +8,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { dispatchNotificationToMany } from "@/lib/notifications";
-import { DAY_NAMES } from "@/lib/constants";
+import { dispatchNotificationToMany, getSessionNotificationRecipients, formatSessionForNotification } from "@/lib/notifications";
 import { z } from "zod";
 
 interface RouteParams {
@@ -100,6 +99,9 @@ export async function PATCH(
             user: { select: { id: true, name: true } },
           },
         },
+        votes: {
+          select: { userId: true, attending: true },
+        },
         recurringSlot: true,
       },
     });
@@ -144,29 +146,32 @@ export async function PATCH(
     if (parsed.data.status === "CANCELLED" && existingSession.status !== "CANCELLED") {
       updateData.status = "CANCELLED";
 
-      // Notify all members of cancellation
-      const memberIds = existingSession.members.map((m) => m.user.id);
-      if (memberIds.length > 0) {
+      // Notify attending voters (if voting) or assigned members of cancellation
+      const recipientIds = getSessionNotificationRecipients(existingSession);
+      if (recipientIds.length > 0) {
         const dayOfWeek = existingSession.recurringSlot?.dayOfWeek ?? existingSession.customDay ?? 0;
         const startHour = existingSession.recurringSlot?.startHour ?? existingSession.customStartHour ?? 0;
-        const dayName = DAY_NAMES[dayOfWeek] || "Unknown";
+        const { dayName, dateStr } = formatSessionForNotification(existingSession.weekDate, dayOfWeek, startHour);
         await dispatchNotificationToMany(
-          memberIds,
+          recipientIds,
           "CLASS_CANCELLED",
-          `${dayName} ${startHour}:00 class cancelled`,
-          `The ${dayName} ${startHour}:00 class has been cancelled. Please check the schedule for alternatives.`
+          `${dayName}, ${dateStr} at ${startHour}:00 class cancelled`,
+          `The ${dayName}, ${dateStr} at ${startHour}:00 class has been cancelled. Please check the schedule for alternatives.`
         );
       }
     } else if (parsed.data.status !== undefined) {
       updateData.status = parsed.data.status;
     }
 
-    // Notify members when workout is posted
+    // Notify members/voters when workout is posted
+    // For voting sessions, notify ALL voters (not just attending) since the workout might change minds
     if (parsed.data.workoutTitle && !existingSession.workoutTitle) {
-      const memberIds = existingSession.members.map((m) => m.user.id);
-      if (memberIds.length > 0) {
+      const recipientIds = existingSession.votingEnabled && existingSession.votes
+        ? existingSession.votes.map((v) => v.userId)
+        : existingSession.members.map((m) => m.user.id);
+      if (recipientIds.length > 0) {
         await dispatchNotificationToMany(
-          memberIds,
+          recipientIds,
           "WORKOUT_POSTED",
           "Workout posted for your upcoming class",
           `New workout: ${parsed.data.workoutTitle}`
@@ -246,6 +251,9 @@ export async function DELETE(
             user: { select: { id: true } },
           },
         },
+        votes: {
+          select: { userId: true, attending: true },
+        },
         recurringSlot: true,
       },
     });
@@ -254,17 +262,17 @@ export async function DELETE(
       return Response.json({ error: "Session not found" }, { status: 404 });
     }
 
-    // Notify members before deleting
-    const memberIds = existing.members.map((m) => m.user.id);
-    if (memberIds.length > 0) {
+    // Notify attending voters (if voting) or assigned members before deleting
+    const recipientIds = getSessionNotificationRecipients(existing);
+    if (recipientIds.length > 0) {
       const dayOfWeek = existing.recurringSlot?.dayOfWeek ?? existing.customDay ?? 0;
       const startHour = existing.recurringSlot?.startHour ?? existing.customStartHour ?? 0;
-      const dayName = DAY_NAMES[dayOfWeek] || "Unknown";
+      const { dayName, dateStr } = formatSessionForNotification(existing.weekDate, dayOfWeek, startHour);
       await dispatchNotificationToMany(
-        memberIds,
+        recipientIds,
         "SESSION_DELETED",
-        `${dayName} ${startHour}:00 class removed`,
-        `The ${dayName} ${startHour}:00 class has been removed from the schedule.`
+        `${dayName}, ${dateStr} at ${startHour}:00 class removed`,
+        `The ${dayName}, ${dateStr} at ${startHour}:00 class has been removed from the schedule.`
       );
     }
 

@@ -31,6 +31,22 @@ vi.mock("@/lib/prisma", () => ({
 const mockDispatchNotificationToMany = vi.fn().mockResolvedValue([]);
 vi.mock("@/lib/notifications", () => ({
   dispatchNotificationToMany: (...args: unknown[]) => mockDispatchNotificationToMany(...args),
+  getSessionNotificationRecipients: (session: { votingEnabled: boolean; members: { user: { id: string } }[]; votes?: { userId: string; attending: boolean }[] }) => {
+    if (session.votingEnabled && session.votes) {
+      return session.votes.filter((v: { attending: boolean }) => v.attending).map((v: { userId: string }) => v.userId);
+    }
+    return session.members.map((m: { user: { id: string } }) => m.user.id);
+  },
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  formatSessionForNotification: (weekDate: Date, dayOfWeek: number, _startHour: number) => {
+    const DAY_NAMES_LOCAL = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const dayName = DAY_NAMES_LOCAL[dayOfWeek] || 'Unknown';
+    const d = new Date(weekDate);
+    d.setUTCDate(d.getUTCDate() + dayOfWeek - 1);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const dateStr = `${months[d.getUTCMonth()]} ${d.getUTCDate()}`;
+    return { dayName, dateStr };
+  },
 }));
 
 vi.mock("@/lib/session-generation", () => ({
@@ -374,11 +390,17 @@ describe("DELETE /api/recurring-slots", () => {
     mockPrisma.session.findMany.mockResolvedValue([
       {
         id: "session-1",
+        votingEnabled: false,
+        weekDate: new Date("2026-03-09T00:00:00.000Z"),
         members: [{ user: { id: "member-1" } }, { user: { id: "member-2" } }],
+        votes: [],
       },
       {
         id: "session-2",
+        votingEnabled: false,
+        weekDate: new Date("2026-03-16T00:00:00.000Z"),
         members: [{ user: { id: "member-3" } }],
+        votes: [],
       },
     ]);
     mockPrisma.session.delete.mockResolvedValue({});
@@ -399,6 +421,60 @@ describe("DELETE /api/recurring-slots", () => {
     expect(body.data.deletedSessionsCount).toBe(2);
     expect(mockPrisma.session.delete).toHaveBeenCalledTimes(2);
     expect(mockDispatchNotificationToMany).toHaveBeenCalled();
+  });
+
+  it("notifies attending voters when deleting future voting-enabled sessions", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.recurringSlot.findUnique.mockResolvedValue({
+      id: "slot-1",
+      dayOfWeek: 1,
+      startHour: 9,
+    });
+    mockPrisma.session.findMany.mockResolvedValue([
+      {
+        id: "session-1",
+        votingEnabled: true,
+        weekDate: new Date("2026-03-09T00:00:00.000Z"),
+        members: [],
+        votes: [
+          { userId: "m-1", attending: true },
+          { userId: "m-2", attending: false },
+        ],
+      },
+      {
+        id: "session-2",
+        votingEnabled: false,
+        weekDate: new Date("2026-03-16T00:00:00.000Z"),
+        members: [{ user: { id: "m-3" } }],
+        votes: [],
+      },
+    ]);
+    mockPrisma.session.delete.mockResolvedValue({});
+    mockPrisma.recurringSlot.delete.mockResolvedValue({});
+
+    const { DELETE } = await import("@/app/api/recurring-slots/route");
+    await DELETE(
+      new Request("http://localhost/api/recurring-slots", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: "slot-1", deleteFutureSessions: true }),
+      })
+    );
+
+    // First session: voting-enabled, should notify only m-1 (attending)
+    expect(mockDispatchNotificationToMany).toHaveBeenCalledWith(
+      ["m-1"],
+      "SESSION_DELETED",
+      expect.stringContaining("Monday"),
+      expect.any(String)
+    );
+    // Second session: not voting, should notify m-3 (assigned member)
+    expect(mockDispatchNotificationToMany).toHaveBeenCalledWith(
+      ["m-3"],
+      "SESSION_DELETED",
+      expect.stringContaining("Monday"),
+      expect.any(String)
+    );
   });
 
   it("handles deleteFutureSessions true with no future sessions", async () => {

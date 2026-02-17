@@ -6,8 +6,11 @@
  * don't prevent notification creation.
  */
 
+import { format } from 'date-fns';
 import { prisma } from './prisma';
 import { sendNotificationEmail } from './email';
+import { getSessionDateTime } from './session-generation';
+import { DAY_NAMES } from './constants';
 import type { NotificationType, Notification } from '@/generated/prisma/client';
 
 /**
@@ -145,4 +148,38 @@ export async function getUnreadNotificationCount(userId: string): Promise<number
   return prisma.notification.count({
     where: { userId, read: false },
   });
+}
+
+/**
+ * Build the recipient list for a session cancel/delete notification.
+ * If votingEnabled, uses attending voters; otherwise uses assigned members.
+ */
+export function getSessionNotificationRecipients(
+  session: {
+    votingEnabled: boolean;
+    members: { user: { id: string } }[];
+    votes?: { userId: string; attending: boolean }[];
+  }
+): string[] {
+  if (session.votingEnabled && session.votes) {
+    return session.votes
+      .filter((v) => v.attending)
+      .map((v) => v.userId);
+  }
+  return session.members.map((m) => m.user.id);
+}
+
+/**
+ * Format the session date for notification messages.
+ * Returns e.g. { dayName: "Monday", dateStr: "Mar 9" }
+ */
+export function formatSessionForNotification(
+  weekDate: Date,
+  dayOfWeek: number,
+  startHour: number
+): { dayName: string; dateStr: string } {
+  const dayName = DAY_NAMES[dayOfWeek] || 'Unknown';
+  const sessionDate = getSessionDateTime(weekDate, dayOfWeek, startHour);
+  const dateStr = format(sessionDate, 'MMM d');
+  return { dayName, dateStr };
 }
