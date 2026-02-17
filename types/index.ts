@@ -143,6 +143,7 @@ export const PrivateSessionSchema = z.object({
   amount: z.number().positive('Amount must be positive').optional(),
   exerciseDetails: z.string().max(MAX_PRIVATE_SESSION_EXERCISE_LENGTH, `Exercise details too long`).optional(),
   notes: z.string().max(MAX_PRIVATE_SESSION_NOTES_LENGTH, `Notes too long`).optional(),
+  trainerId: z.string().cuid('Invalid trainer ID').optional(),
 });
 
 export type PrivateSessionInput = z.infer<typeof PrivateSessionSchema>;

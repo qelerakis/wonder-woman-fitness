@@ -481,6 +481,44 @@ describe("POST /api/private-sessions", () => {
     expect(body.data.clientName).toBe("Minimal Client");
   });
 
+  it("uses trainerId as createdById when provided by owner", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.privateSession.create.mockResolvedValue({
+      ...SAMPLE_PRIVATE_SESSION,
+      createdById: "cm0trainer99000000",
+    });
+
+    const body = { ...VALID_POST_BODY, trainerId: "cm0trainer99000000" };
+    const { POST } = await import("@/app/api/private-sessions/route");
+    await POST(makePostRequest(body));
+
+    const createCallArgs = mockPrisma.privateSession.create.mock.calls[0][0];
+    expect(createCallArgs.data.createdById).toBe("cm0trainer99000000");
+  });
+
+  it("ignores trainerId when request is from a trainer (not owner)", async () => {
+    mockAuth.mockResolvedValue(trainerSession("trainer-42"));
+    mockPrisma.privateSession.create.mockResolvedValue(SAMPLE_PRIVATE_SESSION);
+
+    const body = { ...VALID_POST_BODY, trainerId: "cm0trainer99000000" };
+    const { POST } = await import("@/app/api/private-sessions/route");
+    await POST(makePostRequest(body));
+
+    const createCallArgs = mockPrisma.privateSession.create.mock.calls[0][0];
+    expect(createCallArgs.data.createdById).toBe("trainer-42");
+  });
+
+  it("falls back to session.user.id when owner omits trainerId", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.privateSession.create.mockResolvedValue(SAMPLE_PRIVATE_SESSION);
+
+    const { POST } = await import("@/app/api/private-sessions/route");
+    await POST(makePostRequest(VALID_POST_BODY));
+
+    const createCallArgs = mockPrisma.privateSession.create.mock.calls[0][0];
+    expect(createCallArgs.data.createdById).toBe(ownerSession().user.id);
+  });
+
   it("returns 500 on database error", async () => {
     mockAuth.mockResolvedValue(ownerSession());
     mockPrisma.privateSession.create.mockRejectedValue(

@@ -102,7 +102,9 @@ export async function POST(req: Request): Promise<Response> {
         amount: parsed.data.amount,
         exerciseDetails: parsed.data.exerciseDetails,
         notes: parsed.data.notes,
-        createdById: session.user.id,
+        createdById: (role === "OWNER" && parsed.data.trainerId)
+          ? parsed.data.trainerId
+          : session.user.id,
         ...(parsed.data.paid ? { paidAt: new Date(), paidMarkedById: session.user.id } : {}),
       },
       select: {
