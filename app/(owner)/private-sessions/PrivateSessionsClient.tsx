@@ -371,6 +371,9 @@ export function PrivateSessionsClient({
                     Client
                   </th>
                   <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-surface-500">
+                    Trainer
+                  </th>
+                  <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-surface-500">
                     Date
                   </th>
                   <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-surface-500">
@@ -394,6 +397,9 @@ export function PrivateSessionsClient({
                       <p className="text-sm font-medium text-surface-200">
                         {ps.clientName}
                       </p>
+                    </td>
+                    <td className="px-6 py-3 text-sm text-surface-400">
+                      {ps.createdBy}
                     </td>
                     <td className="px-6 py-3 text-sm text-surface-400">
                       {format(new Date(ps.scheduledAt), "MMM d, yyyy h:mm a")}
