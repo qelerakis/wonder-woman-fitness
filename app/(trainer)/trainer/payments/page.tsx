@@ -118,7 +118,6 @@ export default async function TrainerPaymentsPage(): Promise<React.ReactElement>
         periodStart: p.periodStart.toISOString(),
         periodEnd: p.periodEnd.toISOString(),
         memberName: p.user.name,
-        memberId: p.user.id,
         recordedBy: p.recordedBy?.name || null,
       }))}
       members={memberStatuses}

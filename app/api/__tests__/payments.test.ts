@@ -312,6 +312,94 @@ describe("POST /api/payments", () => {
     expect(mockTransaction).toHaveBeenCalledOnce();
   });
 
+  it("strips notes from trainer-submitted payments", async () => {
+    mockAuth.mockResolvedValue(trainerSession());
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: "cm1234567890abcdef",
+      role: "MEMBER",
+    });
+    const createdPayment = {
+      id: "p-3",
+      userId: "cm1234567890abcdef",
+      amount: 1500,
+      paidAt: new Date("2025-03-15"),
+      periodStart: new Date("2025-03-01"),
+      periodEnd: new Date("2025-03-31"),
+      notes: null,
+      createdAt: new Date(),
+      user: { id: "cm1234567890abcdef", name: "Bob" },
+    };
+    const mockCreate = vi.fn().mockResolvedValue(createdPayment);
+    mockTransaction.mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) => {
+      const mockTx = { payment: { create: mockCreate } };
+      return cb(mockTx);
+    });
+
+    const { POST } = await import("@/app/api/payments/route");
+    await POST(
+      new Request("http://localhost/api/payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: "cm1234567890abcdef",
+          amount: 1500,
+          paidAt: "2025-03-15T00:00:00.000Z",
+          periodStart: "2025-03-01",
+          periodEnd: "2025-03-31",
+          notes: "sneaky trainer note",
+        }),
+      })
+    );
+
+    // The notes field should be undefined (stripped) for trainers
+    const createCall = mockCreate.mock.calls[0][0];
+    expect(createCall.data.notes).toBeUndefined();
+  });
+
+  it("preserves notes from owner-submitted payments", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: "cm1234567890abcdef",
+      role: "MEMBER",
+    });
+    const createdPayment = {
+      id: "p-4",
+      userId: "cm1234567890abcdef",
+      amount: 1500,
+      paidAt: new Date("2025-03-15"),
+      periodStart: new Date("2025-03-01"),
+      periodEnd: new Date("2025-03-31"),
+      notes: "owner note",
+      createdAt: new Date(),
+      user: { id: "cm1234567890abcdef", name: "Bob" },
+    };
+    const mockCreate = vi.fn().mockResolvedValue(createdPayment);
+    mockTransaction.mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) => {
+      const mockTx = { payment: { create: mockCreate } };
+      return cb(mockTx);
+    });
+
+    const { POST } = await import("@/app/api/payments/route");
+    await POST(
+      new Request("http://localhost/api/payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: "cm1234567890abcdef",
+          amount: 1500,
+          paidAt: "2025-03-15T00:00:00.000Z",
+          periodStart: "2025-03-01",
+          periodEnd: "2025-03-31",
+          notes: "owner note",
+        }),
+      })
+    );
+
+    // The notes field should be preserved for owners
+    const createCall = mockCreate.mock.calls[0][0];
+    expect(createCall.data.notes).toBe("owner note");
+  });
+
   it("returns 400 for invalid body (missing required fields)", async () => {
     mockAuth.mockResolvedValue(ownerSession());
 

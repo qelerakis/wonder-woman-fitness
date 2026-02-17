@@ -139,7 +139,7 @@ export async function POST(req: Request): Promise<Response> {
           paidAt: new Date(paidAt),
           periodStart: new Date(periodStart),
           periodEnd: new Date(periodEnd),
-          notes,
+          notes: role === "OWNER" ? notes : undefined,
           recordedById: session.user.id,
         },
         select: {

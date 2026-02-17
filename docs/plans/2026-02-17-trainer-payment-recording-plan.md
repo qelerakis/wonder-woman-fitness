@@ -1,3 +1,349 @@
+# Trainer Payment Recording — Implementation Plan
+
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+
+**Goal:** Allow trainers to record member payments via a new `/trainer/payments` page, with record-only access (no edit/delete).
+
+**Architecture:** Expand the POST `/api/payments` role check from OWNER-only to OWNER+TRAINER. Create a new trainer payments page (`app/(trainer)/trainer/payments/`) with a server component that computes payment statuses and a client component with summary cards, unpaid members list, payment history table, and a record-payment modal. Add a "Payments" nav link for trainers.
+
+**Tech Stack:** Next.js 15 App Router, TypeScript, Tailwind CSS 4, Prisma 7, Zod, Vitest
+
+---
+
+### Task 1: Update POST /api/payments to allow TRAINER role
+
+**Files:**
+- Modify: `app/api/payments/route.ts:99` (the role check line)
+
+**Step 1: Write the failing test**
+
+Add a new test to `app/api/__tests__/payments.test.ts` after line 266 (after the existing "returns 403 for non-OWNER roles" test in the POST section):
+
+```typescript
+it("allows TRAINER to create payments", async () => {
+  mockAuth.mockResolvedValue(trainerSession());
+  mockPrisma.user.findUnique.mockResolvedValue({
+    id: "cm1234567890abcdef",
+    role: "MEMBER",
+  });
+  const createdPayment = {
+    id: "p-2",
+    userId: "cm1234567890abcdef",
+    amount: 1500,
+    paidAt: new Date("2025-03-15"),
+    periodStart: new Date("2025-03-01"),
+    periodEnd: new Date("2025-03-31"),
+    notes: null,
+    createdAt: new Date(),
+    user: { id: "cm1234567890abcdef", name: "Bob" },
+  };
+  mockTransaction.mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) => {
+    const mockTx = {
+      payment: {
+        create: vi.fn().mockResolvedValue(createdPayment),
+      },
+    };
+    return cb(mockTx);
+  });
+
+  const { POST } = await import("@/app/api/payments/route");
+  const response = await POST(
+    new Request("http://localhost/api/payments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: "cm1234567890abcdef",
+        amount: 1500,
+        paidAt: "2025-03-15T00:00:00.000Z",
+        periodStart: "2025-03-01",
+        periodEnd: "2025-03-31",
+      }),
+    })
+  );
+  const body = await response.json();
+
+  expect(response.status).toBe(201);
+  expect(body.data.amount).toBe(1500);
+  expect(mockTransaction).toHaveBeenCalledOnce();
+});
+```
+
+Also update the existing test "returns 403 for non-OWNER roles" description to "returns 403 for MEMBER role" and change it to use `memberSession()`:
+
+```typescript
+it("returns 403 for MEMBER role", async () => {
+  mockAuth.mockResolvedValue(memberSession());
+
+  const { POST } = await import("@/app/api/payments/route");
+  const response = await POST(
+    new Request("http://localhost/api/payments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: "cm1234567890abcdef",
+        amount: 2000,
+        paidAt: "2025-03-01T00:00:00.000Z",
+        periodStart: "2025-03-01",
+        periodEnd: "2025-03-31",
+      }),
+    })
+  );
+
+  expect(response.status).toBe(403);
+});
+```
+
+**Step 2: Run test to verify it fails**
+
+Run: `npm test -- app/api/__tests__/payments.test.ts`
+Expected: The new "allows TRAINER to create payments" test FAILS (403 instead of 201). The updated "returns 403 for MEMBER role" test should PASS.
+
+**Step 3: Write minimal implementation**
+
+In `app/api/payments/route.ts`, change line 99 from:
+
+```typescript
+if ((session.user.role as string) !== "OWNER") {
+```
+
+to:
+
+```typescript
+const role = session.user.role as string;
+if (role !== "OWNER" && role !== "TRAINER") {
+```
+
+Also update the file header comment on lines 4-5 from:
+```
+ * POST /api/payments — Owner records a cash payment.
+```
+to:
+```
+ * POST /api/payments — Owner or Trainer records a cash payment.
+```
+
+**Step 4: Run test to verify it passes**
+
+Run: `npm test -- app/api/__tests__/payments.test.ts`
+Expected: ALL tests pass (13 existing + 1 new = 14 total in this file, minus the renamed one stays at 14).
+
+**Step 5: Commit**
+
+```bash
+git add app/api/payments/route.ts app/api/__tests__/payments.test.ts
+git commit -m "feat: allow trainers to record payments (POST /api/payments)"
+```
+
+---
+
+### Task 2: Add "Payments" link to trainer navigation
+
+**Files:**
+- Modify: `components/layout/Navigation.tsx:73-77` (TRAINER navLinks array)
+
+**Step 1: Write the change**
+
+In `components/layout/Navigation.tsx`, modify the TRAINER nav links array (lines 73-77) from:
+
+```typescript
+TRAINER: [
+  { href: "/my-schedule", label: "My Schedule", icon: icons.schedule },
+  { href: "/trainer/private-sessions", label: "Private Sessions", icon: icons.privateSessions },
+  { href: "/trainer/notifications", label: "Notifications", icon: icons.notifications },
+],
+```
+
+to:
+
+```typescript
+TRAINER: [
+  { href: "/my-schedule", label: "My Schedule", icon: icons.schedule },
+  { href: "/trainer/payments", label: "Payments", icon: icons.payments },
+  { href: "/trainer/private-sessions", label: "Private Sessions", icon: icons.privateSessions },
+  { href: "/trainer/notifications", label: "Notifications", icon: icons.notifications },
+],
+```
+
+**Step 2: Verify TypeScript compiles**
+
+Run: `npx tsc --noEmit`
+Expected: No errors (the `icons.payments` icon already exists on line 36-40).
+
+**Step 3: Commit**
+
+```bash
+git add components/layout/Navigation.tsx
+git commit -m "feat: add Payments link to trainer navigation"
+```
+
+---
+
+### Task 3: Create trainer payments server component
+
+**Files:**
+- Create: `app/(trainer)/trainer/payments/page.tsx`
+
+**Step 1: Create the server component**
+
+Create `app/(trainer)/trainer/payments/page.tsx`:
+
+```typescript
+import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+import { startOfMonth, endOfMonth } from "date-fns";
+import { getPaymentStatus } from "@/lib/payment-logic";
+import type { PaymentRecord } from "@/lib/payment-logic";
+import { TrainerPaymentsClient } from "./TrainerPaymentsClient";
+
+export const metadata = {
+  title: "Payments - Wonder Woman Fitness",
+};
+
+export default async function TrainerPaymentsPage(): Promise<React.ReactElement> {
+  const session = await auth();
+  if (!session?.user || (session.user.role as string) !== "TRAINER") {
+    redirect("/login");
+  }
+
+  const now = new Date();
+  const monthStart = startOfMonth(now);
+  const monthEnd = endOfMonth(now);
+
+  const [payments, members, allMemberPayments] = await Promise.all([
+    prisma.payment.findMany({
+      where: {
+        paidAt: { gte: monthStart, lte: monthEnd },
+      },
+      orderBy: { paidAt: "desc" },
+      select: {
+        id: true,
+        amount: true,
+        paidAt: true,
+        periodStart: true,
+        periodEnd: true,
+        user: {
+          select: { id: true, name: true },
+        },
+        recordedBy: {
+          select: { name: true },
+        },
+      },
+    }),
+    prisma.user.findMany({
+      where: { role: "MEMBER", status: { not: "DEPARTED" } },
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        trialEndsAt: true,
+        departedAt: true,
+        overrideActive: true,
+      },
+      orderBy: { name: "asc" },
+    }),
+    prisma.payment.findMany({
+      where: {
+        user: { role: "MEMBER", status: { not: "DEPARTED" } },
+      },
+      select: {
+        userId: true,
+        periodStart: true,
+        periodEnd: true,
+        paidAt: true,
+        amount: true,
+      },
+    }),
+  ]);
+
+  // Compute payment status for each member
+  const memberStatuses = members.map((member) => {
+    const memberPayments: PaymentRecord[] = allMemberPayments
+      .filter((p) => p.userId === member.id)
+      .map((p) => ({
+        periodStart: p.periodStart,
+        periodEnd: p.periodEnd,
+        paidAt: p.paidAt,
+      }));
+
+    const paymentStatus = getPaymentStatus(
+      {
+        id: member.id,
+        status: member.status as "TRIAL" | "ACTIVE" | "DEPARTED",
+        trialEndsAt: member.trialEndsAt,
+        departedAt: member.departedAt,
+        overrideActive: member.overrideActive,
+      },
+      memberPayments,
+      now
+    );
+
+    return {
+      id: member.id,
+      name: member.name,
+      paymentStatus,
+    };
+  });
+
+  // Summary stats — this month only
+  const thisMonthRevenue = payments.reduce(
+    (sum, p) => sum + Number(p.amount),
+    0
+  );
+
+  const paidCount = memberStatuses.filter(
+    (m) => m.paymentStatus === "PAID" || m.paymentStatus === "OVERRIDE"
+  ).length;
+  const unpaidCount = memberStatuses.filter(
+    (m) =>
+      m.paymentStatus === "GRACE_PERIOD" || m.paymentStatus === "LOCKED"
+  ).length;
+
+  return (
+    <TrainerPaymentsClient
+      payments={payments.map((p) => ({
+        id: p.id,
+        amount: Number(p.amount),
+        paidAt: p.paidAt.toISOString(),
+        periodStart: p.periodStart.toISOString(),
+        periodEnd: p.periodEnd.toISOString(),
+        memberName: p.user.name,
+        memberId: p.user.id,
+        recordedBy: p.recordedBy?.name || null,
+      }))}
+      members={memberStatuses}
+      summary={{
+        thisMonthRevenue,
+        paidCount,
+        unpaidCount,
+        totalMembers: members.length,
+      }}
+      initialMonth={now.getMonth()}
+      initialYear={now.getFullYear()}
+    />
+  );
+}
+```
+
+**Step 2: Verify TypeScript compiles (will fail — TrainerPaymentsClient doesn't exist yet)**
+
+Run: `npx tsc --noEmit`
+Expected: Error about missing `TrainerPaymentsClient` module. This is expected — we create it in Task 4.
+
+**Step 3: Do NOT commit yet** — this depends on Task 4.
+
+---
+
+### Task 4: Create trainer payments client component
+
+**Files:**
+- Create: `app/(trainer)/trainer/payments/TrainerPaymentsClient.tsx`
+
+**Step 1: Create the client component**
+
+Create `app/(trainer)/trainer/payments/TrainerPaymentsClient.tsx`. This mirrors the owner's `PaymentsClient.tsx` but without edit/delete/notes functionality:
+
+```typescript
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
@@ -20,6 +366,7 @@ interface TrainerPaymentItem {
   periodStart: string;
   periodEnd: string;
   memberName: string;
+  memberId: string;
   recordedBy: string | null;
 }
 
@@ -97,12 +444,12 @@ export function TrainerPaymentsClient(
       const endDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
       const res = await fetch(`/api/payments?startDate=${startDate}&endDate=${endDate}`);
       if (res.ok) {
-        const json: unknown = await res.json();
-        if (typeof json !== "object" || json === null || !("data" in json)) {
+        const json = await res.json();
+        if (!json.data) {
           addToast({ type: "error", title: "Unexpected response format" });
           return;
         }
-        const data = (json as { data: Array<{
+        const data = json.data as Array<{
           id: string;
           amount: number | string;
           paidAt: string;
@@ -110,7 +457,7 @@ export function TrainerPaymentsClient(
           periodEnd: string;
           user: { id: string; name: string };
           recordedBy: { id: string; name: string } | null;
-        }> }).data;
+        }>;
         setDisplayedPayments(data.map((p) => ({
           id: p.id,
           amount: Number(p.amount),
@@ -118,6 +465,7 @@ export function TrainerPaymentsClient(
           periodStart: p.periodStart,
           periodEnd: p.periodEnd,
           memberName: p.user.name,
+          memberId: p.user.id,
           recordedBy: p.recordedBy?.name || null,
         })));
       } else {
@@ -226,7 +574,7 @@ export function TrainerPaymentsClient(
         router.refresh();
         fetchPayments(filterMonth, filterYear);
       } else {
-        const data = await res.json() as { error: string };
+        const data: { error: string } = await res.json();
         addToast({
           type: "error",
           title: "Failed to record payment",
@@ -302,7 +650,7 @@ export function TrainerPaymentsClient(
       </div>
 
       {/* Summary cards — 3 cards, no all-time */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-3 gap-4">
         <Card>
           <p className="text-xs font-medium uppercase tracking-wide text-surface-500">
             This Month
@@ -520,3 +868,40 @@ export function TrainerPaymentsClient(
     </div>
   );
 }
+```
+
+**Step 2: Verify TypeScript compiles**
+
+Run: `npx tsc --noEmit`
+Expected: No errors.
+
+**Step 3: Commit Tasks 3 + 4 together**
+
+```bash
+git add app/(trainer)/trainer/payments/page.tsx app/(trainer)/trainer/payments/TrainerPaymentsClient.tsx
+git commit -m "feat: add trainer payments page with record-only access"
+```
+
+---
+
+### Task 5: Run full verification
+
+**Step 1: Run full test suite**
+
+Run: `npm test`
+Expected: All tests pass (615 existing + 1 new = 616 total).
+
+**Step 2: Run TypeScript check**
+
+Run: `npx tsc --noEmit`
+Expected: No errors.
+
+**Step 3: Run linter**
+
+Run: `npm run lint`
+Expected: No new warnings (only the 4 pre-existing ones).
+
+**Step 4: Run production build**
+
+Run: `npm run build`
+Expected: Build succeeds.
