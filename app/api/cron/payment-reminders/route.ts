@@ -14,11 +14,11 @@ import { dispatchNotification } from "@/lib/notifications";
 import { getPaymentStatus } from "@/lib/payment-logic";
 import type { PaymentRecord } from "@/lib/payment-logic";
 import { PAYMENT_REMINDER_DAYS, GRACE_PERIOD_DAYS } from "@/lib/constants";
+import { verifyCronSecret } from "@/lib/cron-auth";
 
 export async function GET(req: Request): Promise<Response> {
-  // Verify cron secret
-  const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  // Verify cron secret (timing-safe)
+  if (!verifyCronSecret(req)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 

@@ -13,11 +13,11 @@ import { prisma } from "@/lib/prisma";
 import { dispatchNotification } from "@/lib/notifications";
 import { TRIAL_EXPIRATION_WARNING_DAYS } from "@/lib/constants";
 import { addDays } from "date-fns";
+import { verifyCronSecret } from "@/lib/cron-auth";
 
 export async function GET(req: Request): Promise<Response> {
-  // Verify cron secret
-  const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  // Verify cron secret (timing-safe)
+  if (!verifyCronSecret(req)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
