@@ -148,6 +148,78 @@ describe("GET /api/payments", () => {
       })
     );
   });
+
+  it("returns 400 for invalid startDate", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+
+    const { GET } = await import("@/app/api/payments/route");
+    const response = await GET(
+      new Request("http://localhost/api/payments?startDate=not-a-date")
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toBe("Invalid startDate format");
+  });
+
+  it("returns 400 for invalid endDate", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+
+    const { GET } = await import("@/app/api/payments/route");
+    const response = await GET(
+      new Request("http://localhost/api/payments?endDate=not-a-date")
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toBe("Invalid endDate format");
+  });
+
+  it("accepts valid date filters", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.payment.findMany.mockResolvedValue([]);
+
+    const { GET } = await import("@/app/api/payments/route");
+    const response = await GET(
+      new Request("http://localhost/api/payments?startDate=2026-01-01&endDate=2026-01-31")
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockPrisma.payment.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          paidAt: expect.objectContaining({
+            gte: expect.any(Date),
+            lte: expect.any(Date),
+          }),
+        }),
+      })
+    );
+  });
+
+  it("does not include email in user select for TRAINER role", async () => {
+    mockAuth.mockResolvedValue(trainerSession());
+    mockPrisma.payment.findMany.mockResolvedValue([]);
+
+    const { GET } = await import("@/app/api/payments/route");
+    await GET(new Request("http://localhost/api/payments"));
+
+    const findManyCall = mockPrisma.payment.findMany.mock.calls[0][0];
+    expect(findManyCall.select.user.select.email).toBeUndefined();
+    expect(findManyCall.select.notes).toBe(false);
+  });
+
+  it("includes email in user select for OWNER role", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.payment.findMany.mockResolvedValue([]);
+
+    const { GET } = await import("@/app/api/payments/route");
+    await GET(new Request("http://localhost/api/payments"));
+
+    const findManyCall = mockPrisma.payment.findMany.mock.calls[0][0];
+    expect(findManyCall.select.user.select.email).toBe(true);
+    expect(findManyCall.select.notes).toBe(true);
+  });
 });
 
 // ===== POST /api/payments =====

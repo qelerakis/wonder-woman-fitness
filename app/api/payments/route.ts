@@ -36,10 +36,18 @@ export async function GET(req: Request): Promise<Response> {
     if (startDate || endDate) {
       where.paidAt = {};
       if (startDate) {
-        (where.paidAt as Record<string, unknown>).gte = new Date(startDate);
+        const parsedStart = new Date(startDate);
+        if (isNaN(parsedStart.getTime())) {
+          return Response.json({ error: "Invalid startDate format" }, { status: 400 });
+        }
+        (where.paidAt as Record<string, unknown>).gte = parsedStart;
       }
       if (endDate) {
-        (where.paidAt as Record<string, unknown>).lte = new Date(endDate);
+        const parsedEnd = new Date(endDate);
+        if (isNaN(parsedEnd.getTime())) {
+          return Response.json({ error: "Invalid endDate format" }, { status: 400 });
+        }
+        (where.paidAt as Record<string, unknown>).lte = parsedEnd;
       }
     }
 
@@ -52,13 +60,13 @@ export async function GET(req: Request): Promise<Response> {
         paidAt: true,
         periodStart: true,
         periodEnd: true,
-        notes: true,
+        notes: role === "OWNER" ? true : false,
         createdAt: true,
         user: {
           select: {
             id: true,
             name: true,
-            email: true,
+            ...(role === "OWNER" && { email: true }),
           },
         },
         recordedBy: {
