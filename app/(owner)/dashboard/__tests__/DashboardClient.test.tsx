@@ -591,12 +591,6 @@ describe("DashboardClient month navigator", () => {
     expect(screen.getByText(`Membership: ${fmtCurrency(40000)} | Private: ${fmtCurrency(10000)}`)).toBeDefined();
   });
 
-  it("displays both membership and private revenue in Revenue card subtitle", () => {
-    render(<DashboardClient {...defaultProps} />);
-    const subtitle = screen.getByText(`Membership: ${fmtCurrency(40000)} | Private: ${fmtCurrency(10000)}`);
-    expect(subtitle).toBeDefined();
-  });
-
   it("displays initial Outstanding count from props", () => {
     render(<DashboardClient {...defaultProps} />);
     expect(screen.getByText("2")).toBeDefined();

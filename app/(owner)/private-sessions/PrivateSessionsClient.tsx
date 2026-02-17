@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -60,6 +60,14 @@ export function PrivateSessionsClient({
   const [filteredSummary, setFilteredSummary] = useState<PrivateSessionsSummary>(summary);
   const [filterLoading, setFilterLoading] = useState(false);
 
+  // Sync filtered state with props when they change (e.g. after router.refresh())
+  useEffect(() => {
+    if (viewMode === "all") {
+      setFilteredSessions(sessions);
+      setFilteredSummary(summary);
+    }
+  }, [sessions, summary, viewMode]);
+
   function resetForm(): void {
     setClientName("");
     setScheduledAt("");
@@ -74,11 +82,11 @@ export function PrivateSessionsClient({
     const now = new Date();
     const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const totalRevenue = data
-      .filter((ps) => ps.paid && ps.amount != null && ps.amount > 0)
+      .filter((ps) => ps.paid && ps.amount != null)
       .reduce((sum, ps) => sum + ps.amount, 0);
     const thisMonthRevenue = data
       .filter(
-        (ps) => ps.paid && ps.amount != null && ps.amount > 0 && new Date(ps.scheduledAt) >= thisMonthStart
+        (ps) => ps.paid && ps.amount != null && new Date(ps.scheduledAt) >= thisMonthStart
       )
       .reduce((sum, ps) => sum + ps.amount, 0);
     const unpaidCount = data.filter((ps) => !ps.paid).length;
@@ -399,17 +407,23 @@ export function PrivateSessionsClient({
                       </p>
                     </td>
                     <td className="px-6 py-3">
-                      <button
-                        onClick={() => handleTogglePaid(ps.id, ps.paid)}
-                        className="cursor-pointer"
-                      >
-                        <Badge
-                          variant={ps.paid ? "success" : "warning"}
-                          size="sm"
-                        >
-                          {ps.paid ? "Paid" : "Unpaid"}
+                      {!ps.paid && ps.amount === 0 ? (
+                        <Badge variant="warning" size="sm">
+                          Unpaid
                         </Badge>
-                      </button>
+                      ) : (
+                        <button
+                          onClick={() => handleTogglePaid(ps.id, ps.paid)}
+                          className="cursor-pointer"
+                        >
+                          <Badge
+                            variant={ps.paid ? "success" : "warning"}
+                            size="sm"
+                          >
+                            {ps.paid ? "Paid" : "Unpaid"}
+                          </Badge>
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
