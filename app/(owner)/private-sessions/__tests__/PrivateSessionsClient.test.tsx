@@ -978,6 +978,128 @@ describe("PrivateSessionsClient", () => {
     });
   });
 
+  // ─── 5b. Trainer Selection ─────────────────────────────────
+
+  describe("Trainer Selection", () => {
+    const trainersProps = {
+      trainers: [
+        { id: "t-1", name: "Trainer One" },
+        { id: "t-2", name: "Trainer Two" },
+      ],
+    };
+
+    it("shows trainer select dropdown when trainers are provided", async () => {
+      render(<PrivateSessionsClient {...defaultProps} {...trainersProps} />);
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "New Session" }));
+      });
+
+      expect(screen.getByLabelText("Trainer")).toBeDefined();
+    });
+
+    it("does not show trainer select when trainers prop is not provided", async () => {
+      render(<PrivateSessionsClient {...defaultProps} />);
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "New Session" }));
+      });
+
+      expect(screen.queryByLabelText("Trainer")).toBeNull();
+    });
+
+    it("trainer select lists all trainers plus 'Me (Owner)' option", async () => {
+      render(<PrivateSessionsClient {...defaultProps} {...trainersProps} />);
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "New Session" }));
+      });
+
+      const select = screen.getByLabelText("Trainer") as HTMLSelectElement;
+      const options = Array.from(select.options).map((o) => o.text);
+      expect(options).toContain("Me (Owner)");
+      expect(options).toContain("Trainer One");
+      expect(options).toContain("Trainer Two");
+    });
+
+    it("sends trainerId in POST when a trainer is selected", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: {} }),
+      });
+      global.fetch = mockFetch;
+
+      render(<PrivateSessionsClient {...defaultProps} {...trainersProps} />);
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "New Session" }));
+      });
+
+      fireEvent.change(screen.getByLabelText("Client Name"), { target: { value: "Test Client" } });
+      fireEvent.change(screen.getByLabelText("Scheduled At"), {
+        target: { value: "2026-03-01T10:00" },
+      });
+      fireEvent.change(screen.getByLabelText("Amount (MKD)"), { target: { value: "500" } });
+      fireEvent.change(screen.getByLabelText("Trainer"), { target: { value: "t-2" } });
+
+      await act(async () => {
+        fireEvent.submit(screen.getByRole("button", { name: "Create Session" }));
+      });
+
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string);
+      expect(body.trainerId).toBe("t-2");
+    });
+
+    it("does not send trainerId when 'Me (Owner)' is selected", async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: {} }),
+      });
+      global.fetch = mockFetch;
+
+      render(<PrivateSessionsClient {...defaultProps} {...trainersProps} />);
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "New Session" }));
+      });
+
+      fireEvent.change(screen.getByLabelText("Client Name"), { target: { value: "Test Client" } });
+      fireEvent.change(screen.getByLabelText("Scheduled At"), {
+        target: { value: "2026-03-01T10:00" },
+      });
+      fireEvent.change(screen.getByLabelText("Amount (MKD)"), { target: { value: "500" } });
+      // Leave trainer select on default ("" = Me/Owner)
+
+      await act(async () => {
+        fireEvent.submit(screen.getByRole("button", { name: "Create Session" }));
+      });
+
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string);
+      expect(body.trainerId).toBeUndefined();
+    });
+
+    it("resets trainer selection when modal is cancelled", async () => {
+      render(<PrivateSessionsClient {...defaultProps} {...trainersProps} />);
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "New Session" }));
+      });
+
+      fireEvent.change(screen.getByLabelText("Trainer"), { target: { value: "t-1" } });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "New Session" }));
+      });
+
+      const select = screen.getByLabelText("Trainer") as HTMLSelectElement;
+      expect(select.value).toBe("");
+    });
+  });
+
   // ─── 6. Month Navigation ─────────────────────────────────
 
   describe("Month Navigation", () => {

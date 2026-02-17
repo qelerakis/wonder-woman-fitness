@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
+import { Select } from "@/components/ui/Select";
 import { useToast } from "@/components/ui/Toast";
 
 interface PrivateSessionItem {
@@ -29,14 +30,21 @@ interface PrivateSessionsSummary {
   totalSessions: number;
 }
 
+interface TrainerOption {
+  id: string;
+  name: string;
+}
+
 interface PrivateSessionsClientProps {
   sessions: PrivateSessionItem[];
   summary: PrivateSessionsSummary;
+  trainers?: TrainerOption[];
 }
 
 export function PrivateSessionsClient({
   sessions,
   summary,
+  trainers,
 }: PrivateSessionsClientProps): React.ReactElement {
   const router = useRouter();
   const { addToast } = useToast();
@@ -50,6 +58,7 @@ export function PrivateSessionsClient({
   const [paid, setPaid] = useState(false);
   const [exerciseDetails, setExerciseDetails] = useState("");
   const [notes, setNotes] = useState("");
+  const [trainerId, setTrainerId] = useState("");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Month filter state
@@ -75,6 +84,7 @@ export function PrivateSessionsClient({
     setPaid(false);
     setExerciseDetails("");
     setNotes("");
+    setTrainerId("");
     setFormErrors({});
   }
 
@@ -185,6 +195,7 @@ export function PrivateSessionsClient({
           scheduledAt: new Date(scheduledAt).toISOString(),
           amount: parsedAmount,
           paid,
+          ...(trainerId ? { trainerId } : {}),
           exerciseDetails: exerciseDetails.trim() || undefined,
           notes: notes.trim() || undefined,
         }),
@@ -475,6 +486,18 @@ export function PrivateSessionsClient({
             placeholder="e.g., 500"
             error={formErrors.amount}
           />
+
+          {trainers && trainers.length > 0 && (
+            <Select
+              label="Trainer"
+              value={trainerId}
+              onChange={(e) => setTrainerId(e.target.value)}
+              options={[
+                { value: "", label: "Me (Owner)" },
+                ...trainers.map((t) => ({ value: t.id, label: t.name })),
+              ]}
+            />
+          )}
 
           <div className="flex items-center gap-2">
             <input
