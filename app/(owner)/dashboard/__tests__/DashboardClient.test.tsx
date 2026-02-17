@@ -353,7 +353,7 @@ describe("DashboardClient month navigator", () => {
     });
 
     expect(screen.getByText(fmtCurrency(75000))).toBeDefined();
-    expect(screen.getByText(`Membership: ${fmtCurrency(60000)}`)).toBeDefined();
+    expect(screen.getByText(`Membership: ${fmtCurrency(60000)} | Private: ${fmtCurrency(15000)}`)).toBeDefined();
   });
 
   it("updates Outstanding values after fetching previous month", async () => {
@@ -588,7 +588,13 @@ describe("DashboardClient month navigator", () => {
 
   it("displays initial membership revenue subtitle", () => {
     render(<DashboardClient {...defaultProps} />);
-    expect(screen.getByText(`Membership: ${fmtCurrency(40000)}`)).toBeDefined();
+    expect(screen.getByText(`Membership: ${fmtCurrency(40000)} | Private: ${fmtCurrency(10000)}`)).toBeDefined();
+  });
+
+  it("displays both membership and private revenue in Revenue card subtitle", () => {
+    render(<DashboardClient {...defaultProps} />);
+    const subtitle = screen.getByText(`Membership: ${fmtCurrency(40000)} | Private: ${fmtCurrency(10000)}`);
+    expect(subtitle).toBeDefined();
   });
 
   it("displays initial Outstanding count from props", () => {
@@ -964,7 +970,7 @@ describe("DashboardClient month navigator", () => {
       />
     );
     expect(screen.getByText(fmtCurrency(0))).toBeDefined();
-    expect(screen.getByText(`Membership: ${fmtCurrency(0)}`)).toBeDefined();
+    expect(screen.getByText(`Membership: ${fmtCurrency(0)} | Private: ${fmtCurrency(0)}`)).toBeDefined();
   });
 
   // ─── Revenue chart total description ───────────────────────
