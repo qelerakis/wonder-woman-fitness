@@ -74,7 +74,16 @@ export async function PATCH(
     const updateData: Record<string, unknown> = {};
     if (parsed.data.clientName !== undefined) updateData.clientName = parsed.data.clientName;
     if (parsed.data.scheduledAt !== undefined) updateData.scheduledAt = new Date(parsed.data.scheduledAt);
-    if (parsed.data.paid !== undefined) updateData.paid = parsed.data.paid;
+    if (parsed.data.paid !== undefined) {
+      updateData.paid = parsed.data.paid;
+      if (parsed.data.paid) {
+        updateData.paidAt = new Date();
+        updateData.paidMarkedById = session.user.id;
+      } else {
+        updateData.paidAt = null;
+        updateData.paidMarkedById = null;
+      }
+    }
     if (parsed.data.amount !== undefined) updateData.amount = parsed.data.amount;
     if (parsed.data.exerciseDetails !== undefined) updateData.exerciseDetails = parsed.data.exerciseDetails;
     if (parsed.data.notes !== undefined) updateData.notes = parsed.data.notes;
@@ -90,6 +99,8 @@ export async function PATCH(
         amount: true,
         exerciseDetails: true,
         notes: true,
+        paidAt: true,
+        paidMarkedBy: { select: { id: true, name: true } },
         createdAt: true,
       },
     });

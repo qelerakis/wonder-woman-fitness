@@ -697,9 +697,11 @@ describe("PATCH /api/private-sessions/[id]", () => {
 
     expect(response.status).toBe(200);
     expect(body.data.paid).toBe(true);
-    // Verify only paid field was in the update data
+    // Verify paid field plus audit fields were in the update data
     const updateCallArgs = mockPrisma.privateSession.update.mock.calls[0][0];
-    expect(updateCallArgs.data).toEqual({ paid: true });
+    expect(updateCallArgs.data.paid).toBe(true);
+    expect(updateCallArgs.data.paidAt).toBeInstanceOf(Date);
+    expect(updateCallArgs.data.paidMarkedById).toBe("owner-1");
   });
 
   it("partial update works (only clientName)", async () => {
@@ -807,6 +809,74 @@ describe("PATCH /api/private-sessions/[id]", () => {
     expect(response.status).toBe(500);
     const body = await response.json();
     expect(body.error).toBe("Internal server error");
+  });
+
+  it("sets paidAt and paidMarkedById when marking as paid", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.privateSession.findUnique.mockResolvedValue({
+      id: "ps-1",
+      createdById: "owner-1",
+    });
+    mockPrisma.privateSession.update.mockResolvedValue({
+      id: "ps-1",
+      clientName: "Jane Doe",
+      scheduledAt: new Date(VALID_DATETIME),
+      paid: true,
+      amount: 50,
+      exerciseDetails: null,
+      notes: null,
+      paidAt: new Date(),
+      paidMarkedBy: { id: "owner-1", name: "Owner One" },
+      createdAt: new Date(),
+    });
+
+    const { PATCH } = await import(
+      "@/app/api/private-sessions/[id]/route"
+    );
+    const response = await PATCH(
+      makePatchRequest({ paid: true }),
+      makeParams("ps-1")
+    );
+
+    expect(response.status).toBe(200);
+    const updateCallArgs = mockPrisma.privateSession.update.mock.calls[0][0];
+    expect(updateCallArgs.data.paid).toBe(true);
+    expect(updateCallArgs.data.paidAt).toBeInstanceOf(Date);
+    expect(updateCallArgs.data.paidMarkedById).toBe("owner-1");
+  });
+
+  it("clears paidAt and paidMarkedById when marking as unpaid", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.privateSession.findUnique.mockResolvedValue({
+      id: "ps-1",
+      createdById: "owner-1",
+    });
+    mockPrisma.privateSession.update.mockResolvedValue({
+      id: "ps-1",
+      clientName: "Jane Doe",
+      scheduledAt: new Date(VALID_DATETIME),
+      paid: false,
+      amount: 50,
+      exerciseDetails: null,
+      notes: null,
+      paidAt: null,
+      paidMarkedBy: null,
+      createdAt: new Date(),
+    });
+
+    const { PATCH } = await import(
+      "@/app/api/private-sessions/[id]/route"
+    );
+    const response = await PATCH(
+      makePatchRequest({ paid: false }),
+      makeParams("ps-1")
+    );
+
+    expect(response.status).toBe(200);
+    const updateCallArgs = mockPrisma.privateSession.update.mock.calls[0][0];
+    expect(updateCallArgs.data.paid).toBe(false);
+    expect(updateCallArgs.data.paidAt).toBeNull();
+    expect(updateCallArgs.data.paidMarkedById).toBeNull();
   });
 });
 

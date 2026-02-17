@@ -52,6 +52,8 @@ export async function GET(req: Request): Promise<Response> {
         amount: true,
         exerciseDetails: true,
         notes: true,
+        paidAt: true,
+        paidMarkedBy: { select: { id: true, name: true } },
         createdAt: true,
         createdBy: {
           select: { id: true, name: true },
@@ -101,6 +103,7 @@ export async function POST(req: Request): Promise<Response> {
         exerciseDetails: parsed.data.exerciseDetails,
         notes: parsed.data.notes,
         createdById: session.user.id,
+        ...(parsed.data.paid ? { paidAt: new Date(), paidMarkedById: session.user.id } : {}),
       },
       select: {
         id: true,
@@ -110,6 +113,8 @@ export async function POST(req: Request): Promise<Response> {
         amount: true,
         exerciseDetails: true,
         notes: true,
+        paidAt: true,
+        paidMarkedBy: { select: { id: true, name: true } },
         createdAt: true,
       },
     });
