@@ -525,4 +525,93 @@ describe("DELETE /api/recurring-slots", () => {
     expect(body.data.deletedSessionsCount).toBe(0);
     expect(mockPrisma.session.findMany).not.toHaveBeenCalled();
   });
+
+  it("skips notification for voting-enabled sessions with no attending voters", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.recurringSlot.findUnique.mockResolvedValue({
+      id: "slot-1",
+      dayOfWeek: 1,
+      startHour: 9,
+    });
+    mockPrisma.session.findMany.mockResolvedValue([
+      {
+        id: "session-1",
+        votingEnabled: true,
+        weekDate: new Date("2026-03-09T00:00:00.000Z"),
+        members: [],
+        votes: [
+          { userId: "m-1", attending: false },
+        ],
+      },
+    ]);
+    mockPrisma.session.delete.mockResolvedValue({});
+    mockPrisma.recurringSlot.delete.mockResolvedValue({});
+
+    const { DELETE } = await import("@/app/api/recurring-slots/route");
+    const response = await DELETE(
+      new Request("http://localhost/api/recurring-slots", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: "slot-1", deleteFutureSessions: true }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.deletedSessionsCount).toBe(1);
+    expect(mockPrisma.session.delete).toHaveBeenCalledTimes(1);
+    expect(mockDispatchNotificationToMany).not.toHaveBeenCalled();
+  });
+
+  it("recurring slot deletion notification includes specific date per session", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.recurringSlot.findUnique.mockResolvedValue({
+      id: "slot-1",
+      dayOfWeek: 3,
+      startHour: 18,
+    });
+    mockPrisma.session.findMany.mockResolvedValue([
+      {
+        id: "session-1",
+        votingEnabled: false,
+        weekDate: new Date("2026-03-09T00:00:00.000Z"),
+        members: [{ user: { id: "m-1" } }],
+        votes: [],
+      },
+      {
+        id: "session-2",
+        votingEnabled: false,
+        weekDate: new Date("2026-03-16T00:00:00.000Z"),
+        members: [{ user: { id: "m-2" } }],
+        votes: [],
+      },
+    ]);
+    mockPrisma.session.delete.mockResolvedValue({});
+    mockPrisma.recurringSlot.delete.mockResolvedValue({});
+
+    const { DELETE } = await import("@/app/api/recurring-slots/route");
+    await DELETE(
+      new Request("http://localhost/api/recurring-slots", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: "slot-1", deleteFutureSessions: true }),
+      })
+    );
+
+    expect(mockDispatchNotificationToMany).toHaveBeenCalledTimes(2);
+    // Wednesday of week March 9 = March 11
+    expect(mockDispatchNotificationToMany).toHaveBeenCalledWith(
+      ["m-1"],
+      "SESSION_DELETED",
+      expect.stringContaining("Mar 11"),
+      expect.any(String)
+    );
+    // Wednesday of week March 16 = March 18
+    expect(mockDispatchNotificationToMany).toHaveBeenCalledWith(
+      ["m-2"],
+      "SESSION_DELETED",
+      expect.stringContaining("Mar 18"),
+      expect.any(String)
+    );
+  });
 });

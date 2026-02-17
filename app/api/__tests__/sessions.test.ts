@@ -611,6 +611,171 @@ describe("PATCH /api/sessions/[id]", () => {
       expect.stringContaining("cancelled")
     );
   });
+
+  it("cancelling a voting-enabled session with no attending voters sends no notification", async () => {
+    const { dispatchNotificationToMany } = await import("@/lib/notifications");
+
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      weekDate: new Date("2026-03-09T00:00:00.000Z"),
+      trainers: [],
+      members: [],
+      votes: [
+        { userId: "m-1", attending: false },
+        { userId: "m-2", attending: false },
+        { userId: "m-3", attending: false },
+      ],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+    });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "CANCELLED",
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "CANCELLED" }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(dispatchNotificationToMany).not.toHaveBeenCalled();
+  });
+
+  it("cancelling a voting-enabled session with all voters attending notifies all", async () => {
+    const { dispatchNotificationToMany } = await import("@/lib/notifications");
+
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      weekDate: new Date("2026-03-09T00:00:00.000Z"),
+      trainers: [],
+      members: [],
+      votes: [
+        { userId: "m-1", attending: true },
+        { userId: "m-2", attending: true },
+        { userId: "m-3", attending: true },
+      ],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+    });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "CANCELLED",
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "CANCELLED" }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(dispatchNotificationToMany).toHaveBeenCalledWith(
+      ["m-1", "m-2", "m-3"],
+      "CLASS_CANCELLED",
+      expect.stringContaining("Monday"),
+      expect.stringContaining("cancelled")
+    );
+  });
+
+  it("cancelling a custom (one-off) session uses customDay and customStartHour", async () => {
+    const { dispatchNotificationToMany } = await import("@/lib/notifications");
+
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      weekDate: new Date("2026-03-09T00:00:00.000Z"),
+      trainers: [],
+      members: [],
+      votes: [
+        { userId: "m-1", attending: true },
+      ],
+      recurringSlot: null,
+      customDay: 5,
+      customStartHour: 14,
+    });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "CANCELLED",
+      recurringSlot: null,
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "CANCELLED" }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    // Friday of week starting March 9 = March 13
+    expect(dispatchNotificationToMany).toHaveBeenCalledWith(
+      ["m-1"],
+      "CLASS_CANCELLED",
+      expect.stringContaining("Friday"),
+      expect.stringContaining("cancelled")
+    );
+    expect(dispatchNotificationToMany).toHaveBeenCalledWith(
+      ["m-1"],
+      "CLASS_CANCELLED",
+      expect.stringContaining("Mar 13"),
+      expect.stringContaining("cancelled")
+    );
+  });
+
+  it("cancelling an already-cancelled session does not re-notify", async () => {
+    const { dispatchNotificationToMany } = await import("@/lib/notifications");
+
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "CANCELLED",
+      votingEnabled: false,
+      weekDate: new Date("2026-03-09T00:00:00.000Z"),
+      trainers: [],
+      members: [{ user: { id: "m-1", name: "Alice" } }],
+      votes: [],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+    });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "CANCELLED",
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "CANCELLED" }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(dispatchNotificationToMany).not.toHaveBeenCalled();
+  });
 });
 
 // ===== DELETE /api/sessions/[id] =====
@@ -818,6 +983,69 @@ describe("DELETE /api/sessions/[id]", () => {
     expect(response.status).toBe(500);
     const body = await response.json();
     expect(body.error).toBe("Internal server error");
+  });
+
+  it("deleting a voting-enabled session with no voters sends no notification", async () => {
+    const { dispatchNotificationToMany } = await import("@/lib/notifications");
+
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      votingEnabled: true,
+      weekDate: new Date("2026-03-09T00:00:00.000Z"),
+      members: [],
+      votes: [],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+    });
+    mockPrisma.session.delete.mockResolvedValue({});
+
+    const { DELETE } = await import("@/app/api/sessions/[id]/route");
+    const response = await DELETE(
+      new Request("http://localhost/api/sessions/s-1", { method: "DELETE" }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.success).toBe(true);
+    expect(dispatchNotificationToMany).not.toHaveBeenCalled();
+  });
+
+  it("deleting a custom (one-off) session uses customDay and customStartHour", async () => {
+    const { dispatchNotificationToMany } = await import("@/lib/notifications");
+
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      votingEnabled: false,
+      weekDate: new Date("2026-03-09T00:00:00.000Z"),
+      members: [{ user: { id: "m-1" } }],
+      votes: [],
+      recurringSlot: null,
+      customDay: 3,
+      customStartHour: 18,
+    });
+    mockPrisma.session.delete.mockResolvedValue({});
+
+    const { DELETE } = await import("@/app/api/sessions/[id]/route");
+    await DELETE(
+      new Request("http://localhost/api/sessions/s-1", { method: "DELETE" }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    // Wednesday of week starting March 9 = March 11
+    expect(dispatchNotificationToMany).toHaveBeenCalledWith(
+      ["m-1"],
+      "SESSION_DELETED",
+      expect.stringContaining("Wednesday"),
+      expect.any(String)
+    );
+    expect(dispatchNotificationToMany).toHaveBeenCalledWith(
+      ["m-1"],
+      "SESSION_DELETED",
+      expect.stringContaining("Mar 11"),
+      expect.any(String)
+    );
   });
 });
 
@@ -2621,5 +2849,198 @@ describe("PATCH /api/sessions/[id] — voting toggle transaction & edge cases", 
     expect(body.data.votingEnabled).toBe(true);
     expect(body.data.workoutTitle).toBe("HIIT Circuit");
     expect(body.data.members).toEqual([]);
+  });
+});
+
+// ===== PATCH /api/sessions/[id] — workout-posted notification edge cases =====
+
+describe("PATCH /api/sessions/[id] — workout-posted notification edge cases", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("workout posted on voting-enabled session notifies ALL voters including non-attending", async () => {
+    const { dispatchNotificationToMany } = await import("@/lib/notifications");
+
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      workoutTitle: null,
+      weekDate: new Date("2026-03-09T00:00:00.000Z"),
+      trainers: [],
+      members: [],
+      votes: [
+        { userId: "m-1", attending: true },
+        { userId: "m-2", attending: false },
+      ],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+      customStartHour: null,
+    });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      workoutTitle: "New WOD",
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workoutTitle: "New WOD" }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(dispatchNotificationToMany).toHaveBeenCalledWith(
+      ["m-1", "m-2"],
+      "WORKOUT_POSTED",
+      "Workout posted for your upcoming class",
+      "New workout: New WOD"
+    );
+  });
+
+  it("workout posted on non-voting session notifies assigned members only", async () => {
+    const { dispatchNotificationToMany } = await import("@/lib/notifications");
+
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      workoutTitle: null,
+      weekDate: new Date("2026-03-09T00:00:00.000Z"),
+      trainers: [],
+      members: [
+        { user: { id: "m-1", name: "Alice" } },
+        { user: { id: "m-2", name: "Bob" } },
+      ],
+      votes: [],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+      customStartHour: null,
+    });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: false,
+      workoutTitle: "New WOD",
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workoutTitle: "New WOD" }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(dispatchNotificationToMany).toHaveBeenCalledWith(
+      ["m-1", "m-2"],
+      "WORKOUT_POSTED",
+      "Workout posted for your upcoming class",
+      "New workout: New WOD"
+    );
+  });
+
+  it("workout posted on voting session with no voters sends no notification", async () => {
+    const { dispatchNotificationToMany } = await import("@/lib/notifications");
+
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      workoutTitle: null,
+      weekDate: new Date("2026-03-09T00:00:00.000Z"),
+      trainers: [],
+      members: [],
+      votes: [],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+      customStartHour: null,
+    });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      workoutTitle: "New WOD",
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workoutTitle: "New WOD" }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(dispatchNotificationToMany).not.toHaveBeenCalledWith(
+      expect.anything(),
+      "WORKOUT_POSTED",
+      expect.anything(),
+      expect.anything()
+    );
+  });
+
+  it("workout update (not first post) does not trigger notification", async () => {
+    const { dispatchNotificationToMany } = await import("@/lib/notifications");
+
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      workoutTitle: "Old WOD",
+      weekDate: new Date("2026-03-09T00:00:00.000Z"),
+      trainers: [],
+      members: [],
+      votes: [
+        { userId: "m-1", attending: true },
+        { userId: "m-2", attending: false },
+      ],
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+      customStartHour: null,
+    });
+    mockPrisma.session.update.mockResolvedValue({
+      id: "s-1",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      workoutTitle: "New WOD",
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      members: [],
+    });
+
+    const { PATCH } = await import("@/app/api/sessions/[id]/route");
+    await PATCH(
+      new Request("http://localhost/api/sessions/s-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workoutTitle: "New WOD" }),
+      }),
+      { params: Promise.resolve({ id: "s-1" }) }
+    );
+
+    expect(dispatchNotificationToMany).not.toHaveBeenCalledWith(
+      expect.anything(),
+      "WORKOUT_POSTED",
+      expect.anything(),
+      expect.anything()
+    );
   });
 });
