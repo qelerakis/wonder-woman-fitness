@@ -590,6 +590,7 @@ describe("PATCH /api/private-sessions/[id]", () => {
     mockPrisma.privateSession.findUnique.mockResolvedValue({
       id: "ps-1",
       createdById: "trainer-1",
+      amount: 50,
     });
     mockPrisma.privateSession.update.mockResolvedValue({
       id: "ps-1",
@@ -621,6 +622,7 @@ describe("PATCH /api/private-sessions/[id]", () => {
     mockPrisma.privateSession.findUnique.mockResolvedValue({
       id: "ps-1",
       createdById: "trainer-1",
+      amount: 50,
     });
     mockPrisma.privateSession.update.mockResolvedValue({
       id: "ps-1",
@@ -652,6 +654,7 @@ describe("PATCH /api/private-sessions/[id]", () => {
     mockPrisma.privateSession.findUnique.mockResolvedValue({
       id: "ps-1",
       createdById: "trainer-2",
+      amount: 50,
     });
 
     const { PATCH } = await import(
@@ -674,6 +677,7 @@ describe("PATCH /api/private-sessions/[id]", () => {
     mockPrisma.privateSession.findUnique.mockResolvedValue({
       id: "ps-1",
       createdById: "owner-1",
+      amount: 50,
     });
     mockPrisma.privateSession.update.mockResolvedValue({
       id: "ps-1",
@@ -709,6 +713,7 @@ describe("PATCH /api/private-sessions/[id]", () => {
     mockPrisma.privateSession.findUnique.mockResolvedValue({
       id: "ps-1",
       createdById: "owner-1",
+      amount: 50,
     });
     mockPrisma.privateSession.update.mockResolvedValue({
       id: "ps-1",
@@ -742,6 +747,7 @@ describe("PATCH /api/private-sessions/[id]", () => {
     mockPrisma.privateSession.findUnique.mockResolvedValue({
       id: "ps-1",
       createdById: "owner-1",
+      amount: 50,
     });
     mockPrisma.privateSession.update.mockResolvedValue({
       id: "ps-1",
@@ -793,6 +799,7 @@ describe("PATCH /api/private-sessions/[id]", () => {
     mockPrisma.privateSession.findUnique.mockResolvedValue({
       id: "ps-1",
       createdById: "owner-1",
+      amount: 50,
     });
     mockPrisma.privateSession.update.mockRejectedValue(
       new Error("DB error")
@@ -816,6 +823,7 @@ describe("PATCH /api/private-sessions/[id]", () => {
     mockPrisma.privateSession.findUnique.mockResolvedValue({
       id: "ps-1",
       createdById: "owner-1",
+      amount: 50,
     });
     mockPrisma.privateSession.update.mockResolvedValue({
       id: "ps-1",
@@ -850,6 +858,7 @@ describe("PATCH /api/private-sessions/[id]", () => {
     mockPrisma.privateSession.findUnique.mockResolvedValue({
       id: "ps-1",
       createdById: "owner-1",
+      amount: 50,
     });
     mockPrisma.privateSession.update.mockResolvedValue({
       id: "ps-1",
@@ -877,6 +886,90 @@ describe("PATCH /api/private-sessions/[id]", () => {
     expect(updateCallArgs.data.paid).toBe(false);
     expect(updateCallArgs.data.paidAt).toBeNull();
     expect(updateCallArgs.data.paidMarkedById).toBeNull();
+  });
+
+  it("returns 400 when marking as paid without amount", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.privateSession.findUnique.mockResolvedValue({
+      id: "ps-1",
+      createdById: "owner-1",
+      amount: null,
+    });
+
+    const { PATCH } = await import(
+      "@/app/api/private-sessions/[id]/route"
+    );
+    const response = await PATCH(
+      makePatchRequest({ paid: true }),
+      makeParams("ps-1")
+    );
+
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error).toBe("Amount is required when marking as paid");
+    expect(mockPrisma.privateSession.update).not.toHaveBeenCalled();
+  });
+
+  it("allows marking as paid when amount is provided in same request", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.privateSession.findUnique.mockResolvedValue({
+      id: "ps-1",
+      createdById: "owner-1",
+      amount: null,
+    });
+    mockPrisma.privateSession.update.mockResolvedValue({
+      id: "ps-1",
+      clientName: "Jane Doe",
+      scheduledAt: new Date("2026-03-15T10:00:00.000Z"),
+      paid: true,
+      amount: 100,
+      exerciseDetails: null,
+      notes: null,
+      paidAt: new Date(),
+      paidMarkedBy: { id: "owner-1", name: "Owner One" },
+      createdAt: new Date(),
+    });
+
+    const { PATCH } = await import(
+      "@/app/api/private-sessions/[id]/route"
+    );
+    const response = await PATCH(
+      makePatchRequest({ paid: true, amount: 100 }),
+      makeParams("ps-1")
+    );
+
+    expect(response.status).toBe(200);
+  });
+
+  it("allows marking as paid when session already has amount", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.privateSession.findUnique.mockResolvedValue({
+      id: "ps-1",
+      createdById: "owner-1",
+      amount: 50,
+    });
+    mockPrisma.privateSession.update.mockResolvedValue({
+      id: "ps-1",
+      clientName: "Jane Doe",
+      scheduledAt: new Date("2026-03-15T10:00:00.000Z"),
+      paid: true,
+      amount: 50,
+      exerciseDetails: null,
+      notes: null,
+      paidAt: new Date(),
+      paidMarkedBy: { id: "owner-1", name: "Owner One" },
+      createdAt: new Date(),
+    });
+
+    const { PATCH } = await import(
+      "@/app/api/private-sessions/[id]/route"
+    );
+    const response = await PATCH(
+      makePatchRequest({ paid: true }),
+      makeParams("ps-1")
+    );
+
+    expect(response.status).toBe(200);
   });
 });
 

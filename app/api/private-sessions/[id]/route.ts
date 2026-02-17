@@ -56,7 +56,7 @@ export async function PATCH(
 
     const existing = await prisma.privateSession.findUnique({
       where: { id },
-      select: { id: true, createdById: true },
+      select: { id: true, createdById: true, amount: true },
     });
 
     if (!existing) {
@@ -69,6 +69,17 @@ export async function PATCH(
     // Trainers can only modify their own private sessions
     if (role === "TRAINER" && existing.createdById !== session.user.id) {
       return Response.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // When marking as paid, require an amount
+    if (parsed.data.paid === true) {
+      const effectiveAmount = parsed.data.amount ?? existing.amount;
+      if (effectiveAmount == null) {
+        return Response.json(
+          { error: "Amount is required when marking as paid" },
+          { status: 400 }
+        );
+      }
     }
 
     const updateData: Record<string, unknown> = {};
