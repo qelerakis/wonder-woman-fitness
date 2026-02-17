@@ -208,7 +208,7 @@ function DatePicker({
       : undefined;
 
   return (
-    <div className="w-full" ref={containerRef}>
+    <div className="relative w-full" ref={containerRef}>
       {label && (
         <label
           htmlFor={triggerId}
