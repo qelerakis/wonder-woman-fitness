@@ -327,6 +327,10 @@ Run through this checklist to verify everything works:
 - [ ] No secrets hardcoded in codebase (all in env vars)
 - [ ] Cloudinary uploads always go through API route (never client-direct)
 - [ ] CORS not disabled (Next.js defaults are secure)
+- [ ] Rate limiting active on all API endpoints (in-memory sliding-window)
+- [ ] Content-Security-Policy header enabled (XSS mitigation)
+- [ ] All Zod schemas use `.strict()` (rejects unexpected fields)
+- [ ] Cron auth uses timing-safe comparison (`crypto.timingSafeEqual`)
 
 ---
 

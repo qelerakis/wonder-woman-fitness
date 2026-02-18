@@ -8,7 +8,7 @@
 | **Version**        | 1.0 (MVP) — Feature Complete                |
 | **Platform**       | Web Application                             |
 | **Author**         | —                                           |
-| **Last Updated**   | February 16, 2026                           |
+| **Last Updated**   | February 18, 2026                           |
 | **Status**         | Complete — All MVP features implemented     |
 | **Domain**         | wonderwomanfitness.mk                       |
 
@@ -603,7 +603,7 @@ This section outlines the primary screens to be designed and built.
 
 ---
 
-## 12. Implementation Status (as of February 16, 2026)
+## 12. Implementation Status (as of February 18, 2026)
 
 All MVP features defined in this PRD have been implemented and tested. The application is feature-complete and production-ready.
 
@@ -615,15 +615,16 @@ All MVP features defined in this PRD have been implemented and tested. The appli
 | Schedule Management | Done | Recurring slots + one-off custom sessions |
 | Workout Posting | Done | Per-session workout editor for owner/trainer |
 | Attendance Voting | Done | 24h deadline, inline voting modal for members |
-| Payment Tracking | Done | Computed status (never stored), grace period, lockout |
-| Private Sessions | Done | Full CRUD, payment tracking |
+| Payment Tracking | Done | Computed status (never stored), grace period, lockout, edit/delete |
+| Private Sessions | Done | Full CRUD, payment tracking, audit trail, trainer visibility |
 | Notifications | Done | 12 types, email + in-app, 3 automated cron jobs |
 | Member Profile | Done | Edit name, phone, email, photo (Cloudinary) |
 | Member Departure | Done | Voluntary departure, motivational banner, rejoin flow |
-| Trial Period | Done | 14-day trial, auto-transition, owner notifications |
-| Analytics Dashboard | Done | Engagement, class performance, revenue, retention charts |
+| Trial Period | Done | 14-day trial merged into grace period, auto-transition, owner notifications |
+| Analytics Dashboard | Done | Engagement, class performance, revenue, retention charts with date range filters |
 | Session Assignments | Done | Owner assigns trainers/members, carry-forward on week generation |
 | Delete Recurring Slot | Done | Cascade option to delete future sessions |
+| Security Hardening | Done | Rate limiting, CSP header, strict Zod schemas, timing-safe cron auth |
 
 ### Post-MVP Additions (Built Beyond Original PRD)
 
@@ -635,6 +636,16 @@ These features were added during development to address real workflow needs:
 4. **Carry-Forward Assignments** — When generating a new week, trainer and member assignments are automatically copied from the previous week's matching slots. Departed members are excluded.
 5. **Delete Recurring Slot with Cascade** — Owner can delete a recurring slot and optionally delete all future sessions generated from it.
 6. **Member Voting Redesign** — Inline voting modal (no page navigation). Assigned sessions have green tint styling. SessionCard adapts rendering by role.
+7. **Custom Date Pickers** — Dark-themed DatePicker and DateTimePicker components replacing native browser inputs. Calendar navigation, keyboard support, month/year shortcuts.
+8. **Confirmation Modals** — Reusable ConfirmationModal component for destructive actions (cancel session, delete payment, remove member).
+9. **Trainer Payment Recording** — Trainers can view member payment status and record payments on behalf of the owner.
+10. **Private Session Trainer Visibility** — Trainers can view private sessions (read-only) for scheduling coordination.
+11. **Payment Edit/Delete** — Owner can edit and delete payment records with confirmation.
+12. **Date Range Filters** — Custom date range filtering on payments page and analytics dashboard.
+13. **Security Hardening** — Rate limiting on all 21 API endpoints (sliding-window, per-IP), Content-Security-Policy header, `.strict()` on all Zod schemas to reject unexpected fields, Zod-validated query parameters for GET endpoints, string length limits on all text fields.
+14. **Trial-as-Grace-Period** — Trial period merged into the grace period flow. Trial members see "Payment due" from day 1 with a 14-day countdown (no separate TRIAL payment status).
+15. **Voter Cancellation Notifications** — Members notified when sessions with their votes are cancelled.
+16. **Owner as Trainer** — Owner appears in trainer selection lists and can be assigned as a trainer to sessions.
 
 ### Tech Stack (Actual Versions)
 
@@ -657,11 +668,11 @@ These features were added during development to address real workflow needs:
 
 ### Test Coverage
 
-615 automated tests across 19 test files, all passing (~6s):
-- Business logic: 116 tests (payment, voting, session generation, carry-forward)
-- API routes: 235 tests (members, sessions, payments, votes, assignments, private sessions, recurring slots)
-- UI components: 247 tests (SessionCard, MemberSessionDetailClient, Button, VotingPrompt, Modal, CreateSessionModal)
-- Type validation: 17 tests (Zod session schemas)
+1,373 automated tests across 35 test files, all passing (~16s):
+- Business logic: 168 tests (payment, voting, session generation, carry-forward, rate limiting, cron auth, notification helpers)
+- API routes: 285 tests (sessions, private sessions, votes, payments, recurring slots, session members/trainers, members)
+- UI components: 854 tests (session detail, private sessions, schedule, payments, dashboard, date pickers, modals, buttons, badges, banners)
+- Type validation: 66 tests (Zod session schemas, strict schemas with length limits)
 
 ---
 

@@ -16,7 +16,7 @@
 | **Charts**         | Recharts                       | 3.x      | React-native charting library. Composable, lightweight, good Tailwind integration. Covers line, bar, pie, and area charts needed for the dashboard. |
 | **Validation**     | Zod                            | 4.x      | Runtime schema validation shared between client forms and API routes. Single source of truth for data shapes. |
 | **Hosting**        | Vercel (app) + Neon (database) | —        | Vercel for zero-config Next.js deployment with edge functions. Neon for serverless Postgres with branching (useful for staging). Both have generous free tiers. |
-| **Password Hash**  | bcrypt                         | 5.x      | Industry standard for password hashing with automatic salt generation.                                  |
+| **Password Hash**  | bcrypt                         | 6.x      | Industry standard for password hashing with automatic salt generation.                                  |
 
 ---
 
@@ -52,6 +52,7 @@ wonder-woman-fitness/
 │   │   └── trainer/
 │   │       ├── session/[id]/page.tsx      # Session detail + workout editor
 │   │       ├── notifications/page.tsx     # Trainer notifications
+│   │       ├── payments/page.tsx          # Trainer payment recording + member status
 │   │       └── private-sessions/page.tsx  # View private sessions (read-only)
 │   ├── (owner)/                   # Owner/admin routes
 │   │   ├── dashboard/page.tsx             # Analytics dashboard
@@ -66,7 +67,8 @@ wonder-woman-fitness/
 │   │   ├── payments/page.tsx              # Payment tracking
 │   │   ├── private-sessions/page.tsx      # Private session management
 │   │   └── trainers/page.tsx              # Trainer account management
-│   ├── api/                       # API route handlers (~30 endpoints)
+│   ├── api/                       # API route handlers (23 route files, all rate-limited)
+│   │   ├── __tests__/                       # API route tests (8 files, 285 tests)
 │   │   ├── auth/
 │   │   │   ├── [...nextauth]/route.ts     # NextAuth v5 handler
 │   │   │   └── register/route.ts          # Member self-registration
@@ -102,7 +104,8 @@ wonder-woman-fitness/
 │   ├── globals.css                # Tailwind v4 CSS config (@theme directive)
 │   └── layout.tsx                 # Root layout (Header, auth provider)
 ├── components/
-│   ├── ui/                        # 9 primitives (Badge, Button, Card, Input, Modal, Select,
+│   ├── ui/                        # 13 primitives (Badge, Button, Card, ConfirmationModal,
+│   │                              #   DatePicker, DateTimePicker, Input, Modal, Select,
 │   │                              #   Spinner, Textarea, Toast)
 │   ├── schedule/                  # 9 components (WeeklyCalendar, SessionCard, CreateSessionModal,
 │   │                              #   DeleteRecurringSlotModal, VotingPrompt, VoteSummary,
@@ -121,21 +124,24 @@ wonder-woman-fitness/
 │   ├── auth.config.ts             # NextAuth edge-compatible config (no Prisma)
 │   ├── email.ts                   # Resend client + email templates
 │   ├── cloudinary.ts              # Upload helper
-│   ├── constants.ts               # All magic numbers (~167 lines)
+│   ├── constants.ts               # All magic numbers and enums (~177 lines)
+│   ├── cron-auth.ts               # Timing-safe cron secret verification
 │   ├── payment-logic.ts           # Computed payment status engine
+│   ├── rate-limit.ts              # In-memory sliding-window rate limiter
 │   ├── voting-logic.ts            # Voting deadline calculation, eligibility
 │   ├── session-generation.ts      # generateSessionsForWeek() with carry-forward
 │   ├── notifications.ts           # dispatchNotification() email + in-app
-│   └── __tests__/                 # 4 business logic test files (103 tests)
+│   └── __tests__/                 # 8 business logic test files (168 tests)
 ├── types/
-│   ├── index.ts                   # Shared TypeScript types + Zod schemas
+│   ├── index.ts                   # Shared TypeScript types + Zod schemas (strict, with length limits)
 │   └── __tests__/
-│       └── session-schemas.test.ts # Zod validation tests
+│       ├── session-schemas.test.ts # Zod validation tests
+│       └── strict-schemas.test.ts  # Strict schema validation (unknown field rejection, length limits)
 ├── hooks/                         # Custom React hooks
 │   ├── useNotifications.ts        # Real-time notification polling
 │   └── usePaymentStatus.ts        # Payment status fetching & display
 ├── docs/
-│   └── plans/                     # 11 design/plan documents
+│   └── plans/                     # 23 design/plan documents
 ├── middleware.ts                   # Role-based routing + departed redirect
 ├── .env.local                     # Environment variables (gitignored)
 ├── next.config.ts                 # serverExternalPackages: prisma, pg, bcrypt
@@ -215,7 +221,9 @@ wonder-woman-fitness/
        │               │ amount           │
        │               │ exerciseDetails  │
        │               │ notes            │
+       │               │ paidAt           │
        │               │ createdBy        │──→ User (owner)
+       │               │ paidMarkedBy?    │──→ User (audit trail)
        │               └──────────────────┘
        │
        │               ┌──────────────────┐
@@ -241,7 +249,7 @@ SessionStatus: SCHEDULED | CANCELLED
 NotificationType: WORKOUT_POSTED | VOTING_OPENED | CLASS_CANCELLED |
                   MEMBER_MOVED | PAYMENT_REMINDER | LOCKOUT |
                   MEMBER_DEPARTED | REJOIN_REQUEST | TRIAL_EXPIRING |
-                  SESSION_DELETED | MANUAL_REMINDER
+                  TRIAL_EXPIRED | SESSION_DELETED | MANUAL_REMINDER
 ```
 
 ---
@@ -261,7 +269,7 @@ Browser → Next.js Middleware → Page/API Route → Prisma → PostgreSQL
 
 ### 4.2 Payment Status Resolution
 
-Payment status is **computed, not stored** as a column on the User. This prevents stale data. The logic runs in `lib/payment-logic.ts` and is evaluated on every relevant request via middleware.
+Payment status is **computed, not stored** as a column on the User. This prevents stale data. The logic runs in `lib/payment-logic.ts` and is evaluated on every relevant request via middleware. Note: the trial period IS the grace period — there is no separate TRIAL payment status.
 
 ```
 function getPaymentStatus(user, payments, today):
@@ -270,9 +278,10 @@ function getPaymentStatus(user, payments, today):
   2. If user.overrideActive → return OVERRIDE
   3. Find payment record covering today → if found → return PAID
   4. No covering payment — calculate grace period:
-     a. Trial members: grace starts from registration (trialEndsAt - 14 days), length = 14 days
-     b. Active members: grace starts from 1st of month, length = 10 days
-     c. If days since grace start <= grace length → return GRACE_PERIOD
+     a. Trial members (status=TRIAL): grace starts from registration date
+        (trialEndsAt - TRIAL_DAYS), length = 14 days, shows "Payment due" from day 1
+     b. Active members: grace starts from 1st of current month, length = 10 days
+     c. If within grace period → return GRACE_PERIOD
      d. Otherwise → return LOCKED
 ```
 
@@ -415,15 +424,18 @@ Cron routes are secured with a `CRON_SECRET` header that Vercel injects automati
 | `/api/analytics/*`    | ✅    | ❌      | ❌     | ❌              |
 
 \* Locked members are redirected to the payment banner page.
-\** Trainers can read payment status but cannot create/edit payment records.
+\** Trainers can read payment status and record payments on behalf of the owner.
 
 ### 6.3 API Security
 
 - All API routes validate the session token and role before processing.
-- All user inputs validated with Zod schemas.
+- All user inputs validated with strict Zod schemas (`.strict()` rejects unknown fields, string length limits enforced).
 - Database queries use Prisma's parameterized queries (no SQL injection).
 - File uploads validated for type (JPEG/PNG) and size (max 5 MB) before sending to Cloudinary.
-- Cron job routes secured with `CRON_SECRET` header verification.
+- Cron job routes secured with timing-safe `CRON_SECRET` comparison (`lib/cron-auth.ts`).
+- Rate limiting on all API endpoints via in-memory sliding-window limiter (`lib/rate-limit.ts`).
+- Content-Security-Policy header mitigates XSS attacks.
+- GET endpoints validate query parameters with Zod schemas.
 
 ---
 
@@ -520,10 +532,39 @@ Middleware uses `auth.config.ts`. Server components and API routes use `auth.ts`
 
 `DELETE /api/recurring-slots` accepts an optional `deleteFutureSessions` flag. When true, it deletes all future sessions (weekDate >= current week Monday) generated from the slot before deleting the slot itself. The `DeleteRecurringSlotModal` component provides the UI.
 
-### 9.6 Test Suite
+### 9.6 Security Hardening (OWASP)
 
-615 automated tests across 19 files using Vitest (~6s):
-- **Business logic** (4 files, 116 tests): payment-logic (29), voting-logic (38), session-generation (24), carry-forward (25)
-- **API routes** (8 files, 235 tests): sessions (78), private-sessions (43), votes (31), recurring-slots (21), session-members (19), members (16), session-trainers (14), payments (13)
-- **UI components** (6 files, 247 tests): MemberSessionDetailClient (76), SessionCard (58), Button (40), VotingPrompt (30), Modal (28), CreateSessionModal (15)
-- **Type validation** (1 file, 17 tests): session-schemas
+Multiple security improvements were added post-MVP:
+- **Rate Limiting**: In-memory sliding-window rate limiter on all 21 API endpoints. Registration limited to 10 req/15min per IP. General endpoints use configurable limits. Implemented in `lib/rate-limit.ts`.
+- **Content-Security-Policy**: CSP header added via `next.config.ts` to mitigate XSS (OWASP A03:2021).
+- **Strict Zod Schemas**: All Zod schemas use `.strict()` to reject unexpected fields, preventing mass assignment (OWASP A01:2021). String length limits on all text fields.
+- **Zod-Validated Query Parameters**: GET endpoints validate query params with Zod schemas instead of raw string access.
+- **Timing-Safe Cron Auth**: `lib/cron-auth.ts` uses `crypto.timingSafeEqual` for cron secret verification to prevent timing attacks.
+
+### 9.7 Custom Date Pickers
+
+Dark-themed DatePicker and DateTimePicker components replace native browser date inputs. Features calendar navigation, month/year dropdowns, +1 Month shortcut, keyboard accessibility, and fixed positioning to avoid container overflow.
+
+### 9.8 Trainer Payment Recording
+
+Trainers can view member payment status and record payments on behalf of the owner via `/trainer/payments`. The `Payment.recordedById` field tracks who recorded each payment for audit purposes.
+
+### 9.9 Private Session Audit Trail
+
+`PrivateSession` model gained `paidAt` (when payment was marked) and `paidMarkedById` (who marked it as paid) fields for complete audit trail. Trainers can view private sessions in read-only mode.
+
+### 9.10 Trial-as-Grace-Period
+
+The TRIAL payment status was removed. Trial members now enter GRACE_PERIOD immediately from registration, seeing "Payment due" with a 14-day countdown from day 1. The trial page was repurposed as "New Members" and the TrialBadge component was removed.
+
+### 9.11 Owner as Trainer
+
+The owner can be assigned as a trainer to sessions, appearing in all trainer selection lists. This allows the owner to lead classes directly.
+
+### 9.12 Test Suite
+
+1,373 automated tests across 35 files using Vitest (~16s):
+- **Business logic** (8 files, 168 tests): payment-logic (51), voting-logic (38), notification-helpers (26), session-generation (24), carry-forward (25), rate-limit (24), cron-auth (5), rate-limit-integration (4)
+- **API routes** (8 files, 285 tests): sessions (96), private-sessions (52), votes (37), payments (26), recurring-slots (24), session-members (19), members (16), session-trainers (15)
+- **UI components** (17 files, 854 tests): MemberSessionDetailClient (100), PrivateSessionsClient (88), PaymentsClient (82), SessionCard (79), DateTimePicker (73), DatePicker (64), DashboardClient (57), TrainerPaymentsClient (45), Button (40), ConfirmationModal (37), PaymentHistory (31), VotingPrompt (30), Modal (28), SessionDetailClient (27), PaymentBanner (17), CreateSessionModal (15), PaymentStatusBadge (12)
+- **Type validation** (2 files, 66 tests): strict-schemas (49), session-schemas (17)
