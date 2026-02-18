@@ -65,7 +65,7 @@ export async function POST(
 
     const { userId, action } = parsed.data;
 
-    // Validate target user exists and is a TRAINER
+    // Validate target user exists and is a TRAINER or OWNER
     const targetUser = await prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, role: true },
@@ -78,9 +78,9 @@ export async function POST(
       );
     }
 
-    if (targetUser.role !== "TRAINER") {
+    if (targetUser.role !== "TRAINER" && targetUser.role !== "OWNER") {
       return Response.json(
-        { error: "User is not a trainer" },
+        { error: "User is not a trainer or owner" },
         { status: 400 }
       );
     }

@@ -1015,6 +1015,7 @@ describe("PrivateSessionsClient", () => {
         { id: "t-1", name: "Trainer One" },
         { id: "t-2", name: "Trainer Two" },
       ],
+      currentUserId: "t-1",
     };
 
     it("shows trainer select dropdown when trainers are provided", async () => {
@@ -1037,7 +1038,7 @@ describe("PrivateSessionsClient", () => {
       expect(screen.queryByLabelText("Trainer")).toBeNull();
     });
 
-    it("trainer select lists all trainers plus 'Me (Owner)' option", async () => {
+    it("trainer select lists all trainers and pre-selects current user", async () => {
       render(<PrivateSessionsClient {...defaultProps} {...trainersProps} />);
 
       await act(async () => {
@@ -1046,9 +1047,10 @@ describe("PrivateSessionsClient", () => {
 
       const select = screen.getByLabelText("Trainer") as HTMLSelectElement;
       const options = Array.from(select.options).map((o) => o.text);
-      expect(options).toContain("Me (Owner)");
       expect(options).toContain("Trainer One");
       expect(options).toContain("Trainer Two");
+      expect(options).toHaveLength(2);
+      expect(select.value).toBe("t-1");
     });
 
     it("sends trainerId in POST when a trainer is selected", async () => {
@@ -1079,7 +1081,7 @@ describe("PrivateSessionsClient", () => {
       expect(body.trainerId).toBe("t-2");
     });
 
-    it("does not send trainerId when 'Me (Owner)' is selected", async () => {
+    it("sends current user's trainerId when default selection is kept", async () => {
       const mockFetch = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({ data: {} }),
@@ -1097,24 +1099,24 @@ describe("PrivateSessionsClient", () => {
         target: { value: "2026-03-01T10:00" },
       });
       fireEvent.change(screen.getByLabelText("Amount (MKD)"), { target: { value: "500" } });
-      // Leave trainer select on default ("" = Me/Owner)
+      // Leave trainer select on default (pre-selected current user)
 
       await act(async () => {
         fireEvent.submit(screen.getByRole("button", { name: "Create Session" }));
       });
 
       const body = JSON.parse((mockFetch.mock.calls[0][1] as RequestInit).body as string);
-      expect(body.trainerId).toBeUndefined();
+      expect(body.trainerId).toBe("t-1");
     });
 
-    it("resets trainer selection when modal is cancelled", async () => {
+    it("resets trainer selection to current user when modal is cancelled", async () => {
       render(<PrivateSessionsClient {...defaultProps} {...trainersProps} />);
 
       await act(async () => {
         fireEvent.click(screen.getByRole("button", { name: "New Session" }));
       });
 
-      fireEvent.change(screen.getByLabelText("Trainer"), { target: { value: "t-1" } });
+      fireEvent.change(screen.getByLabelText("Trainer"), { target: { value: "t-2" } });
 
       await act(async () => {
         fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
@@ -1125,7 +1127,7 @@ describe("PrivateSessionsClient", () => {
       });
 
       const select = screen.getByLabelText("Trainer") as HTMLSelectElement;
-      expect(select.value).toBe("");
+      expect(select.value).toBe("t-1");
     });
   });
 

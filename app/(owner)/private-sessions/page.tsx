@@ -44,7 +44,7 @@ export default async function OwnerPrivateSessionsPage(): Promise<React.ReactEle
   const unpaidCount = privateSessions.filter((ps) => !ps.paid).length;
 
   const trainers = await prisma.user.findMany({
-    where: { role: "TRAINER" },
+    where: { role: { in: ["TRAINER", "OWNER"] } },
     select: { id: true, name: true },
     orderBy: { name: "asc" },
   });
@@ -68,6 +68,7 @@ export default async function OwnerPrivateSessionsPage(): Promise<React.ReactEle
         totalSessions: privateSessions.length,
       }}
       trainers={trainers}
+      currentUserId={session.user.id}
     />
   );
 }

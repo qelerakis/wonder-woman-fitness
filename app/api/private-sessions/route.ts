@@ -114,7 +114,7 @@ export async function POST(req: Request): Promise<Response> {
     let createdById = session.user.id;
     if (role === "OWNER" && parsed.data.trainerId) {
       const trainer = await prisma.user.findFirst({
-        where: { id: parsed.data.trainerId, role: "TRAINER" },
+        where: { id: parsed.data.trainerId, role: { in: ["TRAINER", "OWNER"] } },
         select: { id: true },
       });
       if (!trainer) {

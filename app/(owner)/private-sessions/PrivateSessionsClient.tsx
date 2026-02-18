@@ -40,12 +40,14 @@ interface PrivateSessionsClientProps {
   sessions: PrivateSessionItem[];
   summary: PrivateSessionsSummary;
   trainers?: TrainerOption[];
+  currentUserId?: string;
 }
 
 export function PrivateSessionsClient({
   sessions,
   summary,
   trainers,
+  currentUserId,
 }: PrivateSessionsClientProps): React.ReactElement {
   const router = useRouter();
   const { addToast } = useToast();
@@ -59,7 +61,7 @@ export function PrivateSessionsClient({
   const [paid, setPaid] = useState(false);
   const [exerciseDetails, setExerciseDetails] = useState("");
   const [notes, setNotes] = useState("");
-  const [trainerId, setTrainerId] = useState("");
+  const [trainerId, setTrainerId] = useState(currentUserId ?? "");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Month filter state
@@ -85,7 +87,7 @@ export function PrivateSessionsClient({
     setPaid(false);
     setExerciseDetails("");
     setNotes("");
-    setTrainerId("");
+    setTrainerId(currentUserId ?? "");
     setFormErrors({});
   }
 
@@ -492,10 +494,7 @@ export function PrivateSessionsClient({
               label="Trainer"
               value={trainerId}
               onChange={(e) => setTrainerId(e.target.value)}
-              options={[
-                { value: "", label: "Me (Owner)" },
-                ...trainers.map((t) => ({ value: t.id, label: t.name })),
-              ]}
+              options={trainers.map((t) => ({ value: t.id, label: t.name }))}
             />
           )}
 

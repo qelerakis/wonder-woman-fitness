@@ -21,7 +21,7 @@ export default async function OwnerSchedulePage(): Promise<React.ReactElement> {
 
   // Get all trainers for assignment
   const trainers = await prisma.user.findMany({
-    where: { role: "TRAINER" },
+    where: { role: { in: ["TRAINER", "OWNER"] } },
     select: { id: true, name: true, email: true },
     orderBy: { name: "asc" },
   });

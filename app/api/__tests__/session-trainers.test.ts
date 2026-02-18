@@ -175,7 +175,7 @@ describe("POST /api/sessions/[id]/trainers", () => {
     expect(body.error).toContain("cancelled");
   });
 
-  it("returns 400 when target user is not a TRAINER", async () => {
+  it("returns 400 when target user is not a TRAINER or OWNER", async () => {
     mockAuth.mockResolvedValue(ownerSession());
     mockPrisma.session.findUnique.mockResolvedValue({ id: "s-1", status: "SCHEDULED" });
     mockPrisma.user.findUnique.mockResolvedValue({ id: "member-1", role: "MEMBER" });
@@ -189,6 +189,31 @@ describe("POST /api/sessions/[id]/trainers", () => {
     expect(response.status).toBe(400);
     const body = await response.json();
     expect(body.error).toContain("not a trainer");
+  });
+
+  it("allows assigning a user with OWNER role as trainer", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.session.findUnique.mockResolvedValue({ id: "s-1", status: "SCHEDULED" });
+    mockPrisma.user.findUnique.mockResolvedValue({ id: "cm1234567890owner1", role: "OWNER" });
+    mockPrisma.sessionTrainer.findUnique.mockResolvedValue(null);
+    mockPrisma.sessionTrainer.create.mockResolvedValue({});
+    mockPrisma.sessionTrainer.findMany.mockResolvedValue([
+      {
+        userId: "cm1234567890owner1",
+        user: { id: "cm1234567890owner1", name: "Owner One", email: "owner@test.com" },
+      },
+    ]);
+
+    const { POST } = await import("@/app/api/sessions/[id]/trainers/route");
+    const response = await POST(
+      makeRequest({ userId: "cm1234567890owner1", action: "add" }),
+      makeParams("s-1")
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0].userId).toBe("cm1234567890owner1");
   });
 
   it("returns 400 when target user not found", async () => {
