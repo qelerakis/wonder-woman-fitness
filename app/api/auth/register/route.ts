@@ -3,9 +3,15 @@ import { prisma } from "@/lib/prisma";
 import { addDays } from "date-fns";
 import { RegisterSchema } from "@/types";
 import { BCRYPT_ROUNDS, TRIAL_DAYS } from "@/lib/constants";
+import { publicLimiter, getClientIp, createRateLimitResponse } from "@/lib/rate-limit";
 
 export async function POST(req: Request): Promise<Response> {
   try {
+    // Rate limit: 10 requests per 15 min per IP (OWASP brute-force mitigation)
+    const ip = getClientIp(req);
+    const rateCheck = publicLimiter.check(`register:${ip}`);
+    if (!rateCheck.allowed) return createRateLimitResponse(rateCheck.retryAfterMs);
+
     const body: unknown = await req.json();
     const parsed = RegisterSchema.safeParse(body);
 
