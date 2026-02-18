@@ -15,43 +15,52 @@ import {
   MAX_WORKOUT_DETAILS_LENGTH,
   MAX_PRIVATE_SESSION_NOTES_LENGTH,
   MAX_PRIVATE_SESSION_EXERCISE_LENGTH,
+  MAX_EMAIL_LENGTH,
+  MAX_PASSWORD_LENGTH,
+  MAX_PAYMENT_NOTES_LENGTH,
+  MAX_CLIENT_NAME_LENGTH,
+  MAX_NOTIFICATION_TITLE_LENGTH,
+  MAX_NOTIFICATION_BODY_LENGTH,
+  MAX_RESET_TOKEN_LENGTH,
 } from '@/lib/constants';
 
 // ===== AUTHENTICATION SCHEMAS =====
 
 export const RegisterSchema = z.object({
-  email: z.string().email('Invalid email address'),
+  email: z.string().email('Invalid email address').max(MAX_EMAIL_LENGTH, `Email too long (max ${MAX_EMAIL_LENGTH} chars)`),
   password: z
     .string()
     .min(MIN_PASSWORD_LENGTH, `Password must be at least ${MIN_PASSWORD_LENGTH} characters`)
+    .max(MAX_PASSWORD_LENGTH, `Password must be at most ${MAX_PASSWORD_LENGTH} characters`)
     .regex(
       /(?=.*[0-9])(?=.*[!@#$%^&*])/,
       'Password must contain at least one number and one special character'
     ),
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  phone: z.string().optional(),
+  name: z.string().min(2, 'Name must be at least 2 characters').max(MAX_NAME_LENGTH, `Name too long (max ${MAX_NAME_LENGTH} chars)`),
+  phone: z.string().max(MAX_PHONE_LENGTH, `Phone too long (max ${MAX_PHONE_LENGTH} chars)`).optional(),
 }).strict();
 
 export type RegisterInput = z.infer<typeof RegisterSchema>;
 
 export const LoginSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(1, 'Password is required'),
+  email: z.string().email('Invalid email address').max(MAX_EMAIL_LENGTH),
+  password: z.string().min(1, 'Password is required').max(MAX_PASSWORD_LENGTH),
 }).strict();
 
 export type LoginInput = z.infer<typeof LoginSchema>;
 
 export const ForgotPasswordSchema = z.object({
-  email: z.string().email('Invalid email address'),
+  email: z.string().email('Invalid email address').max(MAX_EMAIL_LENGTH),
 }).strict();
 
 export type ForgotPasswordInput = z.infer<typeof ForgotPasswordSchema>;
 
 export const ResetPasswordSchema = z.object({
-  token: z.string().min(1, 'Reset token is required'),
+  token: z.string().min(1, 'Reset token is required').max(MAX_RESET_TOKEN_LENGTH),
   password: z
     .string()
-    .min(MIN_PASSWORD_LENGTH, `Password must be at least ${MIN_PASSWORD_LENGTH} characters`),
+    .min(MIN_PASSWORD_LENGTH, `Password must be at least ${MIN_PASSWORD_LENGTH} characters`)
+    .max(MAX_PASSWORD_LENGTH, `Password must be at most ${MAX_PASSWORD_LENGTH} characters`),
 }).strict();
 
 export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
@@ -64,7 +73,7 @@ export const PaymentSchema = z.object({
   paidAt: z.string().datetime('Invalid date format'),
   periodStart: z.string().date('Invalid date format'),
   periodEnd: z.string().date('Invalid date format'),
-  notes: z.string().optional(),
+  notes: z.string().max(MAX_PAYMENT_NOTES_LENGTH, `Notes too long (max ${MAX_PAYMENT_NOTES_LENGTH} chars)`).optional(),
 }).strict();
 
 export type PaymentInput = z.infer<typeof PaymentSchema>;
@@ -123,7 +132,7 @@ export type SessionMemberAssignmentInput = z.infer<typeof SessionMemberAssignmen
 export const MemberUpdateSchema = z.object({
   name: z.string().min(1, 'Name is required').max(MAX_NAME_LENGTH, `Name too long (max ${MAX_NAME_LENGTH} chars)`).optional(),
   phone: z.string().min(1, 'Phone is required').max(MAX_PHONE_LENGTH, `Phone too long (max ${MAX_PHONE_LENGTH} chars)`).optional(),
-  email: z.string().email('Invalid email address').optional(),
+  email: z.string().email('Invalid email address').max(MAX_EMAIL_LENGTH).optional(),
 }).strict();
 
 export type MemberUpdateInput = z.infer<typeof MemberUpdateSchema>;
@@ -137,7 +146,7 @@ export type DepartureInput = z.infer<typeof DepartureSchema>;
 // ===== PRIVATE SESSION SCHEMA =====
 
 export const PrivateSessionSchema = z.object({
-  clientName: z.string().min(1, 'Client name is required'),
+  clientName: z.string().min(1, 'Client name is required').max(MAX_CLIENT_NAME_LENGTH, `Client name too long (max ${MAX_CLIENT_NAME_LENGTH} chars)`),
   scheduledAt: z.string().datetime('Invalid date format'),
   paid: z.boolean().default(false),
   amount: z.number().positive('Amount must be positive').optional(),
@@ -166,8 +175,8 @@ export const NotificationCreateSchema = z.object({
     'SESSION_DELETED',
     'MANUAL_REMINDER',
   ]),
-  title: z.string().min(1, 'Title is required'),
-  body: z.string().min(1, 'Body is required'),
+  title: z.string().min(1, 'Title is required').max(MAX_NOTIFICATION_TITLE_LENGTH, `Title too long (max ${MAX_NOTIFICATION_TITLE_LENGTH} chars)`),
+  body: z.string().min(1, 'Body is required').max(MAX_NOTIFICATION_BODY_LENGTH, `Body too long (max ${MAX_NOTIFICATION_BODY_LENGTH} chars)`),
 }).strict();
 
 export type NotificationCreateInput = z.infer<typeof NotificationCreateSchema>;
@@ -184,9 +193,9 @@ export type RecurringSlotInput = z.infer<typeof RecurringSlotSchema>;
 // ===== TRAINER SCHEMA =====
 
 export const TrainerCreateSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  name: z.string().min(1, 'Name is required'),
-  phone: z.string().min(1, 'Phone is required'),
+  email: z.string().email('Invalid email address').max(MAX_EMAIL_LENGTH),
+  name: z.string().min(1, 'Name is required').max(MAX_NAME_LENGTH),
+  phone: z.string().min(1, 'Phone is required').max(MAX_PHONE_LENGTH),
 }).strict();
 
 export type TrainerCreateInput = z.infer<typeof TrainerCreateSchema>;

@@ -71,6 +71,13 @@ export const MAX_PRIVATE_SESSION_NOTES_LENGTH = 500;
 export const MAX_PRIVATE_SESSION_EXERCISE_LENGTH = 1000;
 export const MAX_WORKOUT_TITLE_LENGTH = 200;
 export const MAX_WORKOUT_DETAILS_LENGTH = 2000;
+export const MAX_EMAIL_LENGTH = 254; // RFC 5321
+export const MAX_PASSWORD_LENGTH = 128; // bcrypt has 72-byte limit; allow longer input but cap for sanity
+export const MAX_PAYMENT_NOTES_LENGTH = 500;
+export const MAX_CLIENT_NAME_LENGTH = 100;
+export const MAX_NOTIFICATION_TITLE_LENGTH = 200;
+export const MAX_NOTIFICATION_BODY_LENGTH = 2000;
+export const MAX_RESET_TOKEN_LENGTH = 500;
 
 // ===== PASSWORD CONFIGURATION =====
 export const BCRYPT_ROUNDS = 12;
