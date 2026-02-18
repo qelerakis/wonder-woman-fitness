@@ -178,7 +178,7 @@ export function ProfileClient({
                   }
                   size="sm"
                 >
-                  {user.status}
+                  {user.status === "TRIAL" ? "New Member" : user.status}
                 </Badge>
               </div>
             </div>

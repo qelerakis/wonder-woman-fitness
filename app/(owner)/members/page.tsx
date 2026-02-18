@@ -90,7 +90,7 @@ export default async function OwnerMembersPage(): Promise<React.ReactElement> {
           <h1 className="text-2xl font-bold text-surface-100">Members</h1>
           <p className="mt-1 text-sm text-surface-400">
             {membersWithStatus.length} active member{membersWithStatus.length !== 1 ? "s" : ""}
-            {trialCount > 0 && ` (${trialCount} on trial)`}
+            {trialCount > 0 && ` (${trialCount} new)`}
           </p>
         </div>
         <div className="flex gap-2">
@@ -98,7 +98,7 @@ export default async function OwnerMembersPage(): Promise<React.ReactElement> {
             <Button variant="ghost" size="sm">Inactive</Button>
           </Link>
           <Link href="/members/trial">
-            <Button variant="ghost" size="sm">Trials ({trialCount})</Button>
+            <Button variant="ghost" size="sm">New ({trialCount})</Button>
           </Link>
         </div>
       </div>
