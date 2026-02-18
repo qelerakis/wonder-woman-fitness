@@ -11,6 +11,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getPaymentStatus } from "@/lib/payment-logic";
 import type { PaymentRecord } from "@/lib/payment-logic";
+import { authReadLimiter, createRateLimitResponse } from "@/lib/rate-limit";
 
 export async function GET(): Promise<Response> {
   try {
@@ -24,6 +25,10 @@ export async function GET(): Promise<Response> {
     if (role === "MEMBER") {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Rate limit: 60 read requests per minute per user
+    const readRateCheck = authReadLimiter.check(`read:${session.user.id}`);
+    if (!readRateCheck.allowed) return createRateLimitResponse(readRateCheck.retryAfterMs);
 
     const members = await prisma.user.findMany({
       where: { role: "MEMBER" },

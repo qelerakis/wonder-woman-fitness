@@ -14,6 +14,7 @@ import {
   MAX_PRIVATE_SESSION_EXERCISE_LENGTH,
   MAX_PRIVATE_SESSION_NOTES_LENGTH,
 } from "@/lib/constants";
+import { authWriteLimiter, createRateLimitResponse } from "@/lib/rate-limit";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -42,6 +43,10 @@ export async function PATCH(
     if (role !== "OWNER" && role !== "TRAINER") {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Rate limit: 30 write requests per minute per user
+    const writeRateCheck = authWriteLimiter.check(`write:${session.user.id}`);
+    if (!writeRateCheck.allowed) return createRateLimitResponse(writeRateCheck.retryAfterMs);
 
     const { id } = await params;
     const body = await req.json();
@@ -140,6 +145,10 @@ export async function DELETE(
     if (role !== "OWNER" && role !== "TRAINER") {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Rate limit: 30 write requests per minute per user
+    const writeRateCheck = authWriteLimiter.check(`write:${session.user.id}`);
+    if (!writeRateCheck.allowed) return createRateLimitResponse(writeRateCheck.retryAfterMs);
 
     const { id } = await params;
 

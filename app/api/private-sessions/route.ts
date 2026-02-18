@@ -8,6 +8,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { PrivateSessionSchema } from "@/types";
+import { authReadLimiter, authWriteLimiter, createRateLimitResponse } from "@/lib/rate-limit";
 
 export async function GET(req: Request): Promise<Response> {
   try {
@@ -20,6 +21,10 @@ export async function GET(req: Request): Promise<Response> {
     if (role !== "OWNER" && role !== "TRAINER") {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Rate limit: 60 read requests per minute per user
+    const readRateCheck = authReadLimiter.check(`read:${session.user.id}`);
+    if (!readRateCheck.allowed) return createRateLimitResponse(readRateCheck.retryAfterMs);
 
     const url = new URL(req.url);
     const startDate = url.searchParams.get("startDate");
@@ -83,6 +88,10 @@ export async function POST(req: Request): Promise<Response> {
     if (role !== "OWNER" && role !== "TRAINER") {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Rate limit: 30 write requests per minute per user
+    const writeRateCheck = authWriteLimiter.check(`write:${session.user.id}`);
+    if (!writeRateCheck.allowed) return createRateLimitResponse(writeRateCheck.retryAfterMs);
 
     const body = await req.json();
     const parsed = PrivateSessionSchema.safeParse(body);

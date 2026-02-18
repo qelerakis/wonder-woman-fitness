@@ -10,6 +10,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { dispatchNotificationToMany, getSessionNotificationRecipients, formatSessionForNotification } from "@/lib/notifications";
 import { z } from "zod";
+import { authReadLimiter, authWriteLimiter, createRateLimitResponse } from "@/lib/rate-limit";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -31,6 +32,10 @@ export async function GET(
     if (!session?.user) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // Rate limit: 60 read requests per minute per user
+    const readRateCheck = authReadLimiter.check(`read:${session.user.id}`);
+    if (!readRateCheck.allowed) return createRateLimitResponse(readRateCheck.retryAfterMs);
 
     const { id } = await params;
 
@@ -89,6 +94,10 @@ export async function PATCH(
     if (role !== "OWNER" && role !== "TRAINER") {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Rate limit: 30 write requests per minute per user
+    const writeRateCheck = authWriteLimiter.check(`write:${session.user.id}`);
+    if (!writeRateCheck.allowed) return createRateLimitResponse(writeRateCheck.retryAfterMs);
 
     const existingSession = await prisma.session.findUnique({
       where: { id },
@@ -255,6 +264,10 @@ export async function DELETE(
     if ((session.user.role as string) !== "OWNER") {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Rate limit: 30 write requests per minute per user
+    const writeRateCheck = authWriteLimiter.check(`write:${session.user.id}`);
+    if (!writeRateCheck.allowed) return createRateLimitResponse(writeRateCheck.retryAfterMs);
 
     const { id } = await params;
 

@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { dispatchNotificationToMany } from "@/lib/notifications";
 import { MAX_CLASS_SIZE, DAY_NAMES } from "@/lib/constants";
 import { z } from "zod";
+import { authWriteLimiter, createRateLimitResponse } from "@/lib/rate-limit";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -35,6 +36,10 @@ export async function POST(
     if ((session.user.role as string) !== "OWNER") {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Rate limit: 30 write requests per minute per user
+    const writeRateCheck = authWriteLimiter.check(`write:${session.user.id}`);
+    if (!writeRateCheck.allowed) return createRateLimitResponse(writeRateCheck.retryAfterMs);
 
     const { id: sourceSessionId } = await params;
     const body = await req.json();

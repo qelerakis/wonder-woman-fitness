@@ -6,6 +6,7 @@
 
 import { auth } from "@/lib/auth";
 import { markNotificationRead } from "@/lib/notifications";
+import { authWriteLimiter, createRateLimitResponse } from "@/lib/rate-limit";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -20,6 +21,10 @@ export async function PATCH(
     if (!session?.user) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // Rate limit: 30 write requests per minute per user
+    const writeRateCheck = authWriteLimiter.check(`write:${session.user.id}`);
+    if (!writeRateCheck.allowed) return createRateLimitResponse(writeRateCheck.retryAfterMs);
 
     const { id } = await params;
 

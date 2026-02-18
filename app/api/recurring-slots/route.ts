@@ -12,6 +12,7 @@ import { RecurringSlotSchema } from "@/types";
 import { z } from "zod";
 import { getWeekStart } from "@/lib/session-generation";
 import { dispatchNotificationToMany, getSessionNotificationRecipients, formatSessionForNotification } from "@/lib/notifications";
+import { authReadLimiter, authWriteLimiter, createRateLimitResponse } from "@/lib/rate-limit";
 
 export async function GET(): Promise<Response> {
   try {
@@ -24,6 +25,10 @@ export async function GET(): Promise<Response> {
     if (role !== "OWNER" && role !== "TRAINER") {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Rate limit: 60 read requests per minute per user
+    const readRateCheck = authReadLimiter.check(`read:${session.user.id}`);
+    if (!readRateCheck.allowed) return createRateLimitResponse(readRateCheck.retryAfterMs);
 
     const slots = await prisma.recurringSlot.findMany({
       orderBy: [{ dayOfWeek: "asc" }, { startHour: "asc" }],
@@ -55,6 +60,10 @@ export async function POST(req: Request): Promise<Response> {
     if (role !== "OWNER" && role !== "TRAINER") {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Rate limit: 30 write requests per minute per user
+    const writeRateCheck = authWriteLimiter.check(`write:${session.user.id}`);
+    if (!writeRateCheck.allowed) return createRateLimitResponse(writeRateCheck.retryAfterMs);
 
     const body = await req.json();
     const parsed = RecurringSlotSchema.safeParse(body);
@@ -109,6 +118,10 @@ export async function DELETE(req: Request): Promise<Response> {
     if ((session.user.role as string) !== "OWNER") {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Rate limit: 30 write requests per minute per user
+    const writeRateCheck = authWriteLimiter.check(`write:${session.user.id}`);
+    if (!writeRateCheck.allowed) return createRateLimitResponse(writeRateCheck.retryAfterMs);
 
     const body = await req.json();
     const parsed = DeleteSchema.safeParse(body);

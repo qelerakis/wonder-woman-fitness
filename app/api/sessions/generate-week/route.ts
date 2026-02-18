@@ -9,6 +9,7 @@
 import { auth } from "@/lib/auth";
 import { generateSessionsForWeek, getWeekStart } from "@/lib/session-generation";
 import { z } from "zod";
+import { authWriteLimiter, createRateLimitResponse } from "@/lib/rate-limit";
 
 const GenerateSchema = z.object({
   weekDate: z.string().date("Must be a valid date (YYYY-MM-DD)"),
@@ -24,6 +25,10 @@ export async function POST(req: Request): Promise<Response> {
     if ((session.user.role as string) !== "OWNER") {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Rate limit: 30 write requests per minute per user
+    const writeRateCheck = authWriteLimiter.check(`write:${session.user.id}`);
+    if (!writeRateCheck.allowed) return createRateLimitResponse(writeRateCheck.retryAfterMs);
 
     const body = await req.json();
     const parsed = GenerateSchema.safeParse(body);

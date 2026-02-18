@@ -15,6 +15,7 @@ import {
 } from "@/lib/session-generation";
 import { SessionCreateSchema, OneOffSessionCreateSchema } from "@/types";
 import type { UserRole } from "@/lib/constants";
+import { authReadLimiter, authWriteLimiter, createRateLimitResponse } from "@/lib/rate-limit";
 
 export async function GET(req: Request): Promise<Response> {
   try {
@@ -22,6 +23,10 @@ export async function GET(req: Request): Promise<Response> {
     if (!session?.user) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    // Rate limit: 60 read requests per minute per user
+    const readRateCheck = authReadLimiter.check(`read:${session.user.id}`);
+    if (!readRateCheck.allowed) return createRateLimitResponse(readRateCheck.retryAfterMs);
 
     const url = new URL(req.url);
     const weekDateParam = url.searchParams.get("weekDate");
@@ -54,6 +59,10 @@ export async function POST(req: Request): Promise<Response> {
     if (role !== "OWNER" && role !== "TRAINER") {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Rate limit: 30 write requests per minute per user
+    const writeRateCheck = authWriteLimiter.check(`write:${session.user.id}`);
+    if (!writeRateCheck.allowed) return createRateLimitResponse(writeRateCheck.retryAfterMs);
 
     const body = await req.json();
 

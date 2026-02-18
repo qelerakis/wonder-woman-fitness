@@ -10,6 +10,15 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // ===== Mocks =====
 
+vi.mock("@/lib/rate-limit", () => ({
+  publicLimiter: { check: () => ({ allowed: true, remaining: 10, retryAfterMs: 0 }) },
+  authWriteLimiter: { check: () => ({ allowed: true, remaining: 10, retryAfterMs: 0 }) },
+  authReadLimiter: { check: () => ({ allowed: true, remaining: 10, retryAfterMs: 0 }) },
+  cronLimiter: { check: () => ({ allowed: true, remaining: 10, retryAfterMs: 0 }) },
+  getClientIp: () => "127.0.0.1",
+  createRateLimitResponse: () => Response.json({ error: "Rate limited" }, { status: 429 }),
+}));
+
 const mockAuth = vi.fn();
 vi.mock("@/lib/auth", () => ({
   auth: () => mockAuth(),

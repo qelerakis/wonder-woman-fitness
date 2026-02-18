@@ -11,6 +11,7 @@ import { MemberUpdateSchema } from "@/types";
 import { getPaymentStatus } from "@/lib/payment-logic";
 import type { PaymentRecord } from "@/lib/payment-logic";
 import { z } from "zod";
+import { authReadLimiter, authWriteLimiter, createRateLimitResponse } from "@/lib/rate-limit";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -34,6 +35,10 @@ export async function GET(
     if (role === "MEMBER" && userId !== id) {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Rate limit: 60 read requests per minute per user
+    const readRateCheck = authReadLimiter.check(`read:${session.user.id}`);
+    if (!readRateCheck.allowed) return createRateLimitResponse(readRateCheck.retryAfterMs);
 
     const member = await prisma.user.findUnique({
       where: { id },
@@ -139,6 +144,10 @@ export async function PATCH(
     if (role === "TRAINER") {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    // Rate limit: 30 write requests per minute per user
+    const writeRateCheck = authWriteLimiter.check(`write:${session.user.id}`);
+    if (!writeRateCheck.allowed) return createRateLimitResponse(writeRateCheck.retryAfterMs);
 
     const body = await req.json();
 

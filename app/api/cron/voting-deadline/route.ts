@@ -10,8 +10,14 @@
 
 import { prisma } from "@/lib/prisma";
 import { verifyCronSecret } from "@/lib/cron-auth";
+import { cronLimiter, getClientIp, createRateLimitResponse } from "@/lib/rate-limit";
 
 export async function GET(req: Request): Promise<Response> {
+  // Rate limit: 5 requests per minute per IP
+  const ip = getClientIp(req);
+  const cronRateCheck = cronLimiter.check(`cron:${ip}`);
+  if (!cronRateCheck.allowed) return createRateLimitResponse(cronRateCheck.retryAfterMs);
+
   // Verify cron secret (timing-safe)
   if (!verifyCronSecret(req)) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
