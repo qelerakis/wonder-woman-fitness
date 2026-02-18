@@ -28,27 +28,30 @@ vi.mock("bcrypt", () => ({
 
 // Control the rate limiter
 const mockPublicCheck = vi.fn();
+const mockCreateRateLimitResponse = vi.fn();
 vi.mock("@/lib/rate-limit", () => ({
   publicLimiter: { check: mockPublicCheck },
   authWriteLimiter: { check: vi.fn().mockReturnValue({ allowed: true, remaining: 10, retryAfterMs: 0 }) },
   authReadLimiter: { check: vi.fn().mockReturnValue({ allowed: true, remaining: 10, retryAfterMs: 0 }) },
   cronLimiter: { check: vi.fn().mockReturnValue({ allowed: true, remaining: 10, retryAfterMs: 0 }) },
   getClientIp: vi.fn().mockReturnValue("1.2.3.4"),
-  createRateLimitResponse: vi.fn().mockImplementation((retryMs: number) =>
-    Response.json(
-      { error: "Too many requests. Please try again later." },
-      { status: 429, headers: { "Retry-After": String(Math.ceil(retryMs / 1000)) } }
-    )
-  ),
+  createRateLimitResponse: (...args: unknown[]) => mockCreateRateLimitResponse(...args),
 }));
 
 describe("POST /api/auth/register — rate limiting", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.resetModules();
   });
 
   it("returns 429 when rate limited", async () => {
     mockPublicCheck.mockReturnValue({ allowed: false, remaining: 0, retryAfterMs: 30_000 });
+    mockCreateRateLimitResponse.mockReturnValue(
+      Response.json(
+        { error: "Too many requests. Please try again later." },
+        { status: 429, headers: { "Retry-After": "30" } }
+      )
+    );
 
     const { POST } = await import("@/app/api/auth/register/route");
     const response = await POST(
