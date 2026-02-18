@@ -400,6 +400,207 @@ describe('getPaymentStatus', () => {
       expect(result).toBe('LOCKED' satisfies PaymentStatus);
     });
   });
+
+  // ===== Trial boundary edge cases (trial-is-grace-period feature) =====
+  describe('trial boundary edge cases', () => {
+    it('returns GRACE_PERIOD on exact registration day (day 1 of 14)', () => {
+      // Registered Jan 10, trial ends Jan 24 (14 days)
+      const user = makeUser({
+        status: 'TRIAL',
+        trialEndsAt: date('2025-01-24'),
+      });
+
+      // Day 1 = Jan 10 (registration day)
+      const result = getPaymentStatus(user, [], date('2025-01-10'));
+
+      expect(result).toBe('GRACE_PERIOD' satisfies PaymentStatus);
+    });
+
+    it('returns GRACE_PERIOD on day 13 (one day before last)', () => {
+      // Registered Jan 10, trial ends Jan 24
+      const user = makeUser({
+        status: 'TRIAL',
+        trialEndsAt: date('2025-01-24'),
+      });
+
+      // Day 13 = Jan 22
+      const result = getPaymentStatus(user, [], date('2025-01-22'));
+
+      expect(result).toBe('GRACE_PERIOD' satisfies PaymentStatus);
+    });
+
+    it('returns LOCKED on trialEndsAt date itself (day after 14-day window)', () => {
+      // Registered Jan 10, trial ends Jan 24
+      // Day 15 = Jan 24 = trialEndsAt
+      const user = makeUser({
+        status: 'TRIAL',
+        trialEndsAt: date('2025-01-24'),
+      });
+
+      const result = getPaymentStatus(user, [], date('2025-01-24'));
+
+      expect(result).toBe('LOCKED' satisfies PaymentStatus);
+    });
+
+    it('handles month boundary: registered Jan 30, trialEndsAt Feb 13', () => {
+      // Registered Jan 30, 14-day trial ends Feb 13
+      const user = makeUser({
+        status: 'TRIAL',
+        trialEndsAt: date('2025-02-13'),
+      });
+
+      // Feb 1 — day 3 of trial → GRACE_PERIOD
+      expect(getPaymentStatus(user, [], date('2025-02-01'))).toBe('GRACE_PERIOD' satisfies PaymentStatus);
+      // Feb 12 — day 14 (last day of grace) → GRACE_PERIOD
+      expect(getPaymentStatus(user, [], date('2025-02-12'))).toBe('GRACE_PERIOD' satisfies PaymentStatus);
+      // Feb 13 — trialEndsAt (day 15) → LOCKED
+      expect(getPaymentStatus(user, [], date('2025-02-13'))).toBe('LOCKED' satisfies PaymentStatus);
+    });
+
+    it('returns GRACE_PERIOD for trial member with payment starting AFTER trial period', () => {
+      // Registered Jan 10, trial ends Jan 24
+      // Payment covers Feb 1 - Feb 28 (does NOT cover today Jan 15)
+      const user = makeUser({
+        status: 'TRIAL',
+        trialEndsAt: date('2025-01-24'),
+      });
+      const payments = [makePayment('2025-02-01', '2025-02-28')];
+
+      const result = getPaymentStatus(user, payments, date('2025-01-15'));
+
+      expect(result).toBe('GRACE_PERIOD' satisfies PaymentStatus);
+    });
+
+    it('returns PAID for trial member with payment covering trial period', () => {
+      // Registered Jan 10, trial ends Jan 24
+      // Payment covers Jan 1 - Jan 31 (covers today Jan 15)
+      const user = makeUser({
+        status: 'TRIAL',
+        trialEndsAt: date('2025-01-24'),
+      });
+      const payments = [makePayment('2025-01-01', '2025-01-31')];
+
+      const result = getPaymentStatus(user, payments, date('2025-01-15'));
+
+      expect(result).toBe('PAID' satisfies PaymentStatus);
+    });
+
+    it('returns OVERRIDE for trial member with override DURING trial', () => {
+      // During the 14-day trial, override still wins
+      const user = makeUser({
+        status: 'TRIAL',
+        trialEndsAt: date('2025-01-24'),
+        overrideActive: true,
+      });
+
+      const result = getPaymentStatus(user, [], date('2025-01-15'));
+
+      expect(result).toBe('OVERRIDE' satisfies PaymentStatus);
+    });
+
+    it('returns OVERRIDE for trial member with override AFTER trial expired', () => {
+      // After the 14-day trial, override still wins (would be LOCKED otherwise)
+      const user = makeUser({
+        status: 'TRIAL',
+        trialEndsAt: date('2025-01-24'),
+        overrideActive: true,
+      });
+
+      const result = getPaymentStatus(user, [], date('2025-02-15'));
+
+      expect(result).toBe('OVERRIDE' satisfies PaymentStatus);
+    });
+
+    it('active member (previously TRIAL) uses 10-day grace from 1st of month', () => {
+      // Member was TRIAL, owner transitioned to ACTIVE
+      // Now uses the standard active-member grace period (10 days from 1st)
+      const user = makeUser({
+        status: 'ACTIVE',
+        trialEndsAt: date('2025-01-24'), // leftover from trial; status is ACTIVE now
+      });
+
+      // Day 5 of month (no payment) → GRACE_PERIOD (10-day active grace)
+      expect(getPaymentStatus(user, [], date('2025-02-05'))).toBe('GRACE_PERIOD' satisfies PaymentStatus);
+      // Day 10 of month → still GRACE_PERIOD (boundary)
+      expect(getPaymentStatus(user, [], date('2025-02-10'))).toBe('GRACE_PERIOD' satisfies PaymentStatus);
+      // Day 11 of month → LOCKED (past 10-day active grace)
+      expect(getPaymentStatus(user, [], date('2025-02-11'))).toBe('LOCKED' satisfies PaymentStatus);
+    });
+
+    it('trial grace period is exactly 14 days, not 13 or 15', () => {
+      // Registered Mar 1, trial ends Mar 15
+      const user = makeUser({
+        status: 'TRIAL',
+        trialEndsAt: date('2025-03-15'),
+      });
+
+      // Day 14 = Mar 14 → GRACE_PERIOD (last day)
+      expect(getPaymentStatus(user, [], date('2025-03-14'))).toBe('GRACE_PERIOD' satisfies PaymentStatus);
+      // Day 15 = Mar 15 = trialEndsAt → LOCKED (one past 14)
+      expect(getPaymentStatus(user, [], date('2025-03-15'))).toBe('LOCKED' satisfies PaymentStatus);
+    });
+
+    it('active grace period is exactly 10 days, not 9 or 11', () => {
+      const user = makeUser({ status: 'ACTIVE' });
+
+      // Day 10 of month → GRACE_PERIOD (last day of grace)
+      expect(getPaymentStatus(user, [], date('2025-03-10'))).toBe('GRACE_PERIOD' satisfies PaymentStatus);
+      // Day 11 of month → LOCKED (one past 10)
+      expect(getPaymentStatus(user, [], date('2025-03-11'))).toBe('LOCKED' satisfies PaymentStatus);
+    });
+
+    it('returns DEPARTED for departed trial user even during trial window', () => {
+      // User was in trial but departed mid-trial
+      const user = makeUser({
+        status: 'DEPARTED',
+        trialEndsAt: date('2025-01-24'),
+        departedAt: date('2025-01-15'),
+      });
+
+      const result = getPaymentStatus(user, [], date('2025-01-18'));
+
+      expect(result).toBe('DEPARTED' satisfies PaymentStatus);
+    });
+
+    it('returns PAID for trial member when payment starts on registration day', () => {
+      // Member registered Jan 10, paid immediately for Jan
+      const user = makeUser({
+        status: 'TRIAL',
+        trialEndsAt: date('2025-01-24'),
+      });
+      const payments = [makePayment('2025-01-10', '2025-01-31', '2025-01-10')];
+
+      const result = getPaymentStatus(user, payments, date('2025-01-10'));
+
+      expect(result).toBe('PAID' satisfies PaymentStatus);
+    });
+
+    it('trial member with no payment on day right before trialEndsAt → GRACE_PERIOD', () => {
+      // Registered Feb 1, trialEndsAt Feb 15
+      // Day 14 = Feb 14 → last day of grace
+      const user = makeUser({
+        status: 'TRIAL',
+        trialEndsAt: date('2025-02-15'),
+      });
+
+      const result = getPaymentStatus(user, [], date('2025-02-14'));
+
+      expect(result).toBe('GRACE_PERIOD' satisfies PaymentStatus);
+    });
+
+    it('trial member locked months after trial expired (no status transition)', () => {
+      // If the cron never transitions status to ACTIVE, TRIAL stays
+      // They should still be LOCKED well past trialEndsAt
+      const user = makeUser({
+        status: 'TRIAL',
+        trialEndsAt: date('2025-01-15'),
+      });
+
+      const result = getPaymentStatus(user, [], date('2025-06-01'));
+
+      expect(result).toBe('LOCKED' satisfies PaymentStatus);
+    });
+  });
 });
 
 describe('getGracePeriodLength', () => {
@@ -413,5 +614,19 @@ describe('getGracePeriodLength', () => {
 
   it('returns GRACE_PERIOD_DAYS (10) for departed users', () => {
     expect(getGracePeriodLength({ status: 'DEPARTED' })).toBe(10);
+  });
+
+  it('returns exactly 14, not 13 or 15, for TRIAL', () => {
+    const result = getGracePeriodLength({ status: 'TRIAL' });
+    expect(result).toBe(14);
+    expect(result).not.toBe(13);
+    expect(result).not.toBe(15);
+  });
+
+  it('returns exactly 10, not 9 or 11, for ACTIVE', () => {
+    const result = getGracePeriodLength({ status: 'ACTIVE' });
+    expect(result).toBe(10);
+    expect(result).not.toBe(9);
+    expect(result).not.toBe(11);
   });
 });
