@@ -97,4 +97,64 @@ describe("POST /api/auth/register — rate limiting", () => {
 
     expect(response.status).toBe(201);
   });
+
+  it("rate limit key includes 'register:' prefix", async () => {
+    mockPublicCheck.mockReturnValue({ allowed: true, remaining: 9, retryAfterMs: 0 });
+    mockPrisma.user.findUnique.mockResolvedValue(null);
+    mockPrisma.user.create.mockResolvedValue({
+      id: "new-user",
+      email: "test@test.com",
+      name: "Test User",
+      role: "MEMBER",
+      status: "TRIAL",
+    });
+
+    const { POST } = await import("@/app/api/auth/register/route");
+    await POST(
+      new Request("http://localhost/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-forwarded-for": "1.2.3.4" },
+        body: JSON.stringify({
+          email: "test@test.com",
+          password: "Test1234!",
+          name: "Test User",
+        }),
+      })
+    );
+
+    // publicLimiter.check should have been called with "register:<ip>"
+    // getClientIp mock returns "1.2.3.4" so the key is "register:1.2.3.4"
+    expect(mockPublicCheck).toHaveBeenCalledWith("register:1.2.3.4");
+  });
+
+  it("getClientIp is called with the request object", async () => {
+    const { getClientIp: mockGetClientIp } = await import("@/lib/rate-limit");
+    mockPublicCheck.mockReturnValue({ allowed: true, remaining: 9, retryAfterMs: 0 });
+    mockPrisma.user.findUnique.mockResolvedValue(null);
+    mockPrisma.user.create.mockResolvedValue({
+      id: "new-user",
+      email: "test@test.com",
+      name: "Test User",
+      role: "MEMBER",
+      status: "TRIAL",
+    });
+
+    const { POST } = await import("@/app/api/auth/register/route");
+    const request = new Request("http://localhost/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-forwarded-for": "9.9.9.9" },
+      body: JSON.stringify({
+        email: "test@test.com",
+        password: "Test1234!",
+        name: "Test User",
+      }),
+    });
+
+    await POST(request);
+
+    // getClientIp should have been called with a Request object
+    expect(mockGetClientIp).toHaveBeenCalled();
+    const callArg = (mockGetClientIp as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(callArg).toBeInstanceOf(Request);
+  });
 });
