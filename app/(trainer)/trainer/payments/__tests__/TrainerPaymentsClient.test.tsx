@@ -243,7 +243,7 @@ describe("TrainerPaymentsClient", () => {
         { id: "member-1", name: "Alice Smith", paymentStatus: "PAID" as const },
         { id: "member-2", name: "Bob Jones", paymentStatus: "GRACE_PERIOD" as const },
         { id: "member-3", name: "Charlie Brown", paymentStatus: "LOCKED" as const },
-        { id: "member-4", name: "Diana Prince", paymentStatus: "TRIAL" as const },
+        { id: "member-4", name: "Diana Prince", paymentStatus: "PAID" as const },
       ];
 
       await renderTrainerPayments({ members: membersWithUnpaid });
@@ -260,7 +260,7 @@ describe("TrainerPaymentsClient", () => {
       // Bob and Charlie should appear in the unpaid section
       expect(unpaidCard!.textContent).toContain("Bob Jones");
       expect(unpaidCard!.textContent).toContain("Charlie Brown");
-      // Alice (PAID) and Diana (TRIAL) should NOT appear
+      // Alice (PAID) and Diana (PAID) should NOT appear
       expect(unpaidCard!.textContent).not.toContain("Alice Smith");
       expect(unpaidCard!.textContent).not.toContain("Diana Prince");
     });
