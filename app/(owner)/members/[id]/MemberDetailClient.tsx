@@ -14,7 +14,6 @@ import { DateTimePicker } from "@/components/ui/DateTimePicker";
 import { Textarea } from "@/components/ui/Textarea";
 import { PaymentStatusBadge } from "@/components/payment/PaymentStatusBadge";
 import { PaymentHistory } from "@/components/payment/PaymentHistory";
-import { TrialBadge } from "@/components/member/TrialBadge";
 import { useToast } from "@/components/ui/Toast";
 import type { PaymentStatus } from "@/lib/constants";
 
@@ -269,9 +268,6 @@ export function MemberDetailClient(
             </h1>
             <div className="mt-1 flex items-center gap-2">
               <PaymentStatusBadge status={member.paymentStatus} />
-              {member.status === "TRIAL" && member.trialEndsAt && (
-                <TrialBadge trialEndsAt={member.trialEndsAt} />
-              )}
               {member.overrideActive && (
                 <Badge variant="primary" size="sm">
                   Override Active
@@ -322,7 +318,7 @@ export function MemberDetailClient(
               )}
               {member.trialEndsAt && (
                 <div className="flex justify-between">
-                  <dt className="text-sm text-surface-400">Trial Ends</dt>
+                  <dt className="text-sm text-surface-400">Payment Deadline</dt>
                   <dd className="text-sm text-surface-200">
                     {format(new Date(member.trialEndsAt), "MMMM d, yyyy")}
                   </dd>

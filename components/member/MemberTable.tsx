@@ -4,7 +4,6 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { PaymentStatusBadge } from "@/components/payment/PaymentStatusBadge";
-import { TrialBadge } from "./TrialBadge";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Card } from "@/components/ui/Card";
@@ -31,7 +30,6 @@ interface MemberTableProps {
 const statusFilterOptions = [
   { value: "all", label: "All Statuses" },
   { value: "PAID", label: "Paid" },
-  { value: "TRIAL", label: "Trial" },
   { value: "GRACE_PERIOD", label: "Grace Period" },
   { value: "LOCKED", label: "Locked" },
   { value: "OVERRIDE", label: "Override" },
@@ -131,9 +129,6 @@ export function MemberTable({
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1.5">
                     <PaymentStatusBadge status={member.paymentStatus} />
-                    {member.status === "TRIAL" && member.trialEndsAt && (
-                      <TrialBadge trialEndsAt={member.trialEndsAt} />
-                    )}
                   </div>
                 </td>
                 <td className="hidden px-4 py-3 text-sm text-surface-500 md:table-cell">

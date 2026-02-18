@@ -1,7 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import { PaymentStatusBadge } from "@/components/payment/PaymentStatusBadge";
-import { TrialBadge } from "./TrialBadge";
 import type { PaymentStatus } from "@/lib/constants";
 import { format } from "date-fns";
 
@@ -52,9 +51,6 @@ export function MemberCard({
             {member.name}
           </p>
           <PaymentStatusBadge status={member.paymentStatus} />
-          {member.status === "TRIAL" && member.trialEndsAt && (
-            <TrialBadge trialEndsAt={member.trialEndsAt} />
-          )}
         </div>
         <p className="text-xs text-surface-400 truncate">{member.email}</p>
         <p className="mt-0.5 text-xs text-surface-500">
