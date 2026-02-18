@@ -1088,10 +1088,10 @@ describe("PaymentsClient", () => {
 
     it("renders unpaid members section when members have GRACE_PERIOD status", async () => {
       const membersWithUnpaid = [
-        { id: "member-1", name: "Alice Smith", paymentStatus: "PAID" as const },
-        { id: "member-2", name: "Bob Jones", paymentStatus: "GRACE_PERIOD" as const },
-        { id: "member-3", name: "Charlie Brown", paymentStatus: "LOCKED" as const },
-      ];
+        { id: "member-1", name: "Alice Smith", paymentStatus: "PAID" },
+        { id: "member-2", name: "Bob Jones", paymentStatus: "GRACE_PERIOD" },
+        { id: "member-3", name: "Charlie Brown", paymentStatus: "LOCKED" },
+      ] as typeof defaultProps.members;
 
       await renderPaymentsClient({ members: membersWithUnpaid });
 

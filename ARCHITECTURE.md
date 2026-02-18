@@ -109,7 +109,7 @@ wonder-woman-fitness/
 │   │                              #   WorkoutDisplay, WorkoutEditor, AssignmentToggleList)
 │   ├── payment/                   # 5 components (PaymentBanner, LockoutScreen, PaymentForm,
 │   │                              #   PaymentHistory, PaymentStatusBadge)
-│   ├── member/                    # 3 components (MemberTable, MemberCard, TrialBadge)
+│   ├── member/                    # 2 components (MemberTable, MemberCard)
 │   ├── notification/              # 4 components (NotificationBell, NotificationList,
 │   │                              #   NotificationItem, NotificationsClient)
 │   ├── analytics/                 # 5 components (MetricCard, AttendanceChart, RevenueChart,
@@ -241,7 +241,7 @@ SessionStatus: SCHEDULED | CANCELLED
 NotificationType: WORKOUT_POSTED | VOTING_OPENED | CLASS_CANCELLED |
                   MEMBER_MOVED | PAYMENT_REMINDER | LOCKOUT |
                   MEMBER_DEPARTED | REJOIN_REQUEST | TRIAL_EXPIRING |
-                  TRIAL_EXPIRED | SESSION_DELETED | MANUAL_REMINDER
+                  SESSION_DELETED | MANUAL_REMINDER
 ```
 
 ---
@@ -255,7 +255,7 @@ Browser → Next.js Middleware → Page/API Route → Prisma → PostgreSQL
                 │
                 ├─ Checks JWT session (NextAuth)
                 ├─ Checks user role (OWNER/TRAINER/MEMBER)
-                ├─ Checks payment status (locks out unpaid members after day 10)
+                ├─ Checks payment status (locks out unpaid members after grace period)
                 └─ Redirects unauthorized users
 ```
 
@@ -267,15 +267,13 @@ Payment status is **computed, not stored** as a column on the User. This prevent
 function getPaymentStatus(user, payments, today):
 
   1. If user.status === DEPARTED → return DEPARTED
-  2. If user.status === TRIAL and today < user.trialEndsAt → return TRIAL
-  3. If user.status === TRIAL and today >= user.trialEndsAt → transition to ACTIVE, treat as day 1
-  4. Find the payment record covering the current month
-     → if found → return PAID
-  5. If no payment found:
-     a. Calculate days since period start (1st of month, or trialEndsAt for first month)
-     b. If days <= 10 → return GRACE_PERIOD
-     c. If days > 10 → return LOCKED
-  6. If owner has set a manual override → return OVERRIDE_ACTIVE
+  2. If user.overrideActive → return OVERRIDE
+  3. Find payment record covering today → if found → return PAID
+  4. No covering payment — calculate grace period:
+     a. Trial members: grace starts from registration (trialEndsAt - 14 days), length = 14 days
+     b. Active members: grace starts from 1st of month, length = 10 days
+     c. If days since grace start <= grace length → return GRACE_PERIOD
+     d. Otherwise → return LOCKED
 ```
 
 ### 4.3 Voting Flow
@@ -316,7 +314,7 @@ In-app notifications are fetched client-side by polling `GET /api/notifications?
 | Job                      | Schedule          | Action                                                                 |
 |--------------------------|-------------------|------------------------------------------------------------------------|
 | `payment-reminders`      | Daily at 9:00 AM  | Check all active members. Send reminders on day 1, 7. Lock out on day 11. |
-| `trial-expiration`       | Daily at 6:00 AM  | Check trial members. Notify owner 2 days before. Transition expired trials to ACTIVE. |
+| `trial-expiration`       | Daily at 6:00 AM  | Check trial members. Notify owner and member 2 days before payment deadline. |
 | `voting-deadline`        | Daily at midnight | Lock voting on sessions where deadline has passed.                     |
 
 Cron routes are secured with a `CRON_SECRET` header that Vercel injects automatically.
@@ -335,7 +333,7 @@ Cron routes are secured with a `CRON_SECRET` header that Vercel injects automati
 
 **Decision**: Payment status (PAID / GRACE / LOCKED) is computed on the fly from the `Payment` records, not stored as a field on the `User` table.
 
-**Why**: Storing it would require a cron job to update it daily, introducing a window where it could be stale. Computing it means it's always accurate — when the owner records a payment at 3 PM, the member's access changes immediately. The only stored statuses on the user are role-based states (TRIAL, ACTIVE, DEPARTED) that change through explicit actions, not time.
+**Why**: Storing it would require a cron job to update it daily, introducing a window where it could be stale. Computing it means it's always accurate — when the owner records a payment at 3 PM, the member's access changes immediately. The only stored statuses on the user are role-based states (TRIAL, ACTIVE, DEPARTED) that change through explicit actions, not time. Note: TRIAL is a database status (user is new), not a payment status — trial members enter GRACE_PERIOD immediately from registration.
 
 ### 5.3 RecurringSlot + Session (Two-Table Schedule)
 

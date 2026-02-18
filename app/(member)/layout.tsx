@@ -3,9 +3,9 @@ import { redirect } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { PaymentBanner } from "@/components/payment/PaymentBanner";
 import { prisma } from "@/lib/prisma";
-import { getPaymentStatus, getGracePeriodLength } from "@/lib/payment-logic";
+import { getPaymentStatus, getGracePeriodLength, getGracePeriodStart, getDaysBetween } from "@/lib/payment-logic";
 import type { PaymentRecord } from "@/lib/payment-logic";
-import { TRIAL_DAYS, GRACE_PERIOD_DAYS } from "@/lib/constants";
+import { GRACE_PERIOD_DAYS } from "@/lib/constants";
 
 export default async function MemberLayout({
   children,
@@ -77,25 +77,10 @@ export default async function MemberLayout({
       if (paymentStatus === "GRACE_PERIOD") {
         showGraceBanner = true;
         const now = new Date();
-        let graceStart: Date;
-        if (user.status === "TRIAL" && user.trialEndsAt) {
-          // Trial: grace starts from registration (trialEndsAt - TRIAL_DAYS)
-          const trialEnd = new Date(user.trialEndsAt);
-          graceStart = new Date(
-            Date.UTC(
-              trialEnd.getUTCFullYear(),
-              trialEnd.getUTCMonth(),
-              trialEnd.getUTCDate() - TRIAL_DAYS
-            )
-          );
-        } else {
-          graceStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-        }
-        const msPerDay = 1000 * 60 * 60 * 24;
-        daysIntoGracePeriod = Math.floor((now.getTime() - graceStart.getTime()) / msPerDay) + 1;
-        totalGraceDays = getGracePeriodLength({
-          status: user.status as "TRIAL" | "ACTIVE" | "DEPARTED",
-        });
+        const userStatus = { status: user.status as "TRIAL" | "ACTIVE" | "DEPARTED", trialEndsAt: user.trialEndsAt };
+        const graceStart = getGracePeriodStart(userStatus, now);
+        daysIntoGracePeriod = getDaysBetween(graceStart, now);
+        totalGraceDays = getGracePeriodLength(userStatus);
       }
     }
   }

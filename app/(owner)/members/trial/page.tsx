@@ -26,6 +26,7 @@ export default async function TrialMembersPage(): Promise<React.ReactElement> {
       name: true,
       email: true,
       phone: true,
+      status: true,
       joinDate: true,
       trialEndsAt: true,
       departedAt: true,

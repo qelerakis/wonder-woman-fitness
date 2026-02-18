@@ -109,7 +109,7 @@ export function getGracePeriodLength(user: Pick<PaymentUser, 'status'>): number 
  * - For trial users: grace starts from registration date (trialEndsAt - TRIAL_DAYS)
  * - For active users: grace starts from 1st of current month
  */
-function getGracePeriodStart(user: PaymentUser, today: Date): Date {
+export function getGracePeriodStart(user: Pick<PaymentUser, 'status' | 'trialEndsAt'>, today: Date): Date {
   // Trial user: grace starts from registration date
   if (user.status === 'TRIAL' && user.trialEndsAt) {
     const trialEnd = normalizeDate(user.trialEndsAt);
@@ -128,7 +128,7 @@ function getGracePeriodStart(user: PaymentUser, today: Date): Date {
  * Calculate the number of days between two dates (inclusive of start day).
  * Day 1 is the start date itself.
  */
-function getDaysBetween(start: Date, end: Date): number {
+export function getDaysBetween(start: Date, end: Date): number {
   const startNorm = normalizeDate(start);
   const endNorm = normalizeDate(end);
   const diffMs = endNorm.getTime() - startNorm.getTime();

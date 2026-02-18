@@ -230,14 +230,15 @@ These are the trickiest parts of the codebase. Understand them before touching r
 ### 6.1 Payment Status Computation
 **File**: `lib/payment-logic.ts`
 
-Payment status is **computed, never stored**. The function `getPaymentStatus()` takes a user, their payment records, and today's date, then returns: `TRIAL | PAID | GRACE_PERIOD | LOCKED | DEPARTED | OVERRIDE`.
+Payment status is **computed, never stored**. The function `getPaymentStatus()` takes a user, their payment records, and today's date, then returns: `PAID | GRACE_PERIOD | LOCKED | DEPARTED | OVERRIDE`.
 
 Critical rules:
-- Trial members (status=TRIAL, today < trialEndsAt) → always TRIAL, no banners
-- When trial ends, the first payment grace period starts from trialEndsAt (not from the 1st of the month)
-- Subsequent months follow the standard 1st-of-month cycle
+- The trial period IS the grace period — new members see "Payment due" from day 1 with a 14-day countdown
+- Trial members (status=TRIAL) get a 14-day grace period starting from registration (trialEndsAt - TRIAL_DAYS)
+- Active members get a 10-day grace period starting from the 1st of each month
 - Advance payments: if a payment's periodEnd is in the future, the member is PAID
 - Owner can set a manual override that bypasses lockout
+- After grace period expires → LOCKED (app access restricted)
 
 ### 6.2 Voting Deadlines
 Voting locks **24 hours before** the session time. The session time is computed from the RecurringSlot's `startHour` + the Session's `weekDate`. If a session is Monday 9 AM on 2026-03-09, the voting deadline is Sunday 9 AM on 2026-03-08.
