@@ -4,10 +4,12 @@
  * Payment status is COMPUTED, never stored as a column on the User model.
  * This prevents stale data and ensures real-time accuracy.
  *
- * See ARCHITECTURE.md section 4.2 for the full status resolution algorithm.
+ * Trial period IS the grace period for new members:
+ * - New members (TRIAL status): 14-day grace from registration, then LOCKED
+ * - Active members: 10-day grace from 1st of month, then LOCKED
  */
 
-import { GRACE_PERIOD_DAYS } from './constants';
+import { GRACE_PERIOD_DAYS, TRIAL_DAYS } from './constants';
 import type { PaymentStatus } from './constants';
 
 /**
@@ -34,23 +36,15 @@ export interface PaymentRecord {
 /**
  * Compute the current payment status for a user.
  *
- * Resolution order (deviation from ARCHITECTURE.md section 4.2 — see note):
+ * Resolution order:
  * 1. DEPARTED users → always DEPARTED
- * 2. TRIAL users before trialEndsAt → TRIAL
- * 3. Owner override active → OVERRIDE (bypasses payment checks)
- * 4. Check for payment covering today → PAID
- * 5. No payment → calculate grace period:
- *    - For trial-expired users: grace starts from trialEndsAt
- *    - For active users: grace starts from 1st of current month
- *    - Days 1-10 → GRACE_PERIOD
- *    - Day 11+ → LOCKED
- *
- * NOTE: ARCHITECTURE.md places the override at step 6 (after payment check).
- * We intentionally check override at step 3 because an override is an owner
- * action that should bypass ALL payment logic. If a user has both an override
- * and a valid payment, reporting OVERRIDE is more accurate (the owner explicitly
- * intervened). When the override is removed, the status correctly falls through
- * to PAID or GRACE_PERIOD based on actual payment records.
+ * 2. Owner override active → OVERRIDE (bypasses all payment checks)
+ * 3. Check for payment covering today → PAID
+ * 4. No payment → calculate grace period:
+ *    - Trial users: grace = TRIAL_DAYS (14), starts from registration (trialEndsAt - TRIAL_DAYS)
+ *    - Active users: grace = GRACE_PERIOD_DAYS (10), starts from 1st of month
+ *    - Within grace → GRACE_PERIOD
+ *    - Past grace → LOCKED
  *
  * @param user - User with status, trialEndsAt, overrideActive
  * @param payments - Array of payment records with periodStart/periodEnd
@@ -67,19 +61,12 @@ export function getPaymentStatus(
     return 'DEPARTED';
   }
 
-  // 2. Trial members still within their trial period
-  if (user.status === 'TRIAL' && user.trialEndsAt) {
-    if (today < user.trialEndsAt) {
-      return 'TRIAL';
-    }
-  }
-
-  // 3. Owner override bypasses all payment checks (except DEPARTED)
+  // 2. Owner override bypasses all payment checks (except DEPARTED)
   if (user.overrideActive) {
     return 'OVERRIDE';
   }
 
-  // 4. Check if any payment covers today's date
+  // 3. Check if any payment covers today's date
   const hasCoveringPayment = payments.some((payment) => {
     const periodStart = normalizeDate(payment.periodStart);
     const periodEnd = normalizeDate(payment.periodEnd);
@@ -92,28 +79,45 @@ export function getPaymentStatus(
     return 'PAID';
   }
 
-  // 5. No covering payment — calculate grace period
+  // 4. No covering payment — calculate grace period
   const gracePeriodStart = getGracePeriodStart(user, today);
+  const gracePeriodLength = getGracePeriodLength(user);
   const daysSinceGraceStart = getDaysBetween(gracePeriodStart, today);
 
-  if (daysSinceGraceStart <= GRACE_PERIOD_DAYS) {
+  if (daysSinceGraceStart <= gracePeriodLength) {
     return 'GRACE_PERIOD';
   }
 
-  // 6. Past grace period → LOCKED
+  // 5. Past grace period → LOCKED
   return 'LOCKED';
+}
+
+/**
+ * Get the grace period length for a user.
+ * Trial members get TRIAL_DAYS (14), active members get GRACE_PERIOD_DAYS (10).
+ */
+export function getGracePeriodLength(user: Pick<PaymentUser, 'status'>): number {
+  if (user.status === 'TRIAL') {
+    return TRIAL_DAYS;
+  }
+  return GRACE_PERIOD_DAYS;
 }
 
 /**
  * Determine the start of the grace period.
  *
- * - For trial-expired users: grace starts from trialEndsAt
+ * - For trial users: grace starts from registration date (trialEndsAt - TRIAL_DAYS)
  * - For active users: grace starts from 1st of current month
  */
 function getGracePeriodStart(user: PaymentUser, today: Date): Date {
-  // Trial-expired user: grace period starts from trial end date
+  // Trial user: grace starts from registration date
   if (user.status === 'TRIAL' && user.trialEndsAt) {
-    return normalizeDate(user.trialEndsAt);
+    const trialEnd = normalizeDate(user.trialEndsAt);
+    return new Date(Date.UTC(
+      trialEnd.getUTCFullYear(),
+      trialEnd.getUTCMonth(),
+      trialEnd.getUTCDate() - TRIAL_DAYS
+    ));
   }
 
   // Active user: grace period starts from 1st of current month
