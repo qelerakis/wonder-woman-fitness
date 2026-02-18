@@ -1,12 +1,16 @@
 /**
  * Payment Status Logic Tests
  *
- * Tests all payment status computation scenarios per ARCHITECTURE.md section 4.2.
+ * Tests all payment status computation scenarios.
  * Payment status is COMPUTED, never stored.
+ *
+ * Key change: Trial period IS the grace period.
+ * - Trial members: 14-day grace from registration, then LOCKED
+ * - Active members: 10-day grace from 1st of month, then LOCKED
  */
 
 import { describe, it, expect } from 'vitest';
-import { getPaymentStatus } from '../payment-logic';
+import { getPaymentStatus, getGracePeriodLength } from '../payment-logic';
 import type { PaymentStatus } from '../constants';
 
 // ===== Test Helpers =====
@@ -77,35 +81,43 @@ describe('getPaymentStatus', () => {
     });
   });
 
-  // Scenario 2: Trial member, before trialEndsAt → TRIAL
-  describe('trial members', () => {
-    it('returns TRIAL when user is in trial and trial has not expired', () => {
+  // Scenario 2: Trial members — trial IS the grace period (14 days)
+  describe('trial members (trial = grace period)', () => {
+    it('returns GRACE_PERIOD on day 1 of trial (registration day)', () => {
+      // Registered July 1, trial ends July 15
       const user = makeUser({
         status: 'TRIAL',
         trialEndsAt: date('2025-07-15'),
       });
 
-      const result = getPaymentStatus(user, [], date('2025-07-10'));
+      const result = getPaymentStatus(user, [], date('2025-07-01'));
 
-      expect(result).toBe('TRIAL' satisfies PaymentStatus);
+      expect(result).toBe('GRACE_PERIOD' satisfies PaymentStatus);
     });
 
-    it('returns TRIAL on the last day of trial', () => {
+    it('returns GRACE_PERIOD on day 7 of trial', () => {
       const user = makeUser({
         status: 'TRIAL',
         trialEndsAt: date('2025-07-15'),
       });
 
-      // Still TRIAL on the day itself (before the date)
+      const result = getPaymentStatus(user, [], date('2025-07-07'));
+
+      expect(result).toBe('GRACE_PERIOD' satisfies PaymentStatus);
+    });
+
+    it('returns GRACE_PERIOD on last day of trial (day 14)', () => {
+      const user = makeUser({
+        status: 'TRIAL',
+        trialEndsAt: date('2025-07-15'),
+      });
+
       const result = getPaymentStatus(user, [], date('2025-07-14'));
 
-      expect(result).toBe('TRIAL' satisfies PaymentStatus);
+      expect(result).toBe('GRACE_PERIOD' satisfies PaymentStatus);
     });
-  });
 
-  // Scenario 3: Trial expired, no payment, day 1-10 from trialEndsAt → GRACE_PERIOD
-  describe('trial expired - grace period', () => {
-    it('returns GRACE_PERIOD on day 1 after trial expires', () => {
+    it('returns LOCKED on the day after trial ends (day 15)', () => {
       const user = makeUser({
         status: 'TRIAL',
         trialEndsAt: date('2025-07-15'),
@@ -113,38 +125,46 @@ describe('getPaymentStatus', () => {
 
       const result = getPaymentStatus(user, [], date('2025-07-15'));
 
-      expect(result).toBe('GRACE_PERIOD' satisfies PaymentStatus);
+      expect(result).toBe('LOCKED' satisfies PaymentStatus);
     });
 
-    it('returns GRACE_PERIOD on day 10 after trial expires', () => {
+    it('returns LOCKED well after trial ends', () => {
       const user = makeUser({
         status: 'TRIAL',
         trialEndsAt: date('2025-07-15'),
       });
 
-      // 10 days after trialEndsAt = July 25
-      const result = getPaymentStatus(user, [], date('2025-07-24'));
-
-      expect(result).toBe('GRACE_PERIOD' satisfies PaymentStatus);
-    });
-  });
-
-  // Scenario 4: Trial expired, no payment, day 11+ from trialEndsAt → LOCKED
-  describe('trial expired - locked', () => {
-    it('returns LOCKED when trial expired more than 10 days ago with no payment', () => {
-      const user = makeUser({
-        status: 'TRIAL',
-        trialEndsAt: date('2025-07-15'),
-      });
-
-      // 11 days after trialEndsAt = July 26
-      const result = getPaymentStatus(user, [], date('2025-07-26'));
+      const result = getPaymentStatus(user, [], date('2025-08-01'));
 
       expect(result).toBe('LOCKED' satisfies PaymentStatus);
     });
+
+    it('returns PAID when trial member has a covering payment', () => {
+      const user = makeUser({
+        status: 'TRIAL',
+        trialEndsAt: date('2025-07-15'),
+      });
+      const payments = [makePayment('2025-07-01', '2025-07-31')];
+
+      const result = getPaymentStatus(user, payments, date('2025-07-10'));
+
+      expect(result).toBe('PAID' satisfies PaymentStatus);
+    });
+
+    it('returns PAID when payment recorded during trial', () => {
+      const user = makeUser({
+        status: 'TRIAL',
+        trialEndsAt: date('2025-07-15'),
+      });
+      const payments = [makePayment('2025-07-01', '2025-07-31', '2025-07-05')];
+
+      const result = getPaymentStatus(user, payments, date('2025-07-05'));
+
+      expect(result).toBe('PAID' satisfies PaymentStatus);
+    });
   });
 
-  // Scenario 5: Active member, paid for current month → PAID
+  // Scenario 3: Active member, paid for current month → PAID
   describe('active members - paid', () => {
     it('returns PAID when payment covers current month', () => {
       const user = makeUser({ status: 'ACTIVE' });
@@ -174,7 +194,7 @@ describe('getPaymentStatus', () => {
     });
   });
 
-  // Scenario 6: Active member, no payment, day 1-10 of month → GRACE_PERIOD
+  // Scenario 4: Active member, no payment, day 1-10 of month → GRACE_PERIOD
   describe('active members - grace period', () => {
     it('returns GRACE_PERIOD on day 1 of unpaid month', () => {
       const user = makeUser({ status: 'ACTIVE' });
@@ -204,7 +224,7 @@ describe('getPaymentStatus', () => {
     });
   });
 
-  // Scenario 7: Active member, no payment, day 11+ → LOCKED
+  // Scenario 5: Active member, no payment, day 11+ → LOCKED
   describe('active members - locked', () => {
     it('returns LOCKED on day 11 of unpaid month', () => {
       const user = makeUser({ status: 'ACTIVE' });
@@ -225,11 +245,10 @@ describe('getPaymentStatus', () => {
     });
   });
 
-  // Scenario 8: Advance payment covering future months → PAID
+  // Scenario 6: Advance payment covering future months → PAID
   describe('advance payments', () => {
     it('returns PAID when advance payment covers current month', () => {
       const user = makeUser({ status: 'ACTIVE' });
-      // Payment covers July through September
       const payments = [makePayment('2025-07-01', '2025-09-30', '2025-07-01')];
 
       const result = getPaymentStatus(user, payments, date('2025-08-15'));
@@ -239,7 +258,6 @@ describe('getPaymentStatus', () => {
 
     it('returns PAID for the last month of advance payment', () => {
       const user = makeUser({ status: 'ACTIVE' });
-      // Payment covers July through September
       const payments = [makePayment('2025-07-01', '2025-09-30', '2025-07-01')];
 
       const result = getPaymentStatus(user, payments, date('2025-09-15'));
@@ -249,7 +267,6 @@ describe('getPaymentStatus', () => {
 
     it('returns GRACE_PERIOD after advance payment period ends', () => {
       const user = makeUser({ status: 'ACTIVE' });
-      // Payment covers July through September
       const payments = [makePayment('2025-07-01', '2025-09-30', '2025-07-01')];
 
       const result = getPaymentStatus(user, payments, date('2025-10-05'));
@@ -258,7 +275,7 @@ describe('getPaymentStatus', () => {
     });
   });
 
-  // Scenario 9: Owner override active → OVERRIDE
+  // Scenario 7: Owner override active → OVERRIDE
   describe('owner override', () => {
     it('returns OVERRIDE when override is active even with no payment', () => {
       const user = makeUser({
@@ -281,9 +298,21 @@ describe('getPaymentStatus', () => {
 
       expect(result).toBe('OVERRIDE' satisfies PaymentStatus);
     });
+
+    it('returns OVERRIDE for trial user with override', () => {
+      const user = makeUser({
+        status: 'TRIAL',
+        trialEndsAt: date('2025-06-15'),
+        overrideActive: true,
+      });
+
+      const result = getPaymentStatus(user, [], date('2025-07-01'));
+
+      expect(result).toBe('OVERRIDE' satisfies PaymentStatus);
+    });
   });
 
-  // Scenario 10: Payment recorded on day 10 → immediate PAID
+  // Scenario 8: Payment recorded during grace period → immediate PAID
   describe('payment recorded during grace period', () => {
     it('returns PAID when payment recorded on day 10', () => {
       const user = makeUser({ status: 'ACTIVE' });
@@ -296,7 +325,6 @@ describe('getPaymentStatus', () => {
 
     it('returns PAID immediately after payment, even if recorded late', () => {
       const user = makeUser({ status: 'ACTIVE' });
-      // Payment covers July, recorded on July 12 (would have been locked)
       const payments = [makePayment('2025-07-01', '2025-07-31', '2025-07-12')];
 
       const result = getPaymentStatus(user, payments, date('2025-07-12'));
@@ -319,19 +347,6 @@ describe('getPaymentStatus', () => {
       expect(result).toBe('PAID' satisfies PaymentStatus);
     });
 
-    it('handles trial user with override as OVERRIDE', () => {
-      const user = makeUser({
-        status: 'TRIAL',
-        trialEndsAt: date('2025-06-15'),
-        overrideActive: true,
-      });
-
-      // Trial expired, but override is active
-      const result = getPaymentStatus(user, [], date('2025-07-01'));
-
-      expect(result).toBe('OVERRIDE' satisfies PaymentStatus);
-    });
-
     it('returns DEPARTED even when override is active', () => {
       const user = makeUser({
         status: 'DEPARTED',
@@ -348,7 +363,6 @@ describe('getPaymentStatus', () => {
       const user = makeUser({ status: 'ACTIVE' });
       const payments = [makePayment('2025-12-01', '2025-12-31')];
 
-      // January of next year — no payment, should be grace period early
       const result = getPaymentStatus(user, payments, date('2026-01-05'));
 
       expect(result).toBe('GRACE_PERIOD' satisfies PaymentStatus);
@@ -358,22 +372,18 @@ describe('getPaymentStatus', () => {
       const user = makeUser({ status: 'ACTIVE' });
       const payments = [makePayment('2025-12-01', '2025-12-31')];
 
-      // January 12 — past grace period
       const result = getPaymentStatus(user, payments, date('2026-01-12'));
 
       expect(result).toBe('LOCKED' satisfies PaymentStatus);
     });
 
     it('handles TRIAL user with null trialEndsAt (defensive)', () => {
-      // This should be an impossible state in practice (registration always sets trialEndsAt),
-      // but we test defensively: if trialEndsAt is null, the TRIAL check is skipped
-      // and the user falls through to payment/grace logic
       const user = makeUser({
         status: 'TRIAL',
         trialEndsAt: null,
       });
 
-      // No payment, day 5 of month → GRACE_PERIOD (treated like ACTIVE)
+      // Falls through to active-style grace (1st of month)
       const result = getPaymentStatus(user, [], date('2025-07-05'));
 
       expect(result).toBe('GRACE_PERIOD' satisfies PaymentStatus);
@@ -389,5 +399,19 @@ describe('getPaymentStatus', () => {
 
       expect(result).toBe('LOCKED' satisfies PaymentStatus);
     });
+  });
+});
+
+describe('getGracePeriodLength', () => {
+  it('returns TRIAL_DAYS (14) for trial users', () => {
+    expect(getGracePeriodLength({ status: 'TRIAL' })).toBe(14);
+  });
+
+  it('returns GRACE_PERIOD_DAYS (10) for active users', () => {
+    expect(getGracePeriodLength({ status: 'ACTIVE' })).toBe(10);
+  });
+
+  it('returns GRACE_PERIOD_DAYS (10) for departed users', () => {
+    expect(getGracePeriodLength({ status: 'DEPARTED' })).toBe(10);
   });
 });
