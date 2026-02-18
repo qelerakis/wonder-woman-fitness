@@ -7,7 +7,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { PrivateSessionSchema } from "@/types";
+import { PrivateSessionSchema, DateRangeQuerySchema } from "@/types";
 import { authReadLimiter, authWriteLimiter, createRateLimitResponse } from "@/lib/rate-limit";
 
 export async function GET(req: Request): Promise<Response> {
@@ -27,9 +27,16 @@ export async function GET(req: Request): Promise<Response> {
     if (!readRateCheck.allowed) return createRateLimitResponse(readRateCheck.retryAfterMs);
 
     const url = new URL(req.url);
-    const startDate = url.searchParams.get("startDate");
-    const endDate = url.searchParams.get("endDate");
+    const queryParams: Record<string, string> = {};
+    for (const [key, value] of url.searchParams.entries()) {
+      queryParams[key] = value;
+    }
+    const parsedQuery = DateRangeQuerySchema.safeParse(queryParams);
+    if (!parsedQuery.success) {
+      return Response.json({ error: parsedQuery.error.flatten() }, { status: 400 });
+    }
 
+    const { startDate, endDate } = parsedQuery.data;
     const where: Record<string, unknown> = {};
 
     // Trainers only see their own private sessions

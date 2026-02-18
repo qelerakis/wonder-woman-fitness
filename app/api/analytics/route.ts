@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { getPaymentStatus } from "@/lib/payment-logic";
 import type { PaymentRecord } from "@/lib/payment-logic";
 import { authReadLimiter, createRateLimitResponse } from "@/lib/rate-limit";
+import { AnalyticsQuerySchema } from "@/types";
 
 export async function GET(req: Request): Promise<Response> {
   try {
@@ -29,16 +30,16 @@ export async function GET(req: Request): Promise<Response> {
     if (!readRateCheck.allowed) return createRateLimitResponse(readRateCheck.retryAfterMs);
 
     const url = new URL(req.url);
-    const startDate = url.searchParams.get("startDate");
-    const endDate = url.searchParams.get("endDate");
-
-    if (!startDate || !endDate) {
-      return Response.json(
-        { error: "startDate and endDate query parameters are required" },
-        { status: 400 }
-      );
+    const queryParams: Record<string, string> = {};
+    for (const [key, value] of url.searchParams.entries()) {
+      queryParams[key] = value;
+    }
+    const parsedQuery = AnalyticsQuerySchema.safeParse(queryParams);
+    if (!parsedQuery.success) {
+      return Response.json({ error: parsedQuery.error.flatten() }, { status: 400 });
     }
 
+    const { startDate, endDate } = parsedQuery.data;
     const start = new Date(startDate);
     const end = new Date(endDate);
 

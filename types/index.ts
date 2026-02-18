@@ -190,3 +190,57 @@ export const TrainerCreateSchema = z.object({
 }).strict();
 
 export type TrainerCreateInput = z.infer<typeof TrainerCreateSchema>;
+
+// ===== QUERY PARAMETER SCHEMAS =====
+// Validates and sanitizes GET request query parameters (OWASP input validation)
+
+/** Reusable ISO date string validator (YYYY-MM-DD) */
+const isoDateString = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD format');
+
+export const DateRangeQuerySchema = z.object({
+  startDate: isoDateString.optional(),
+  endDate: isoDateString.optional(),
+}).strict().refine(
+  (data) => {
+    if (data.startDate && data.endDate) {
+      return data.startDate <= data.endDate;
+    }
+    return true;
+  },
+  { message: "startDate must not be after endDate" }
+);
+
+export type DateRangeQuery = z.infer<typeof DateRangeQuerySchema>;
+
+export const AnalyticsQuerySchema = z.object({
+  startDate: isoDateString,
+  endDate: isoDateString,
+}).strict().refine(
+  (data) => data.startDate <= data.endDate,
+  { message: "startDate must not be after endDate" }
+);
+
+export type AnalyticsQuery = z.infer<typeof AnalyticsQuerySchema>;
+
+export const PaymentsQuerySchema = z.object({
+  userId: z.string().min(1, 'userId cannot be empty').optional(),
+  startDate: isoDateString.optional(),
+  endDate: isoDateString.optional(),
+}).strict().refine(
+  (data) => {
+    if (data.startDate && data.endDate) {
+      return data.startDate <= data.endDate;
+    }
+    return true;
+  },
+  { message: "startDate must not be after endDate" }
+);
+
+export type PaymentsQuery = z.infer<typeof PaymentsQuerySchema>;
+
+export const NotificationsQuerySchema = z.object({
+  unread: z.enum(["true", "false"]).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+}).strict();
+
+export type NotificationsQuery = z.infer<typeof NotificationsQuerySchema>;

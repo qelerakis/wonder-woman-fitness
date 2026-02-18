@@ -223,14 +223,14 @@ describe("GET /api/private-sessions", () => {
 
     const { GET } = await import("@/app/api/private-sessions/route");
     const response = await GET(
-      makeGetRequest("?startDate=2026-03-10T00:00:00.000Z")
+      makeGetRequest("?startDate=2026-03-10")
     );
 
     expect(response.status).toBe(200);
     const callArgs = mockPrisma.privateSession.findMany.mock.calls[0][0];
     expect(callArgs.where.scheduledAt).toBeDefined();
     expect(callArgs.where.scheduledAt.gte).toEqual(
-      new Date("2026-03-10T00:00:00.000Z")
+      new Date("2026-03-10")
     );
   });
 
@@ -240,14 +240,14 @@ describe("GET /api/private-sessions", () => {
 
     const { GET } = await import("@/app/api/private-sessions/route");
     const response = await GET(
-      makeGetRequest("?endDate=2026-03-31T23:59:59.000Z")
+      makeGetRequest("?endDate=2026-03-31")
     );
 
     expect(response.status).toBe(200);
     const callArgs = mockPrisma.privateSession.findMany.mock.calls[0][0];
     expect(callArgs.where.scheduledAt).toBeDefined();
     expect(callArgs.where.scheduledAt.lte).toEqual(
-      new Date("2026-03-31T23:59:59.000Z")
+      new Date("2026-03-31")
     );
   });
 
@@ -260,7 +260,7 @@ describe("GET /api/private-sessions", () => {
     const { GET } = await import("@/app/api/private-sessions/route");
     const response = await GET(
       makeGetRequest(
-        "?startDate=2026-03-01T00:00:00.000Z&endDate=2026-03-31T23:59:59.000Z"
+        "?startDate=2026-03-01&endDate=2026-03-31"
       )
     );
     const body = await response.json();
@@ -269,10 +269,10 @@ describe("GET /api/private-sessions", () => {
     expect(body.data).toHaveLength(1);
     const callArgs = mockPrisma.privateSession.findMany.mock.calls[0][0];
     expect(callArgs.where.scheduledAt.gte).toEqual(
-      new Date("2026-03-01T00:00:00.000Z")
+      new Date("2026-03-01")
     );
     expect(callArgs.where.scheduledAt.lte).toEqual(
-      new Date("2026-03-31T23:59:59.000Z")
+      new Date("2026-03-31")
     );
   });
 
@@ -282,13 +282,13 @@ describe("GET /api/private-sessions", () => {
 
     const { GET } = await import("@/app/api/private-sessions/route");
     await GET(
-      makeGetRequest("?startDate=2026-03-01T00:00:00.000Z")
+      makeGetRequest("?startDate=2026-03-01")
     );
 
     const callArgs = mockPrisma.privateSession.findMany.mock.calls[0][0];
     expect(callArgs.where.createdById).toBe("trainer-1");
     expect(callArgs.where.scheduledAt.gte).toEqual(
-      new Date("2026-03-01T00:00:00.000Z")
+      new Date("2026-03-01")
     );
   });
 

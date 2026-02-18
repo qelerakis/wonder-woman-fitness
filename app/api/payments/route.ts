@@ -7,7 +7,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { PaymentSchema } from "@/types";
+import { PaymentSchema, PaymentsQuerySchema } from "@/types";
 import { authReadLimiter, authWriteLimiter, createRateLimitResponse } from "@/lib/rate-limit";
 
 export async function GET(req: Request): Promise<Response> {
@@ -28,10 +28,16 @@ export async function GET(req: Request): Promise<Response> {
     if (!readRateCheck.allowed) return createRateLimitResponse(readRateCheck.retryAfterMs);
 
     const url = new URL(req.url);
-    const userId = url.searchParams.get("userId");
-    const startDate = url.searchParams.get("startDate");
-    const endDate = url.searchParams.get("endDate");
+    const queryParams: Record<string, string> = {};
+    for (const [key, value] of url.searchParams.entries()) {
+      queryParams[key] = value;
+    }
+    const parsedQuery = PaymentsQuerySchema.safeParse(queryParams);
+    if (!parsedQuery.success) {
+      return Response.json({ error: parsedQuery.error.flatten() }, { status: 400 });
+    }
 
+    const { userId, startDate, endDate } = parsedQuery.data;
     const where: Record<string, unknown> = {};
 
     if (userId) {
@@ -41,18 +47,10 @@ export async function GET(req: Request): Promise<Response> {
     if (startDate || endDate) {
       where.paidAt = {};
       if (startDate) {
-        const parsedStart = new Date(startDate);
-        if (isNaN(parsedStart.getTime())) {
-          return Response.json({ error: "Invalid startDate format" }, { status: 400 });
-        }
-        (where.paidAt as Record<string, unknown>).gte = parsedStart;
+        (where.paidAt as Record<string, unknown>).gte = new Date(startDate);
       }
       if (endDate) {
-        const parsedEnd = new Date(endDate);
-        if (isNaN(parsedEnd.getTime())) {
-          return Response.json({ error: "Invalid endDate format" }, { status: 400 });
-        }
-        (where.paidAt as Record<string, unknown>).lte = parsedEnd;
+        (where.paidAt as Record<string, unknown>).lte = new Date(endDate);
       }
     }
 

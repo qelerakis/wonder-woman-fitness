@@ -11,6 +11,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { markAllNotificationsRead } from "@/lib/notifications";
 import { authReadLimiter, authWriteLimiter, createRateLimitResponse } from "@/lib/rate-limit";
+import { NotificationsQuerySchema } from "@/types";
 
 export async function GET(req: Request): Promise<Response> {
   try {
@@ -24,11 +25,16 @@ export async function GET(req: Request): Promise<Response> {
     if (!readRateCheck.allowed) return createRateLimitResponse(readRateCheck.retryAfterMs);
 
     const url = new URL(req.url);
-    const unreadOnly = url.searchParams.get("unread") === "true";
-    const limit = Math.min(
-      parseInt(url.searchParams.get("limit") || "50", 10),
-      100
-    );
+    const queryParams: Record<string, string> = {};
+    for (const [key, value] of url.searchParams.entries()) {
+      queryParams[key] = value;
+    }
+    const parsedQuery = NotificationsQuerySchema.safeParse(queryParams);
+    if (!parsedQuery.success) {
+      return Response.json({ error: parsedQuery.error.flatten() }, { status: 400 });
+    }
+    const unreadOnly = parsedQuery.data.unread === "true";
+    const limit = parsedQuery.data.limit ?? 50;
 
     const where: Record<string, unknown> = {
       userId: session.user.id,
