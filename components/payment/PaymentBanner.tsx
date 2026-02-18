@@ -7,18 +7,20 @@ import { GRACE_PERIOD_DAYS } from "@/lib/constants";
 interface PaymentBannerProps {
   status: PaymentStatus;
   daysIntoGracePeriod?: number;
+  totalGraceDays?: number;
 }
 
 export function PaymentBanner({
   status,
   daysIntoGracePeriod = 0,
+  totalGraceDays = GRACE_PERIOD_DAYS,
 }: PaymentBannerProps): React.ReactElement | null {
   // Only show banner for grace period and locked statuses
   if (status !== "GRACE_PERIOD" && status !== "LOCKED") {
     return null;
   }
 
-  const daysRemaining = Math.max(0, GRACE_PERIOD_DAYS - daysIntoGracePeriod);
+  const daysRemaining = Math.max(0, totalGraceDays - daysIntoGracePeriod);
 
   if (status === "GRACE_PERIOD") {
     return (

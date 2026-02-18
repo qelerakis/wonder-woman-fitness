@@ -135,7 +135,6 @@ export const USER_STATUSES = {
 
 // ===== PAYMENT STATUSES (Computed, never stored) =====
 export const PAYMENT_STATUSES = {
-  TRIAL: 'TRIAL',
   PAID: 'PAID',
   GRACE_PERIOD: 'GRACE_PERIOD',
   LOCKED: 'LOCKED',

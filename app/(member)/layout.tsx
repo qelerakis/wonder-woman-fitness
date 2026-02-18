@@ -3,8 +3,9 @@ import { redirect } from "next/navigation";
 import { Header } from "@/components/layout/Header";
 import { PaymentBanner } from "@/components/payment/PaymentBanner";
 import { prisma } from "@/lib/prisma";
-import { getPaymentStatus } from "@/lib/payment-logic";
+import { getPaymentStatus, getGracePeriodLength } from "@/lib/payment-logic";
 import type { PaymentRecord } from "@/lib/payment-logic";
+import { TRIAL_DAYS, GRACE_PERIOD_DAYS } from "@/lib/constants";
 
 export default async function MemberLayout({
   children,
@@ -31,6 +32,7 @@ export default async function MemberLayout({
   // Compute payment status for MEMBER role to show banner
   let showGraceBanner = false;
   let daysIntoGracePeriod = 0;
+  let totalGraceDays = GRACE_PERIOD_DAYS;
 
   if (role === "MEMBER") {
     const user = await prisma.user.findUnique({
@@ -74,18 +76,26 @@ export default async function MemberLayout({
 
       if (paymentStatus === "GRACE_PERIOD") {
         showGraceBanner = true;
-        // Calculate days into grace period (elapsed days)
         const now = new Date();
         let graceStart: Date;
         if (user.status === "TRIAL" && user.trialEndsAt) {
-          // Trial-expired: grace starts from trialEndsAt
-          graceStart = user.trialEndsAt;
+          // Trial: grace starts from registration (trialEndsAt - TRIAL_DAYS)
+          const trialEnd = new Date(user.trialEndsAt);
+          graceStart = new Date(
+            Date.UTC(
+              trialEnd.getUTCFullYear(),
+              trialEnd.getUTCMonth(),
+              trialEnd.getUTCDate() - TRIAL_DAYS
+            )
+          );
         } else {
-          // Active: grace starts from 1st of current month
           graceStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
         }
         const msPerDay = 1000 * 60 * 60 * 24;
         daysIntoGracePeriod = Math.floor((now.getTime() - graceStart.getTime()) / msPerDay) + 1;
+        totalGraceDays = getGracePeriodLength({
+          status: user.status as "TRIAL" | "ACTIVE" | "DEPARTED",
+        });
       }
     }
   }
@@ -101,6 +111,7 @@ export default async function MemberLayout({
         <PaymentBanner
           status="GRACE_PERIOD"
           daysIntoGracePeriod={daysIntoGracePeriod}
+          totalGraceDays={totalGraceDays}
         />
       )}
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">

@@ -8,7 +8,6 @@ interface PaymentStatusBadgeProps {
 }
 
 const statusConfig: Record<PaymentStatus, { label: string; variant: BadgeVariant }> = {
-  TRIAL: { label: "Trial", variant: "info" },
   PAID: { label: "Paid", variant: "success" },
   GRACE_PERIOD: { label: "Grace Period", variant: "warning" },
   LOCKED: { label: "Locked", variant: "error" },
