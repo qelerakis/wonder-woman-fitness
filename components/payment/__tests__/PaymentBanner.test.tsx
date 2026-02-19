@@ -3,7 +3,7 @@
  *
  * Tests rendering behavior for all payment statuses,
  * grace period countdown display, pluralization,
- * custom totalGraceDays prop, and navigation link.
+ * custom totalGraceDays prop, and cash payment messaging.
  */
 
 import { describe, it, expect } from "vitest";
@@ -45,7 +45,7 @@ describe("PaymentBanner", () => {
       render(<PaymentBanner status="GRACE_PERIOD" daysIntoGracePeriod={3} />);
       expect(
         screen.getByText(
-          "You have 7 days remaining before your account is locked."
+          "You have 7 days remaining before your account is locked. Please pay your trainer or the gym owner."
         )
       ).toBeTruthy();
     });
@@ -61,7 +61,7 @@ describe("PaymentBanner", () => {
       );
       expect(
         screen.getByText(
-          "You have 9 days remaining before your account is locked."
+          "You have 9 days remaining before your account is locked. Please pay your trainer or the gym owner."
         )
       ).toBeTruthy();
     });
@@ -71,7 +71,7 @@ describe("PaymentBanner", () => {
       render(<PaymentBanner status="GRACE_PERIOD" daysIntoGracePeriod={9} />);
       expect(
         screen.getByText(
-          "You have 1 day remaining before your account is locked."
+          "You have 1 day remaining before your account is locked. Please pay your trainer or the gym owner."
         )
       ).toBeTruthy();
     });
@@ -81,7 +81,7 @@ describe("PaymentBanner", () => {
       render(<PaymentBanner status="GRACE_PERIOD" daysIntoGracePeriod={5} />);
       expect(
         screen.getByText(
-          "You have 5 days remaining before your account is locked."
+          "You have 5 days remaining before your account is locked. Please pay your trainer or the gym owner."
         )
       ).toBeTruthy();
     });
@@ -91,7 +91,7 @@ describe("PaymentBanner", () => {
       render(<PaymentBanner status="GRACE_PERIOD" daysIntoGracePeriod={10} />);
       expect(
         screen.getByText(
-          "Your account will be locked tomorrow. Please make your payment."
+          "Your account will be locked tomorrow. Please pay your trainer or the gym owner."
         )
       ).toBeTruthy();
     });
@@ -101,16 +101,14 @@ describe("PaymentBanner", () => {
       render(<PaymentBanner status="GRACE_PERIOD" daysIntoGracePeriod={15} />);
       expect(
         screen.getByText(
-          "Your account will be locked tomorrow. Please make your payment."
+          "Your account will be locked tomorrow. Please pay your trainer or the gym owner."
         )
       ).toBeTruthy();
     });
 
-    it("renders 'Pay Now' link pointing to /profile#payment", () => {
+    it("does NOT render a 'Pay Now' button (members pay in cash)", () => {
       render(<PaymentBanner status="GRACE_PERIOD" daysIntoGracePeriod={3} />);
-      const link = screen.getByText("Pay Now");
-      expect(link).toBeTruthy();
-      expect(link.getAttribute("href")).toBe("/profile#payment");
+      expect(screen.queryByText("Pay Now")).toBeNull();
     });
 
     it("shows full 10 days when daysIntoGracePeriod defaults to 0", () => {
@@ -118,7 +116,7 @@ describe("PaymentBanner", () => {
       render(<PaymentBanner status="GRACE_PERIOD" />);
       expect(
         screen.getByText(
-          "You have 10 days remaining before your account is locked."
+          "You have 10 days remaining before your account is locked. Please pay your trainer or the gym owner."
         )
       ).toBeTruthy();
     });
@@ -133,7 +131,7 @@ describe("PaymentBanner", () => {
       );
       expect(
         screen.getByText(
-          "You have 14 days remaining before your account is locked."
+          "You have 14 days remaining before your account is locked. Please pay your trainer or the gym owner."
         )
       ).toBeTruthy();
     });
