@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -69,26 +68,13 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setServerError(data.error || "Registration failed");
+        setServerError(typeof data.error === 'string' ? data.error : "Registration failed");
         setLoading(false);
         return;
       }
 
-      // Auto-login after registration
-      const signInResult = await signIn("credentials", {
-        email: formData.email.trim().toLowerCase(),
-        password: formData.password,
-        redirect: false,
-      });
-
-      if (signInResult?.error) {
-        // Registration succeeded but auto-login failed — redirect to login
-        router.push("/login");
-        return;
-      }
-
-      // New members go to schedule
-      router.push("/member/schedule");
+      // Redirect to check-email page
+      router.push(`/check-email?email=${encodeURIComponent(formData.email.trim().toLowerCase())}`);
     } catch {
       setServerError("An unexpected error occurred");
       setLoading(false);
