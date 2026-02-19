@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/voting-deadline",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/cleanup-pending",
+      "schedule": "0 3 * * *"
     }
   ]
 }
