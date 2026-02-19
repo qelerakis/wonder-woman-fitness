@@ -9,7 +9,7 @@ const { auth } = NextAuth(authConfig);
  * Public routes that don't require authentication.
  * These paths are accessible to all visitors.
  */
-const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password"];
+const PUBLIC_ROUTES = ["/login", "/register", "/forgot-password", "/check-email", "/verify-email"];
 
 /**
  * API auth routes that must remain public for NextAuth to work.
