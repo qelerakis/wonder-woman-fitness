@@ -54,12 +54,12 @@ vi.mock("@/lib/prisma", () => ({
 
 const mockDispatchNotificationToMany = vi.fn().mockResolvedValue([]);
 vi.mock("@/lib/notifications", () => ({
-  dispatchNotificationToMany: (...args: unknown[]) => mockDispatchNotificationToMany(...args),
+  dispatchNotificationToMany: vi.fn((...args: unknown[]) => mockDispatchNotificationToMany(...args)),
 }));
 
-const mockGetPaymentStatus = vi.fn(() => "PAID");
+const mockGetPaymentStatus = vi.fn().mockReturnValue("PAID");
 vi.mock("@/lib/payment-logic", () => ({
-  getPaymentStatus: (...args: unknown[]) => mockGetPaymentStatus(...args),
+  getPaymentStatus: vi.fn((...args: unknown[]) => mockGetPaymentStatus(...args)),
 }));
 
 // ===== Helpers =====
