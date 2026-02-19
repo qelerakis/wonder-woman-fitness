@@ -65,6 +65,12 @@ export const ResetPasswordSchema = z.object({
 
 export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
 
+export const ResendVerificationSchema = z.object({
+  email: z.string().email('Invalid email address').max(MAX_EMAIL_LENGTH),
+}).strict();
+
+export type ResendVerificationInput = z.infer<typeof ResendVerificationSchema>;
+
 // ===== PAYMENT SCHEMAS =====
 
 export const PaymentSchema = z.object({
