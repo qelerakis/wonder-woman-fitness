@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
+import { SendNotificationModal } from "@/components/notification/SendNotificationModal";
 import { formatDistanceToNow } from "date-fns";
 
 interface NotificationData {
@@ -17,9 +18,17 @@ interface NotificationData {
   createdAt: string;
 }
 
+interface RecurringSlotOption {
+  id: string;
+  dayOfWeek: number;
+  startHour: number;
+}
+
 interface NotificationsClientProps {
   notifications: NotificationData[];
   unreadCount: number;
+  isOwner?: boolean;
+  recurringSlots?: RecurringSlotOption[];
 }
 
 const typeIcons: Record<string, string> = {
@@ -40,11 +49,14 @@ const typeIcons: Record<string, string> = {
 export function NotificationsClient({
   notifications,
   unreadCount,
+  isOwner = false,
+  recurringSlots = [],
 }: NotificationsClientProps): React.ReactElement {
   const router = useRouter();
   const { addToast } = useToast();
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [loading, setLoading] = useState(false);
+  const [showSendModal, setShowSendModal] = useState(false);
 
   const displayed =
     filter === "unread"
@@ -104,6 +116,15 @@ export function NotificationsClient({
           </p>
         </div>
         <div className="flex gap-2">
+          {isOwner && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setShowSendModal(true)}
+            >
+              Send Notification
+            </Button>
+          )}
           <Button
             variant={filter === "all" ? "secondary" : "ghost"}
             size="sm"
@@ -201,6 +222,14 @@ export function NotificationsClient({
             ))}
           </div>
         </Card>
+      )}
+
+      {isOwner && (
+        <SendNotificationModal
+          isOpen={showSendModal}
+          onClose={() => setShowSendModal(false)}
+          recurringSlots={recurringSlots}
+        />
       )}
     </div>
   );
