@@ -18,8 +18,16 @@ const mockPrisma = {
     findUnique: vi.fn(),
     create: vi.fn(),
   },
+  pendingVerification: {
+    upsert: vi.fn(),
+  },
 };
 vi.mock("@/lib/prisma", () => ({ prisma: mockPrisma }));
+
+// Mock email
+vi.mock("@/lib/email", () => ({
+  sendVerificationEmail: vi.fn().mockResolvedValue(true),
+}));
 
 // Mock bcrypt
 vi.mock("bcrypt", () => ({
@@ -74,12 +82,10 @@ describe("POST /api/auth/register — rate limiting", () => {
   it("allows request when under rate limit", async () => {
     mockPublicCheck.mockReturnValue({ allowed: true, remaining: 9, retryAfterMs: 0 });
     mockPrisma.user.findUnique.mockResolvedValue(null);
-    mockPrisma.user.create.mockResolvedValue({
-      id: "new-user",
+    mockPrisma.pendingVerification.upsert.mockResolvedValue({
+      id: "pv-1",
       email: "test@test.com",
-      name: "Test User",
-      role: "MEMBER",
-      status: "TRIAL",
+      token: "test-token",
     });
 
     const { POST } = await import("@/app/api/auth/register/route");
@@ -101,12 +107,10 @@ describe("POST /api/auth/register — rate limiting", () => {
   it("rate limit key includes 'register:' prefix", async () => {
     mockPublicCheck.mockReturnValue({ allowed: true, remaining: 9, retryAfterMs: 0 });
     mockPrisma.user.findUnique.mockResolvedValue(null);
-    mockPrisma.user.create.mockResolvedValue({
-      id: "new-user",
+    mockPrisma.pendingVerification.upsert.mockResolvedValue({
+      id: "pv-1",
       email: "test@test.com",
-      name: "Test User",
-      role: "MEMBER",
-      status: "TRIAL",
+      token: "test-token",
     });
 
     const { POST } = await import("@/app/api/auth/register/route");
@@ -131,12 +135,10 @@ describe("POST /api/auth/register — rate limiting", () => {
     const { getClientIp: mockGetClientIp } = await import("@/lib/rate-limit");
     mockPublicCheck.mockReturnValue({ allowed: true, remaining: 9, retryAfterMs: 0 });
     mockPrisma.user.findUnique.mockResolvedValue(null);
-    mockPrisma.user.create.mockResolvedValue({
-      id: "new-user",
+    mockPrisma.pendingVerification.upsert.mockResolvedValue({
+      id: "pv-1",
       email: "test@test.com",
-      name: "Test User",
-      role: "MEMBER",
-      status: "TRIAL",
+      token: "test-token",
     });
 
     const { POST } = await import("@/app/api/auth/register/route");

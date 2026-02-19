@@ -1,13 +1,15 @@
+import crypto from "crypto";
 import bcrypt from "bcrypt";
 import { prisma } from "@/lib/prisma";
-import { addDays } from "date-fns";
+import { addHours } from "date-fns";
 import { RegisterSchema } from "@/types";
-import { BCRYPT_ROUNDS, TRIAL_DAYS } from "@/lib/constants";
+import { BCRYPT_ROUNDS, VERIFICATION_TOKEN_BYTES, VERIFICATION_EXPIRY_HOURS } from "@/lib/constants";
 import { publicLimiter, getClientIp, createRateLimitResponse } from "@/lib/rate-limit";
+import { sendVerificationEmail } from "@/lib/email";
 
 export async function POST(req: Request): Promise<Response> {
   try {
-    // Rate limit: 10 requests per 15 min per IP (OWASP brute-force mitigation)
+    // Rate limit: 10 requests per 15 min per IP
     const ip = getClientIp(req);
     const rateCheck = publicLimiter.check(`register:${ip}`);
     if (!rateCheck.allowed) return createRateLimitResponse(rateCheck.retryAfterMs);
@@ -23,14 +25,15 @@ export async function POST(req: Request): Promise<Response> {
     }
 
     const { name, phone, email, password } = parsed.data;
+    const normalizedEmail = email.toLowerCase();
 
     // Hash password first to ensure constant-time response regardless of
     // whether the email exists (prevents timing-based email enumeration)
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
-    // Check if email already exists
+    // Check if email already exists as a confirmed User
     const existingUser = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+      where: { email: normalizedEmail },
       select: { id: true },
     });
 
@@ -41,29 +44,39 @@ export async function POST(req: Request): Promise<Response> {
       );
     }
 
-    // Create user with TRIAL status
-    const now = new Date();
-    const user = await prisma.user.create({
-      data: {
-        email: email.toLowerCase(),
+    // Generate verification token
+    const token = crypto.randomBytes(VERIFICATION_TOKEN_BYTES).toString("base64url");
+    const expiresAt = addHours(new Date(), VERIFICATION_EXPIRY_HOURS);
+
+    // Upsert: replaces any existing pending record for this email (lazy cleanup)
+    await prisma.pendingVerification.upsert({
+      where: { email: normalizedEmail },
+      update: {
         passwordHash,
         name,
         phone: phone || null,
-        role: "MEMBER",
-        status: "TRIAL",
-        joinDate: now,
-        trialEndsAt: addDays(now, TRIAL_DAYS),
+        token,
+        expiresAt,
+        resendCount: 0,
+        lastResentAt: null,
       },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        status: true,
+      create: {
+        email: normalizedEmail,
+        passwordHash,
+        name,
+        phone: phone || null,
+        token,
+        expiresAt,
       },
     });
 
-    return Response.json({ data: user }, { status: 201 });
+    // Send verification email (fire-and-forget — don't block registration on email failure)
+    await sendVerificationEmail(normalizedEmail, token);
+
+    return Response.json(
+      { message: "Verification email sent. Please check your inbox." },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Registration error:", error);
     return Response.json(
