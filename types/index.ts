@@ -22,6 +22,8 @@ import {
   MAX_NOTIFICATION_TITLE_LENGTH,
   MAX_NOTIFICATION_BODY_LENGTH,
   MAX_RESET_TOKEN_LENGTH,
+  MAX_BROADCAST_TITLE_LENGTH,
+  MAX_BROADCAST_BODY_LENGTH,
 } from '@/lib/constants';
 
 // ===== AUTHENTICATION SCHEMAS =====
@@ -259,3 +261,56 @@ export const NotificationsQuerySchema = z.object({
 }).strict();
 
 export type NotificationsQuery = z.infer<typeof NotificationsQuerySchema>;
+
+// ===== BROADCAST NOTIFICATION SCHEMAS =====
+
+export const BroadcastAudienceSchema = z.enum([
+  'ALL',
+  'TRIAL',
+  'SESSION_SLOT',
+  'PAYMENT_STATUS',
+  'INDIVIDUAL',
+]);
+
+export type BroadcastAudience = z.infer<typeof BroadcastAudienceSchema>;
+
+export const BroadcastNotificationSchema = z.object({
+  audience: BroadcastAudienceSchema,
+  slotId: z.string().cuid('Invalid slot ID').optional(),
+  paymentStatus: z.enum(['GRACE_PERIOD', 'LOCKED']).optional(),
+  memberIds: z.array(z.string().cuid('Invalid member ID')).optional(),
+  title: z.string().min(1, 'Title is required').max(MAX_BROADCAST_TITLE_LENGTH, `Title too long (max ${MAX_BROADCAST_TITLE_LENGTH} chars)`),
+  body: z.string().min(1, 'Message is required').max(MAX_BROADCAST_BODY_LENGTH, `Message too long (max ${MAX_BROADCAST_BODY_LENGTH} chars)`),
+}).strict().superRefine((data, ctx) => {
+  if (data.audience === 'SESSION_SLOT' && !data.slotId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'slotId is required when audience is SESSION_SLOT',
+      path: ['slotId'],
+    });
+  }
+  if (data.audience === 'PAYMENT_STATUS' && !data.paymentStatus) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'paymentStatus is required when audience is PAYMENT_STATUS',
+      path: ['paymentStatus'],
+    });
+  }
+  if (data.audience === 'INDIVIDUAL' && (!data.memberIds || data.memberIds.length === 0)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'memberIds is required when audience is INDIVIDUAL',
+      path: ['memberIds'],
+    });
+  }
+});
+
+export type BroadcastNotificationInput = z.infer<typeof BroadcastNotificationSchema>;
+
+export const BroadcastRecipientsQuerySchema = z.object({
+  audience: BroadcastAudienceSchema,
+  slotId: z.string().optional(),
+  paymentStatus: z.enum(['GRACE_PERIOD', 'LOCKED']).optional(),
+}).strict();
+
+export type BroadcastRecipientsQuery = z.infer<typeof BroadcastRecipientsQuerySchema>;
