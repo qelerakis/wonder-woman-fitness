@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
-import { MAX_BROADCAST_TITLE_LENGTH, MAX_BROADCAST_BODY_LENGTH } from "@/lib/constants";
-import { DAY_NAMES } from "@/lib/constants";
+import { MAX_BROADCAST_TITLE_LENGTH, MAX_BROADCAST_BODY_LENGTH, DAY_NAMES } from "@/lib/constants";
 
 type AudienceType = "ALL" | "TRIAL" | "SESSION_SLOT" | "PAYMENT_STATUS" | "INDIVIDUAL";
 
@@ -51,6 +50,10 @@ export function SendNotificationModal({
   const [sending, setSending] = useState(false);
 
   const fetchRecipients = useCallback(async (): Promise<void> => {
+    if (audience === "SESSION_SLOT" && !slotId) {
+      setRecipientCount(0);
+      return;
+    }
     setLoadingRecipients(true);
     try {
       const params = new URLSearchParams({ audience });
