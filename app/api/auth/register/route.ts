@@ -71,7 +71,9 @@ export async function POST(req: Request): Promise<Response> {
     });
 
     // Send verification email (fire-and-forget — don't block registration on email failure)
-    await sendVerificationEmail(normalizedEmail, token);
+    sendVerificationEmail(normalizedEmail, token).catch((err) => {
+      console.error("Failed to send verification email:", err);
+    });
 
     return Response.json(
       { message: "Verification email sent. Please check your inbox." },

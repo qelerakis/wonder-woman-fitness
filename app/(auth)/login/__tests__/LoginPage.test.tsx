@@ -269,6 +269,58 @@ describe("LoginPage", () => {
     });
   });
 
+  // ----- Verification hint clears on input change -----
+
+  it("clears verification hint when email input changes", async () => {
+    mockSignIn.mockResolvedValueOnce({ error: "CredentialsSignin" });
+
+    render(<LoginPage />);
+
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "user@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "password123" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Sign In" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Recently registered?")).toBeTruthy();
+    });
+
+    // Change email — hint should disappear
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "other@example.com" },
+    });
+
+    expect(screen.queryByText("Recently registered?")).toBeNull();
+  });
+
+  it("clears verification hint when password input changes", async () => {
+    mockSignIn.mockResolvedValueOnce({ error: "CredentialsSignin" });
+
+    render(<LoginPage />);
+
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "user@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "password123" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Sign In" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Recently registered?")).toBeTruthy();
+    });
+
+    // Change password — hint should disappear
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "newpassword" },
+    });
+
+    expect(screen.queryByText("Recently registered?")).toBeNull();
+  });
+
   // ----- Error clears on resubmit -----
 
   it("clears previous error when form is resubmitted", async () => {

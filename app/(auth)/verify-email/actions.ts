@@ -1,3 +1,5 @@
+"use server";
+
 import { prisma } from "@/lib/prisma";
 import { addDays } from "date-fns";
 import { TRIAL_DAYS } from "@/lib/constants";

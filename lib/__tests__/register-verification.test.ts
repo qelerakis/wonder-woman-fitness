@@ -275,7 +275,7 @@ describe('POST /api/auth/register (with verification)', () => {
     expect(callArgs[1].length).toBeGreaterThan(0);
   });
 
-  it('returns 201 even when sendVerificationEmail throws', async () => {
+  it('returns 201 even when sendVerificationEmail throws (fire-and-forget)', async () => {
     mockPrisma.user.findUnique.mockResolvedValue(null);
     mockPrisma.pendingVerification.upsert.mockResolvedValue({
       id: 'pv-7',
@@ -298,13 +298,10 @@ describe('POST /api/auth/register (with verification)', () => {
     });
 
     const res = await POST(req);
-    // The route has a try/catch around the whole thing — email failure will
-    // cause the catch block to return 500
-    // Looking at the route: sendVerificationEmail is awaited, so if it throws
-    // it hits the catch and returns 500
-    expect(res.status).toBe(500);
+    // Email sending is fire-and-forget — registration succeeds even if email fails
+    expect(res.status).toBe(201);
     const data = await res.json();
-    expect(data.error).toBe('Internal server error');
+    expect(data.message).toContain('Verification email sent');
   });
 
   it('returns 500 when prisma throws an error', async () => {
