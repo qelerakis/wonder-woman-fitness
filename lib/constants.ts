@@ -84,6 +84,12 @@ export const BCRYPT_ROUNDS = 12;
 export const MIN_PASSWORD_LENGTH = 8;
 export const TEMP_PASSWORD_LENGTH = 12;
 
+// ===== EMAIL VERIFICATION CONFIGURATION =====
+export const VERIFICATION_TOKEN_BYTES = 32;
+export const VERIFICATION_EXPIRY_HOURS = 24;
+export const VERIFICATION_MAX_RESENDS = 5;
+export const VERIFICATION_RESEND_COOLDOWN_MS = 60_000; // 60 seconds
+
 // ===== SESSION GENERATION =====
 export const MAX_WEEKS_AHEAD_TO_GENERATE = 4; // Don't auto-generate more than 4 weeks ahead
 
