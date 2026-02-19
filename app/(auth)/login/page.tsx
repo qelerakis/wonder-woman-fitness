@@ -11,6 +11,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showVerificationHint, setShowVerificationHint] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
@@ -26,6 +27,7 @@ export default function LoginPage() {
 
       if (result?.error) {
         setError("Invalid email or password");
+        setShowVerificationHint(true);
         setLoading(false);
         return;
       }
@@ -59,6 +61,18 @@ export default function LoginPage() {
       {error && (
         <div className="mb-4 rounded-lg bg-error-50 p-3 text-sm text-error-700">
           {error}
+        </div>
+      )}
+
+      {showVerificationHint && (
+        <div className="mb-4 rounded-lg bg-surface-800 p-3 text-sm text-surface-400">
+          Recently registered?{" "}
+          <Link
+            href={`/check-email?email=${encodeURIComponent(email)}`}
+            className="text-primary-400 hover:text-primary-300"
+          >
+            Resend verification email
+          </Link>
         </div>
       )}
 
