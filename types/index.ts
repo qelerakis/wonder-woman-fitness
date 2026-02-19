@@ -311,6 +311,21 @@ export const BroadcastRecipientsQuerySchema = z.object({
   audience: BroadcastAudienceSchema,
   slotId: z.string().cuid('Invalid slot ID').optional(),
   paymentStatus: z.enum(['GRACE_PERIOD', 'LOCKED']).optional(),
-}).strict();
+}).strict().superRefine((data, ctx) => {
+  if (data.audience === 'SESSION_SLOT' && !data.slotId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'slotId is required when audience is SESSION_SLOT',
+      path: ['slotId'],
+    });
+  }
+  if (data.audience === 'PAYMENT_STATUS' && !data.paymentStatus) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'paymentStatus is required when audience is PAYMENT_STATUS',
+      path: ['paymentStatus'],
+    });
+  }
+});
 
 export type BroadcastRecipientsQuery = z.infer<typeof BroadcastRecipientsQuerySchema>;

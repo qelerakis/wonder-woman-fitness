@@ -76,6 +76,23 @@ const defaultProps = {
   recurringSlots: sampleSlots,
 };
 
+/**
+ * Render helper that wraps render() in act() so the component's initial
+ * useEffect (fetchRecipients) settles before assertions run.
+ * This eliminates React act() warnings caused by state updates from the
+ * async fetch inside useEffect.
+ */
+async function renderModal(
+  props: Partial<typeof defaultProps> = {}
+): Promise<ReturnType<typeof render>> {
+  const mod = await import("@/components/notification/SendNotificationModal");
+  let result: ReturnType<typeof render>;
+  await act(async () => {
+    result = render(<mod.SendNotificationModal {...defaultProps} {...props} />);
+  });
+  return result!;
+}
+
 // ===== Tests =====
 
 describe("SendNotificationModal", () => {
@@ -91,23 +108,13 @@ describe("SendNotificationModal", () => {
 
   describe("Rendering", () => {
     it("does not render when isOpen is false", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      const { container } = render(
-        <SendNotificationModal {...defaultProps} isOpen={false} />
-      );
+      const { container } = await renderModal({ isOpen: false });
 
       expect(container.innerHTML).toBe("");
     });
 
     it("renders modal title 'Send Notification' when open", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       // The heading contains "Send Notification" (not the button)
       const heading = screen.getByRole("heading", { name: "Send Notification" });
@@ -115,11 +122,7 @@ describe("SendNotificationModal", () => {
     });
 
     it("renders all 5 audience radio options", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       expect(screen.getByText("All active members")).toBeTruthy();
       expect(screen.getByText("Trial members only")).toBeTruthy();
@@ -129,11 +132,7 @@ describe("SendNotificationModal", () => {
     });
 
     it("default audience is 'All active members' (ALL)", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       const radios = screen.getAllByRole("radio");
       // First radio = ALL
@@ -142,11 +141,7 @@ describe("SendNotificationModal", () => {
     });
 
     it("renders title input with placeholder", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       expect(
         screen.getByPlaceholderText("e.g., Studio closed this Friday")
@@ -154,11 +149,7 @@ describe("SendNotificationModal", () => {
     });
 
     it("renders body textarea with placeholder", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       expect(
         screen.getByPlaceholderText("Write your message here...")
@@ -166,11 +157,7 @@ describe("SendNotificationModal", () => {
     });
 
     it("renders Send Notification button", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       expect(
         screen.getByRole("button", { name: "Send Notification" })
@@ -178,52 +165,32 @@ describe("SendNotificationModal", () => {
     });
 
     it("renders Cancel button", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       expect(screen.getByRole("button", { name: "Cancel" })).toBeTruthy();
     });
 
     it("shows character counters for title (0/100) and body (0/500)", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       expect(screen.getByText("0/100")).toBeTruthy();
       expect(screen.getByText("0/500")).toBeTruthy();
     });
 
     it("renders Audience label", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       expect(screen.getByText("Audience")).toBeTruthy();
     });
 
     it("renders Title label", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       expect(screen.getByText("Title")).toBeTruthy();
     });
 
     it("renders Message label", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       expect(screen.getByText("Message")).toBeTruthy();
     });
@@ -235,55 +202,53 @@ describe("SendNotificationModal", () => {
 
   describe("Audience selection", () => {
     it("clicking each radio changes the selected audience", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       const radios = screen.getAllByRole("radio");
 
       // Click TRIAL
-      fireEvent.click(radios[1]);
+      await act(async () => {
+        fireEvent.click(radios[1]);
+      });
       expect((radios[1] as HTMLInputElement).checked).toBe(true);
       expect((radios[0] as HTMLInputElement).checked).toBe(false);
 
       // Click SESSION_SLOT
-      fireEvent.click(radios[2]);
+      await act(async () => {
+        fireEvent.click(radios[2]);
+      });
       expect((radios[2] as HTMLInputElement).checked).toBe(true);
       expect((radios[1] as HTMLInputElement).checked).toBe(false);
 
       // Click PAYMENT_STATUS
-      fireEvent.click(radios[3]);
+      await act(async () => {
+        fireEvent.click(radios[3]);
+      });
       expect((radios[3] as HTMLInputElement).checked).toBe(true);
       expect((radios[2] as HTMLInputElement).checked).toBe(false);
 
       // Click INDIVIDUAL
-      fireEvent.click(radios[4]);
+      await act(async () => {
+        fireEvent.click(radios[4]);
+      });
       expect((radios[4] as HTMLInputElement).checked).toBe(true);
       expect((radios[3] as HTMLInputElement).checked).toBe(false);
     });
 
     it("SESSION_SLOT shows slot dropdown when selected", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       const radios = screen.getAllByRole("radio");
-      fireEvent.click(radios[2]); // SESSION_SLOT
+      await act(async () => {
+        fireEvent.click(radios[2]); // SESSION_SLOT
+      });
 
       expect(screen.getByText("Session Slot")).toBeTruthy();
       expect(screen.getByText("Select a slot...")).toBeTruthy();
     });
 
     it("SESSION_SLOT does NOT show slot dropdown when not selected", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       // Default is ALL - no slot dropdown
       expect(screen.queryByText("Session Slot")).toBeNull();
@@ -291,14 +256,12 @@ describe("SendNotificationModal", () => {
     });
 
     it("PAYMENT_STATUS shows payment status dropdown when selected", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       const radios = screen.getAllByRole("radio");
-      fireEvent.click(radios[3]); // PAYMENT_STATUS
+      await act(async () => {
+        fireEvent.click(radios[3]); // PAYMENT_STATUS
+      });
 
       expect(screen.getByText("Payment Status")).toBeTruthy();
       expect(screen.getByText("Grace Period")).toBeTruthy();
@@ -308,11 +271,7 @@ describe("SendNotificationModal", () => {
     it("INDIVIDUAL shows member search and checkbox list when selected", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(3, sampleMembers));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       const radios = screen.getAllByRole("radio");
       await act(async () => {
@@ -326,39 +285,31 @@ describe("SendNotificationModal", () => {
     });
 
     it("switching back to ALL hides conditional UI", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       const radios = screen.getAllByRole("radio");
 
       // Select SESSION_SLOT
-      fireEvent.click(radios[2]);
+      await act(async () => {
+        fireEvent.click(radios[2]);
+      });
       expect(screen.getByText("Session Slot")).toBeTruthy();
 
       // Switch back to ALL
-      fireEvent.click(radios[0]);
+      await act(async () => {
+        fireEvent.click(radios[0]);
+      });
       expect(screen.queryByText("Session Slot")).toBeNull();
     });
 
     it("PAYMENT_STATUS dropdown is hidden when ALL is selected", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       expect(screen.queryByText("Payment Status")).toBeNull();
     });
 
     it("INDIVIDUAL member picker is hidden when ALL is selected", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       expect(screen.queryByText("Select Members")).toBeNull();
     });
@@ -370,27 +321,23 @@ describe("SendNotificationModal", () => {
 
   describe("Session slot picker", () => {
     it("renders 'Select a slot...' default option", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       const radios = screen.getAllByRole("radio");
-      fireEvent.click(radios[2]); // SESSION_SLOT
+      await act(async () => {
+        fireEvent.click(radios[2]); // SESSION_SLOT
+      });
 
       expect(screen.getByText("Select a slot...")).toBeTruthy();
     });
 
     it("renders all provided slots with correct labels", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       const radios = screen.getAllByRole("radio");
-      fireEvent.click(radios[2]); // SESSION_SLOT
+      await act(async () => {
+        fireEvent.click(radios[2]); // SESSION_SLOT
+      });
 
       // dayOfWeek 1 = Monday, startHour 9 = 09:00
       expect(screen.getByText("Monday 09:00")).toBeTruthy();
@@ -399,11 +346,7 @@ describe("SendNotificationModal", () => {
     });
 
     it("changing slot triggers recipient fetch", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       const radios = screen.getAllByRole("radio");
       await act(async () => {
@@ -436,14 +379,12 @@ describe("SendNotificationModal", () => {
 
   describe("Payment status picker", () => {
     it("renders 'Grace Period' and 'Locked' options", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       const radios = screen.getAllByRole("radio");
-      fireEvent.click(radios[3]); // PAYMENT_STATUS
+      await act(async () => {
+        fireEvent.click(radios[3]); // PAYMENT_STATUS
+      });
 
       const options = screen.getAllByRole("option");
       const optionTexts = options.map((o) => o.textContent);
@@ -452,25 +393,19 @@ describe("SendNotificationModal", () => {
     });
 
     it("default is 'Grace Period'", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       const radios = screen.getAllByRole("radio");
-      fireEvent.click(radios[3]); // PAYMENT_STATUS
+      await act(async () => {
+        fireEvent.click(radios[3]); // PAYMENT_STATUS
+      });
 
       const select = screen.getByRole("combobox");
       expect((select as HTMLSelectElement).value).toBe("GRACE_PERIOD");
     });
 
     it("changing payment status triggers recipient fetch", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       const radios = screen.getAllByRole("radio");
       await act(async () => {
@@ -501,11 +436,7 @@ describe("SendNotificationModal", () => {
     it("shows search input with 'Search members...' placeholder", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(3, sampleMembers));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       const radios = screen.getAllByRole("radio");
       await act(async () => {
@@ -523,14 +454,12 @@ describe("SendNotificationModal", () => {
         () => new Promise(() => {})
       );
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       const radios = screen.getAllByRole("radio");
-      fireEvent.click(radios[4]); // INDIVIDUAL
+      await act(async () => {
+        fireEvent.click(radios[4]); // INDIVIDUAL
+      });
 
       await waitFor(() => {
         expect(screen.getByText("Loading...")).toBeTruthy();
@@ -540,11 +469,7 @@ describe("SendNotificationModal", () => {
     it("shows 'No members found' when empty", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(0, []));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       const radios = screen.getAllByRole("radio");
       await act(async () => {
@@ -559,11 +484,7 @@ describe("SendNotificationModal", () => {
     it("renders member checkboxes from API response", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(3, sampleMembers));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       const radios = screen.getAllByRole("radio");
       await act(async () => {
@@ -583,11 +504,7 @@ describe("SendNotificationModal", () => {
     it("toggling checkbox adds/removes member from selection", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(3, sampleMembers));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       const radios = screen.getAllByRole("radio");
       await act(async () => {
@@ -619,11 +536,7 @@ describe("SendNotificationModal", () => {
     it("shows 'X selected' count", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(3, sampleMembers));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       const radios = screen.getAllByRole("radio");
       await act(async () => {
@@ -647,11 +560,7 @@ describe("SendNotificationModal", () => {
     it("search filters member list by name", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(3, sampleMembers));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       const radios = screen.getAllByRole("radio");
       await act(async () => {
@@ -673,11 +582,7 @@ describe("SendNotificationModal", () => {
     it("search is case-insensitive", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(3, sampleMembers));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       const radios = screen.getAllByRole("radio");
       await act(async () => {
@@ -704,11 +609,7 @@ describe("SendNotificationModal", () => {
     it("shows 'Will notify X members' for ALL audience", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(5));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       await waitFor(() => {
         expect(screen.getByText("Will notify 5 members")).toBeTruthy();
@@ -720,11 +621,7 @@ describe("SendNotificationModal", () => {
         () => new Promise(() => {})
       );
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       await waitFor(() => {
         expect(screen.getByText("Counting recipients...")).toBeTruthy();
@@ -732,11 +629,7 @@ describe("SendNotificationModal", () => {
     });
 
     it("shows 'Will notify 0 members' for SESSION_SLOT with no slot selected", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       // Wait for initial fetch
       await waitFor(() => {
@@ -755,11 +648,7 @@ describe("SendNotificationModal", () => {
     it("does NOT show recipient count text for INDIVIDUAL audience", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(3, sampleMembers));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       const radios = screen.getAllByRole("radio");
       await act(async () => {
@@ -775,11 +664,7 @@ describe("SendNotificationModal", () => {
     it("shows singular 'Will notify 1 member' for count of 1", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(1));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       await waitFor(() => {
         expect(screen.getByText("Will notify 1 member")).toBeTruthy();
@@ -789,11 +674,7 @@ describe("SendNotificationModal", () => {
     it("shows plural 'Will notify 2 members' for count of 2", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(2));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       await waitFor(() => {
         expect(screen.getByText("Will notify 2 members")).toBeTruthy();
@@ -809,15 +690,7 @@ describe("SendNotificationModal", () => {
     it("disabled when title is empty", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(5));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Will notify 5 members")).toBeTruthy();
-      });
+      await renderModal();
 
       // Body filled, title empty
       const bodyInput = screen.getByPlaceholderText("Write your message here...");
@@ -830,15 +703,7 @@ describe("SendNotificationModal", () => {
     it("disabled when body is empty", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(5));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Will notify 5 members")).toBeTruthy();
-      });
+      await renderModal();
 
       // Title filled, body empty
       const titleInput = screen.getByPlaceholderText("e.g., Studio closed this Friday");
@@ -851,15 +716,7 @@ describe("SendNotificationModal", () => {
     it("disabled when recipient count is 0", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(0));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Will notify 0 members")).toBeTruthy();
-      });
+      await renderModal();
 
       const titleInput = screen.getByPlaceholderText("e.g., Studio closed this Friday");
       const bodyInput = screen.getByPlaceholderText("Write your message here...");
@@ -873,15 +730,7 @@ describe("SendNotificationModal", () => {
     it("enabled when title, body, and recipients all present", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(5));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Will notify 5 members")).toBeTruthy();
-      });
+      await renderModal();
 
       const titleInput = screen.getByPlaceholderText("e.g., Studio closed this Friday");
       const bodyInput = screen.getByPlaceholderText("Write your message here...");
@@ -895,15 +744,7 @@ describe("SendNotificationModal", () => {
     it("disabled when title is only whitespace", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(5));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Will notify 5 members")).toBeTruthy();
-      });
+      await renderModal();
 
       const titleInput = screen.getByPlaceholderText("e.g., Studio closed this Friday");
       const bodyInput = screen.getByPlaceholderText("Write your message here...");
@@ -917,11 +758,7 @@ describe("SendNotificationModal", () => {
     it("disabled when INDIVIDUAL and no members selected", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(3, sampleMembers));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       const radios = screen.getAllByRole("radio");
       await act(async () => {
@@ -944,11 +781,7 @@ describe("SendNotificationModal", () => {
     it("enabled when INDIVIDUAL and members are selected", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(3, sampleMembers));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       const radios = screen.getAllByRole("radio");
       await act(async () => {
@@ -978,11 +811,7 @@ describe("SendNotificationModal", () => {
 
   describe("Character counters", () => {
     it("title counter updates as user types", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       const titleInput = screen.getByPlaceholderText("e.g., Studio closed this Friday");
       fireEvent.change(titleInput, { target: { value: "Hello" } });
@@ -991,11 +820,7 @@ describe("SendNotificationModal", () => {
     });
 
     it("body counter updates as user types", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       const bodyInput = screen.getByPlaceholderText("Write your message here...");
       fireEvent.change(bodyInput, { target: { value: "Hello World" } });
@@ -1004,11 +829,7 @@ describe("SendNotificationModal", () => {
     });
 
     it("title counter shows maxed out length", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       const titleInput = screen.getByPlaceholderText("e.g., Studio closed this Friday");
       const longTitle = "a".repeat(100);
@@ -1026,15 +847,7 @@ describe("SendNotificationModal", () => {
     it("clicking Send opens ConfirmationModal", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(5));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Will notify 5 members")).toBeTruthy();
-      });
+      await renderModal();
 
       const titleInput = screen.getByPlaceholderText("e.g., Studio closed this Friday");
       const bodyInput = screen.getByPlaceholderText("Write your message here...");
@@ -1051,15 +864,7 @@ describe("SendNotificationModal", () => {
     it("confirmation message includes recipient count", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(5));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Will notify 5 members")).toBeTruthy();
-      });
+      await renderModal();
 
       const titleInput = screen.getByPlaceholderText("e.g., Studio closed this Friday");
       const bodyInput = screen.getByPlaceholderText("Write your message here...");
@@ -1077,15 +882,7 @@ describe("SendNotificationModal", () => {
     it("singular '1 member' vs plural '2 members'", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(1));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Will notify 1 member")).toBeTruthy();
-      });
+      await renderModal();
 
       const titleInput = screen.getByPlaceholderText("e.g., Studio closed this Friday");
       const bodyInput = screen.getByPlaceholderText("Write your message here...");
@@ -1103,15 +900,7 @@ describe("SendNotificationModal", () => {
     it("confirmation modal has Send confirm button", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(5));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Will notify 5 members")).toBeTruthy();
-      });
+      await renderModal();
 
       const titleInput = screen.getByPlaceholderText("e.g., Studio closed this Friday");
       const bodyInput = screen.getByPlaceholderText("Write your message here...");
@@ -1140,15 +929,7 @@ describe("SendNotificationModal", () => {
         return Promise.resolve(mockRecipientsResponse(5));
       });
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Will notify 5 members")).toBeTruthy();
-      });
+      await renderModal();
 
       const titleInput = screen.getByPlaceholderText("e.g., Studio closed this Friday");
       const bodyInput = screen.getByPlaceholderText("Write your message here...");
@@ -1185,15 +966,7 @@ describe("SendNotificationModal", () => {
         return Promise.resolve(mockRecipientsResponse(3));
       });
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
-
-      await waitFor(() => {
-        expect(screen.getByText(/Will notify/)).toBeTruthy();
-      });
+      await renderModal();
 
       const radios = screen.getAllByRole("radio");
       await act(async () => {
@@ -1244,15 +1017,7 @@ describe("SendNotificationModal", () => {
         return Promise.resolve(mockRecipientsResponse(2));
       });
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
-
-      await waitFor(() => {
-        expect(screen.getByText(/Will notify/)).toBeTruthy();
-      });
+      await renderModal();
 
       const radios = screen.getAllByRole("radio");
       await act(async () => {
@@ -1298,11 +1063,7 @@ describe("SendNotificationModal", () => {
         return Promise.resolve(mockRecipientsResponse(3, sampleMembers));
       });
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       const radios = screen.getAllByRole("radio");
       await act(async () => {
@@ -1352,15 +1113,7 @@ describe("SendNotificationModal", () => {
         return Promise.resolve(mockRecipientsResponse(5));
       });
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Will notify 5 members")).toBeTruthy();
-      });
+      await renderModal();
 
       const titleInput = screen.getByPlaceholderText("e.g., Studio closed this Friday");
       const bodyInput = screen.getByPlaceholderText("Write your message here...");
@@ -1391,15 +1144,7 @@ describe("SendNotificationModal", () => {
         return Promise.resolve(mockRecipientsResponse(1));
       });
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Will notify 1 member")).toBeTruthy();
-      });
+      await renderModal();
 
       const titleInput = screen.getByPlaceholderText("e.g., Studio closed this Friday");
       const bodyInput = screen.getByPlaceholderText("Write your message here...");
@@ -1431,17 +1176,7 @@ describe("SendNotificationModal", () => {
         return Promise.resolve(mockRecipientsResponse(5));
       });
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(
-        <SendNotificationModal {...defaultProps} onClose={onClose} />
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText("Will notify 5 members")).toBeTruthy();
-      });
+      await renderModal({ onClose });
 
       const titleInput = screen.getByPlaceholderText("e.g., Studio closed this Friday");
       const bodyInput = screen.getByPlaceholderText("Write your message here...");
@@ -1469,15 +1204,7 @@ describe("SendNotificationModal", () => {
         return Promise.resolve(mockRecipientsResponse(5));
       });
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Will notify 5 members")).toBeTruthy();
-      });
+      await renderModal();
 
       const titleInput = screen.getByPlaceholderText("e.g., Studio closed this Friday");
       const bodyInput = screen.getByPlaceholderText("Write your message here...");
@@ -1511,15 +1238,7 @@ describe("SendNotificationModal", () => {
         return Promise.resolve(mockRecipientsResponse(5));
       });
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Will notify 5 members")).toBeTruthy();
-      });
+      await renderModal();
 
       const titleInput = screen.getByPlaceholderText("e.g., Studio closed this Friday");
       const bodyInput = screen.getByPlaceholderText("Write your message here...");
@@ -1554,15 +1273,7 @@ describe("SendNotificationModal", () => {
         return Promise.resolve(mockRecipientsResponse(5));
       });
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Will notify 5 members")).toBeTruthy();
-      });
+      await renderModal();
 
       const titleInput = screen.getByPlaceholderText("e.g., Studio closed this Friday");
       const bodyInput = screen.getByPlaceholderText("Write your message here...");
@@ -1593,15 +1304,7 @@ describe("SendNotificationModal", () => {
         return Promise.resolve(mockRecipientsResponse(5));
       });
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Will notify 5 members")).toBeTruthy();
-      });
+      await renderModal();
 
       const titleInput = screen.getByPlaceholderText("e.g., Studio closed this Friday");
       const bodyInput = screen.getByPlaceholderText("Write your message here...");
@@ -1633,17 +1336,7 @@ describe("SendNotificationModal", () => {
         return Promise.resolve(mockRecipientsResponse(5));
       });
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(
-        <SendNotificationModal {...defaultProps} onClose={onClose} />
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText("Will notify 5 members")).toBeTruthy();
-      });
+      await renderModal({ onClose });
 
       const titleInput = screen.getByPlaceholderText("e.g., Studio closed this Friday");
       const bodyInput = screen.getByPlaceholderText("Write your message here...");
@@ -1677,17 +1370,8 @@ describe("SendNotificationModal", () => {
     it("resets all fields when modal closes", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(5));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      const { rerender } = render(
-        <SendNotificationModal {...defaultProps} />
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText("Will notify 5 members")).toBeTruthy();
-      });
+      const mod = await import("@/components/notification/SendNotificationModal");
+      const { rerender } = await renderModal();
 
       // Fill in some fields
       const titleInput = screen.getByPlaceholderText("e.g., Studio closed this Friday");
@@ -1701,14 +1385,16 @@ describe("SendNotificationModal", () => {
 
       // Close the modal
       rerender(
-        <SendNotificationModal {...defaultProps} isOpen={false} />
+        <mod.SendNotificationModal {...defaultProps} isOpen={false} />
       );
 
       // Re-open the modal
       mockFetch.mockResolvedValue(mockRecipientsResponse(5));
-      rerender(
-        <SendNotificationModal {...defaultProps} isOpen={true} />
-      );
+      await act(async () => {
+        rerender(
+          <mod.SendNotificationModal {...defaultProps} isOpen={true} />
+        );
+      });
 
       // Fields should be reset
       const newTitleInput = screen.getByPlaceholderText("e.g., Studio closed this Friday");
@@ -1722,31 +1408,26 @@ describe("SendNotificationModal", () => {
     it("resets audience back to ALL when modal closes and reopens", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(5));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      const { rerender } = render(
-        <SendNotificationModal {...defaultProps} />
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText(/Will notify/)).toBeTruthy();
-      });
+      const mod = await import("@/components/notification/SendNotificationModal");
+      const { rerender } = await renderModal();
 
       // Change audience to TRIAL
       const radios = screen.getAllByRole("radio");
-      fireEvent.click(radios[1]);
+      await act(async () => {
+        fireEvent.click(radios[1]);
+      });
       expect((radios[1] as HTMLInputElement).checked).toBe(true);
 
       // Close and reopen
       rerender(
-        <SendNotificationModal {...defaultProps} isOpen={false} />
+        <mod.SendNotificationModal {...defaultProps} isOpen={false} />
       );
       mockFetch.mockResolvedValue(mockRecipientsResponse(5));
-      rerender(
-        <SendNotificationModal {...defaultProps} isOpen={true} />
-      );
+      await act(async () => {
+        rerender(
+          <mod.SendNotificationModal {...defaultProps} isOpen={true} />
+        );
+      });
 
       // Should be back to ALL
       const newRadios = screen.getAllByRole("radio");
@@ -1762,11 +1443,7 @@ describe("SendNotificationModal", () => {
     it("fetches recipients when modal opens", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(5));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
+      await renderModal();
 
       await waitFor(() => {
         expect(mockFetch).toHaveBeenCalledWith(
@@ -1778,15 +1455,7 @@ describe("SendNotificationModal", () => {
     it("fetches when audience changes", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(5));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Will notify 5 members")).toBeTruthy();
-      });
+      await renderModal();
 
       mockFetch.mockClear();
       mockFetch.mockResolvedValue(mockRecipientsResponse(2));
@@ -1806,15 +1475,7 @@ describe("SendNotificationModal", () => {
     it("does NOT fetch when SESSION_SLOT and no slot selected", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(5));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Will notify 5 members")).toBeTruthy();
-      });
+      await renderModal();
 
       mockFetch.mockClear();
 
@@ -1832,15 +1493,7 @@ describe("SendNotificationModal", () => {
     it("fetches when slot changes for SESSION_SLOT", async () => {
       mockFetch.mockResolvedValue(mockRecipientsResponse(5));
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Will notify 5 members")).toBeTruthy();
-      });
+      await renderModal();
 
       const radios = screen.getAllByRole("radio");
       await act(async () => {
@@ -1863,13 +1516,7 @@ describe("SendNotificationModal", () => {
     });
 
     it("does not fetch when modal is closed", async () => {
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(
-        <SendNotificationModal {...defaultProps} isOpen={false} />
-      );
+      await renderModal({ isOpen: false });
 
       expect(mockFetch).not.toHaveBeenCalled();
     });
@@ -1882,13 +1529,8 @@ describe("SendNotificationModal", () => {
   describe("Cancel button", () => {
     it("calls onClose when Cancel is clicked", async () => {
       const onClose = vi.fn();
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
 
-      render(
-        <SendNotificationModal {...defaultProps} onClose={onClose} />
-      );
+      await renderModal({ onClose });
 
       const cancelButton = screen.getByRole("button", { name: "Cancel" });
       fireEvent.click(cancelButton);
@@ -1910,15 +1552,7 @@ describe("SendNotificationModal", () => {
         return Promise.resolve(mockRecipientsResponse(5));
       });
 
-      const { SendNotificationModal } = await import(
-        "@/components/notification/SendNotificationModal"
-      );
-
-      render(<SendNotificationModal {...defaultProps} />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Will notify 5 members")).toBeTruthy();
-      });
+      await renderModal();
 
       const titleInput = screen.getByPlaceholderText("e.g., Studio closed this Friday");
       const bodyInput = screen.getByPlaceholderText("Write your message here...");
