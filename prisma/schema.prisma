@@ -205,3 +205,18 @@ model Notification {
   @@index([userId, createdAt])
   @@map("notifications")
 }
+
+model PendingVerification {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  phone        String?
+  token        String    @unique
+  expiresAt    DateTime
+  resendCount  Int       @default(0)
+  lastResentAt DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@map("pending_verifications")
+}
