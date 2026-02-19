@@ -50,8 +50,15 @@ export async function GET(req: Request): Promise<Response> {
         if (!slotId) {
           return Response.json({ error: "slotId is required for SESSION_SLOT audience" }, { status: 400 });
         }
+        const slot = await prisma.recurringSlot.findUnique({ where: { id: slotId } });
+        if (!slot) {
+          return Response.json({ error: "Session slot not found" }, { status: 404 });
+        }
         const sessionMembers = await prisma.sessionMember.findMany({
-          where: { session: { recurringSlotId: slotId } },
+          where: {
+            session: { recurringSlotId: slotId },
+            user: { status: { in: ["ACTIVE", "TRIAL"] } },
+          },
           select: { user: { select: { id: true, name: true } } },
           distinct: ["userId"],
         });

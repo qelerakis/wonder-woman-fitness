@@ -278,7 +278,7 @@ export const BroadcastNotificationSchema = z.object({
   audience: BroadcastAudienceSchema,
   slotId: z.string().cuid('Invalid slot ID').optional(),
   paymentStatus: z.enum(['GRACE_PERIOD', 'LOCKED']).optional(),
-  memberIds: z.array(z.string().cuid('Invalid member ID')).optional(),
+  memberIds: z.array(z.string().cuid('Invalid member ID')).max(100, 'Too many members selected').optional(),
   title: z.string().min(1, 'Title is required').max(MAX_BROADCAST_TITLE_LENGTH, `Title too long (max ${MAX_BROADCAST_TITLE_LENGTH} chars)`),
   body: z.string().min(1, 'Message is required').max(MAX_BROADCAST_BODY_LENGTH, `Message too long (max ${MAX_BROADCAST_BODY_LENGTH} chars)`),
 }).strict().superRefine((data, ctx) => {
@@ -309,7 +309,7 @@ export type BroadcastNotificationInput = z.infer<typeof BroadcastNotificationSch
 
 export const BroadcastRecipientsQuerySchema = z.object({
   audience: BroadcastAudienceSchema,
-  slotId: z.string().optional(),
+  slotId: z.string().cuid('Invalid slot ID').optional(),
   paymentStatus: z.enum(['GRACE_PERIOD', 'LOCKED']).optional(),
 }).strict();
 

@@ -58,7 +58,10 @@ export async function POST(req: Request): Promise<Response> {
           return Response.json({ error: "Session slot not found" }, { status: 404 });
         }
         const sessionMembers = await prisma.sessionMember.findMany({
-          where: { session: { recurringSlotId: slotId! } },
+          where: {
+            session: { recurringSlotId: slotId! },
+            user: { status: { in: ["ACTIVE", "TRIAL"] } },
+          },
           select: { userId: true },
           distinct: ["userId"],
         });

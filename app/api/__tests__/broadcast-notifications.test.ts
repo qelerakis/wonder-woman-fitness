@@ -585,4 +585,93 @@ describe("GET /api/notifications/broadcast/recipients", () => {
 
     expect(response.status).toBe(400);
   });
+
+  it("returns trial members for TRIAL audience", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.user.findMany.mockResolvedValue([
+      { id: "t1", name: "Trial Member" },
+    ]);
+
+    const { GET } = await import("@/app/api/notifications/broadcast/recipients/route");
+    const res = await GET(new Request("http://localhost/api/notifications/broadcast/recipients?audience=TRIAL"));
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.data.count).toBe(1);
+    expect(mockPrisma.user.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { role: "MEMBER", status: "TRIAL" },
+    }));
+  });
+
+  it("returns members for SESSION_SLOT audience", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.recurringSlot.findUnique.mockResolvedValue({ id: "cm1234567890abcdef1234567" });
+    mockPrisma.sessionMember.findMany.mockResolvedValue([
+      { user: { id: "m1", name: "Alice" } },
+      { user: { id: "m2", name: "Bob" } },
+    ]);
+
+    const { GET } = await import("@/app/api/notifications/broadcast/recipients/route");
+    const res = await GET(new Request("http://localhost/api/notifications/broadcast/recipients?audience=SESSION_SLOT&slotId=cm1234567890abcdef1234567"));
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.data.count).toBe(2);
+    expect(data.data.members).toEqual([
+      { id: "m1", name: "Alice" },
+      { id: "m2", name: "Bob" },
+    ]);
+  });
+
+  it("returns 400 when SESSION_SLOT without slotId", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+
+    const { GET } = await import("@/app/api/notifications/broadcast/recipients/route");
+    const res = await GET(new Request("http://localhost/api/notifications/broadcast/recipients?audience=SESSION_SLOT"));
+    expect(res.status).toBe(400);
+  });
+
+  it("returns members filtered by PAYMENT_STATUS", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    const users = [
+      { id: "m1", name: "Alice", status: "ACTIVE", trialEndsAt: null, departedAt: null, overrideActive: false, payments: [] },
+      { id: "m2", name: "Bob", status: "ACTIVE", trialEndsAt: null, departedAt: null, overrideActive: false, payments: [] },
+    ];
+    mockPrisma.user.findMany.mockResolvedValue(users);
+    mockGetPaymentStatus
+      .mockReturnValueOnce("GRACE_PERIOD")
+      .mockReturnValueOnce("PAID");
+
+    const { GET } = await import("@/app/api/notifications/broadcast/recipients/route");
+    const res = await GET(new Request("http://localhost/api/notifications/broadcast/recipients?audience=PAYMENT_STATUS&paymentStatus=GRACE_PERIOD"));
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.data.count).toBe(1);
+    expect(data.data.members).toEqual([{ id: "m1", name: "Alice" }]);
+  });
+
+  it("returns 400 when PAYMENT_STATUS without paymentStatus param", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+
+    const { GET } = await import("@/app/api/notifications/broadcast/recipients/route");
+    const res = await GET(new Request("http://localhost/api/notifications/broadcast/recipients?audience=PAYMENT_STATUS"));
+    expect(res.status).toBe(400);
+  });
+
+  it("returns all active members for INDIVIDUAL audience", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.user.findMany.mockResolvedValue([
+      { id: "m1", name: "Alice" },
+      { id: "m2", name: "Bob" },
+      { id: "m3", name: "Carol" },
+    ]);
+
+    const { GET } = await import("@/app/api/notifications/broadcast/recipients/route");
+    const res = await GET(new Request("http://localhost/api/notifications/broadcast/recipients?audience=INDIVIDUAL"));
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.data.count).toBe(3);
+  });
 });
