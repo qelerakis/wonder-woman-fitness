@@ -60,6 +60,40 @@ export async function sendNotificationEmail(
 }
 
 /**
+ * Send a verification email to a new registrant.
+ *
+ * @param to - Recipient email address
+ * @param token - Verification token (URL-safe base64)
+ * @returns true if email was sent successfully, false otherwise
+ */
+export async function sendVerificationEmail(
+  to: string,
+  token: string
+): Promise<boolean> {
+  try {
+    const client = getResendClient();
+    if (!client) {
+      return false;
+    }
+
+    const verifyUrl = `${process.env.NEXTAUTH_URL}/verify-email?token=${token}`;
+    const html = buildVerificationEmailHtml(verifyUrl);
+
+    await client.emails.send({
+      from: EMAIL_FROM,
+      to,
+      subject: 'Verify your email — Wonder Woman Fitness',
+      html,
+    });
+
+    return true;
+  } catch (error) {
+    console.error(`Failed to send verification email to ${to}:`, error);
+    return false;
+  }
+}
+
+/**
  * Build HTML email template based on notification type.
  *
  * Uses a simple branded HTML layout. Each notification type gets
@@ -179,6 +213,71 @@ function getIcon(type: NotificationType): string {
     default:
       return '&#128276;'; // 🔔
   }
+}
+
+/**
+ * Build HTML for verification email with a prominent "Verify Email" button.
+ */
+function buildVerificationEmailHtml(verifyUrl: string): string {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Verify your email</title>
+</head>
+<body style="margin:0;padding:0;background-color:#0f172a;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0f172a;">
+    <tr>
+      <td align="center" style="padding:40px 20px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#1e293b;border-radius:12px;overflow:hidden;max-width:600px;width:100%;">
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#7c3aed;padding:24px 32px;">
+              <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:700;">
+                &#128170; Wonder Woman Fitness
+              </h1>
+            </td>
+          </tr>
+          <!-- Body -->
+          <tr>
+            <td style="padding:32px;">
+              <h2 style="margin:0 0 16px;color:#f1f5f9;font-size:18px;font-weight:600;">
+                Verify your email address
+              </h2>
+              <p style="margin:0 0 24px;color:#cbd5e1;font-size:15px;line-height:1.6;">
+                Thanks for signing up! Click the button below to verify your email and activate your account.
+              </p>
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="border-radius:8px;background-color:#7c3aed;">
+                    <a href="${escapeHtml(verifyUrl)}" style="display:inline-block;padding:14px 32px;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;">
+                      Verify Email
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:24px 0 0;color:#94a3b8;font-size:13px;line-height:1.5;">
+                This link expires in 24 hours. If you didn&apos;t create an account, you can safely ignore this email.
+              </p>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:16px 32px 24px;border-top:1px solid #334155;">
+              <p style="margin:0;color:#64748b;font-size:12px;">
+                This is an automated message from Wonder Woman Fitness.
+                Please do not reply to this email.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`.trim();
 }
 
 /**
