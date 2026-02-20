@@ -185,12 +185,12 @@ export function MemberSessionDetailClient(
                     <p className="text-sm text-surface-400">
                       Will you attend this session?
                     </p>
-                    <div className="flex gap-3">
+                    <div className="flex flex-col sm:flex-row gap-3">
                       <Button
                         variant={
                           currentVote === true ? "success" : "secondary"
                         }
-                        size="sm"
+                        size="md"
                         onClick={() => handleVote(true)}
                         loading={voting}
                         disabled={hasComingVoteOnSameDay && currentVote !== true}
@@ -209,7 +209,7 @@ export function MemberSessionDetailClient(
                         variant={
                           currentVote === false ? "danger" : "secondary"
                         }
-                        size="sm"
+                        size="md"
                         onClick={() => handleVote(false)}
                         loading={voting}
                         className={currentVote === false ? "ring-2 ring-error-500/50" : ""}
