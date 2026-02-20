@@ -120,7 +120,7 @@ export function Modal({
         `}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-surface-700 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-surface-700 px-4 py-4 sm:px-6">
           <h2
             id={titleId}
             className="text-lg font-semibold text-surface-100"
@@ -148,7 +148,7 @@ export function Modal({
         </div>
 
         {/* Body */}
-        <div className="px-6 py-4">{children}</div>
+        <div className="px-4 py-4 sm:px-6">{children}</div>
       </div>
     </div>
   );
