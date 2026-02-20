@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Header } from "@/components/layout/Header";
+import { BottomNav } from "@/components/layout/BottomNav";
 import { prisma } from "@/lib/prisma";
 
 export default async function TrainerLayout({
@@ -33,9 +34,10 @@ export default async function TrainerLayout({
         userRole={session.user.role}
         notificationCount={notificationCount}
       />
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-7xl px-4 pt-6 pb-20 sm:px-6 lg:px-8 md:pb-6">
         {children}
       </main>
+      <BottomNav role="TRAINER" />
     </div>
   );
 }

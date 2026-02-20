@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Header } from "@/components/layout/Header";
+import { BottomNav } from "@/components/layout/BottomNav";
 import { PaymentBanner } from "@/components/payment/PaymentBanner";
 import { prisma } from "@/lib/prisma";
 import { getPaymentStatus, getGracePeriodLength, getGracePeriodStart, getDaysBetween } from "@/lib/payment-logic";
@@ -99,9 +100,10 @@ export default async function MemberLayout({
           totalGraceDays={totalGraceDays}
         />
       )}
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-7xl px-4 pt-6 pb-20 sm:px-6 lg:px-8 md:pb-6">
         {children}
       </main>
+      <BottomNav role="MEMBER" />
     </div>
   );
 }
