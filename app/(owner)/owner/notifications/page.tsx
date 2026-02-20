@@ -27,6 +27,15 @@ export default async function OwnerNotificationsPage(): Promise<React.ReactEleme
     take: 100,
   });
 
+  const recurringSlots = await prisma.recurringSlot.findMany({
+    orderBy: [{ dayOfWeek: "asc" }, { startHour: "asc" }],
+    select: {
+      id: true,
+      dayOfWeek: true,
+      startHour: true,
+    },
+  });
+
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
@@ -40,6 +49,8 @@ export default async function OwnerNotificationsPage(): Promise<React.ReactEleme
         createdAt: n.createdAt.toISOString(),
       }))}
       unreadCount={unreadCount}
+      isOwner={true}
+      recurringSlots={recurringSlots}
     />
   );
 }
