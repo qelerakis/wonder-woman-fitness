@@ -261,7 +261,28 @@ function DatePicker({
             if (!disabled) {
               if (!isOpen && triggerRef.current) {
                 const rect = triggerRef.current.getBoundingClientRect();
-                setDropdownPos({ top: rect.bottom + 4, left: rect.left });
+                const rawTop = rect.bottom + 4;
+                const rawLeft = rect.left;
+
+                let finalTop = rawTop;
+                let finalLeft = rawLeft;
+
+                if (typeof window !== "undefined") {
+                  const dropdownWidth = 320;
+                  const dropdownHeight = 340;
+
+                  // Clamp left so dropdown doesn't overflow right edge
+                  const clampedLeft = Math.min(rawLeft, window.innerWidth - dropdownWidth - 8);
+                  // Clamp left so dropdown doesn't go off left edge
+                  finalLeft = Math.max(8, clampedLeft);
+
+                  // If dropdown would overflow bottom, show above the input instead
+                  finalTop = rawTop + dropdownHeight > window.innerHeight
+                    ? rawTop - dropdownHeight - 4
+                    : rawTop;
+                }
+
+                setDropdownPos({ top: finalTop, left: finalLeft });
               }
               setIsOpen((prev) => !prev);
               if (!isOpen) {
