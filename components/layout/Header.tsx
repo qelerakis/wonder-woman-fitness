@@ -44,6 +44,17 @@ export function Header({
     };
   }, [userMenuOpen, handleEscapeKey]);
 
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileMenuOpen]);
+
   return (
     <header className="sticky top-0 z-40 border-b border-surface-700 bg-surface-900/95 backdrop-blur-sm">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -167,47 +178,54 @@ export function Header({
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="border-t border-surface-700 md:hidden">
-          <div className="mx-auto max-w-7xl px-4 py-2">
-            <Navigation
-              role={userRole}
-              mobile
-              onNavigate={() => setMobileMenuOpen(false)}
-            />
-            <div className="border-t border-surface-700 mt-2 pt-2">
-              <div className="flex items-center gap-3 px-3 py-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-700 text-sm font-bold text-white">
-                  {userName.charAt(0).toUpperCase()}
+        <>
+          <div
+            className="fixed inset-0 z-30 md:hidden"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
+          <div className="relative z-40 border-t border-surface-700 md:hidden">
+            <div className="mx-auto max-w-7xl px-4 py-2">
+              <Navigation
+                role={userRole}
+                mobile
+                onNavigate={() => setMobileMenuOpen(false)}
+              />
+              <div className="border-t border-surface-700 mt-2 pt-2">
+                <div className="flex items-center gap-3 px-3 py-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-700 text-sm font-bold text-white">
+                    {userName.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-surface-100">{userName}</p>
+                    <p className="text-xs text-surface-400">{roleLabel}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-surface-100">{userName}</p>
-                  <p className="text-xs text-surface-400">{roleLabel}</p>
-                </div>
-              </div>
-              {userRole !== "OWNER" && (
-                <Link
-                  href="/member/profile"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-surface-300 hover:bg-surface-800"
+                {userRole !== "OWNER" && (
+                  <Link
+                    href="/member/profile"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-surface-300 hover:bg-surface-800"
+                  >
+                    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd" />
+                    </svg>
+                    Profile
+                  </Link>
+                )}
+                <button
+                  onClick={() => signOut({ callbackUrl: "/login" })}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-error-400 hover:bg-surface-800"
                 >
                   <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd" />
+                    <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V4a1 1 0 00-1-1H3zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
                   </svg>
-                  Profile
-                </Link>
-              )}
-              <button
-                onClick={() => signOut({ callbackUrl: "/login" })}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-error-400 hover:bg-surface-800"
-              >
-                <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V4a1 1 0 00-1-1H3zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
-                </svg>
-                Sign out
-              </button>
+                  Sign out
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </>
       )}
     </header>
   );
