@@ -74,7 +74,7 @@ export function WeeklyCalendar({
         <div className="flex items-center justify-between mb-4">
           <button
             onClick={() => onWeekChange("prev")}
-            className="rounded-lg px-3 py-2 text-sm text-surface-400 hover:bg-surface-800 hover:text-surface-100 transition-colors"
+            className="rounded-lg px-4 py-2.5 text-sm text-surface-400 hover:bg-surface-800 hover:text-surface-100 transition-colors"
           >
             <span className="flex items-center gap-1">
               <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -93,7 +93,7 @@ export function WeeklyCalendar({
           </h2>
           <button
             onClick={() => onWeekChange("next")}
-            className="rounded-lg px-3 py-2 text-sm text-surface-400 hover:bg-surface-800 hover:text-surface-100 transition-colors"
+            className="rounded-lg px-4 py-2.5 text-sm text-surface-400 hover:bg-surface-800 hover:text-surface-100 transition-colors"
           >
             <span className="flex items-center gap-1">
               Next
