@@ -289,16 +289,16 @@ export function MemberSessionDetailClient(
                   No one has confirmed yet
                 </p>
               ) : (
-                <div className="mt-4 space-y-1.5">
+                <div className="mt-4 flex flex-wrap gap-2 sm:flex-col sm:gap-1.5">
                   {session.comingMemberNames.map((name) => (
                     <div
                       key={name}
-                      className="flex items-center gap-2 rounded-md bg-success-600/10 px-3 py-1.5"
+                      className="flex items-center gap-1.5 rounded-full bg-success-600/10 px-3 py-1.5 sm:rounded-md sm:gap-2"
                     >
-                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-success-700 text-xs font-bold text-white">
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-success-700 text-xs font-bold text-white shrink-0">
                         {name.charAt(0).toUpperCase()}
                       </div>
-                      <p className="text-sm text-surface-200">{name}</p>
+                      <p className="text-sm text-surface-200 truncate">{name}</p>
                     </div>
                   ))}
                 </div>
