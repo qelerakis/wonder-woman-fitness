@@ -77,7 +77,7 @@ export function LockoutScreen({
 
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
-          className="mt-6 inline-flex items-center gap-2 rounded-lg border border-surface-600 bg-surface-800 px-4 py-2 text-sm font-medium text-surface-300 transition-colors hover:bg-surface-700 hover:text-surface-100"
+          className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-surface-600 bg-surface-800 px-4 py-2.5 text-sm font-medium text-surface-300 transition-colors hover:bg-surface-700 hover:text-surface-100 sm:w-auto sm:justify-start"
         >
           <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
             <path
