@@ -118,12 +118,25 @@ export function MemberSessionDetailClient(
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="space-y-3">
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-1 text-sm text-surface-400 hover:text-surface-200 transition-colors"
+        >
+          <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+            <path
+              fillRule="evenodd"
+              d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+              clipRule="evenodd"
+            />
+          </svg>
+          Back to schedule
+        </button>
         <div>
           <h1 className="text-2xl font-bold text-surface-100">
             {dayName} {time}
           </h1>
-          <div className="mt-1 flex items-center gap-2">
+          <div className="mt-1 flex flex-wrap items-center gap-2">
             <Badge
               variant={isCancelled ? "error" : "success"}
               size="sm"
@@ -149,9 +162,6 @@ export function MemberSessionDetailClient(
             )}
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          Back
-        </Button>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

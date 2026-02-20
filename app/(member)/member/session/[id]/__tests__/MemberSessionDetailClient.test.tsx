@@ -482,7 +482,7 @@ describe("MemberSessionDetailClient", () => {
       />
     );
 
-    expect(screen.getByText("Back")).toBeTruthy();
+    expect(screen.getByText("Back to schedule")).toBeTruthy();
   });
 
   it("calls router.back when Back button is clicked", () => {
@@ -496,7 +496,7 @@ describe("MemberSessionDetailClient", () => {
       />
     );
 
-    fireEvent.click(screen.getByText("Back"));
+    fireEvent.click(screen.getByText("Back to schedule"));
     expect(mockBack).toHaveBeenCalled();
   });
 
