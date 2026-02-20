@@ -129,7 +129,7 @@ export function Modal({
           </h2>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-surface-400 hover:bg-surface-700 hover:text-surface-200 transition-colors"
+            className="rounded-lg p-2.5 text-surface-400 hover:bg-surface-700 hover:text-surface-200 transition-colors"
             aria-label="Close"
           >
             <svg
