@@ -1370,5 +1370,56 @@ describe("SessionCard", () => {
       const link = screen.getByRole("link");
       expect(link.className).not.toContain("border-l-4");
     });
+
+    it("shows no vote border when currentUserId is not provided", () => {
+      const session = makeSession({
+        votes: [
+          {
+            id: "vote-1",
+            userId: "member-1",
+            attending: true,
+            votedAt: new Date("2026-02-09T10:00:00.000Z"),
+          },
+        ],
+      });
+      render(
+        <SessionCard
+          session={session}
+          basePath="/member/session"
+          // no currentUserId
+        />
+      );
+
+      const link = screen.getByRole("link");
+      expect(link.className).not.toContain("border-l-4");
+      expect(link.className).not.toContain("border-l-success-500");
+      expect(link.className).not.toContain("border-l-error-500");
+    });
+
+    it("shows no vote border on cancelled sessions even if user voted", () => {
+      const session = makeSession({
+        status: "CANCELLED",
+        votes: [
+          {
+            id: "vote-1",
+            userId: "member-1",
+            attending: true,
+            votedAt: new Date("2026-02-09T10:00:00.000Z"),
+          },
+        ],
+      });
+      render(
+        <SessionCard
+          session={session}
+          basePath="/member/session"
+          currentUserId="member-1"
+        />
+      );
+
+      const link = screen.getByRole("link");
+      // Cancelled sessions strip the vote border class
+      expect(link.className).not.toContain("border-l-success-500");
+      expect(link.className).not.toContain("border-l-error-500");
+    });
   });
 });

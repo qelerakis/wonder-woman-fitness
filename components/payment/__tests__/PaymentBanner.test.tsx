@@ -166,4 +166,46 @@ describe("PaymentBanner", () => {
       expect(screen.getByText("Account locked.")).toBeTruthy();
     });
   });
+
+  // ----- Mobile UX: responsive alignment and icon margin -----
+
+  describe("mobile UX: responsive alignment", () => {
+    it("GRACE_PERIOD container has items-start and sm:items-center", () => {
+      const { container } = render(
+        <PaymentBanner status="GRACE_PERIOD" daysIntoGracePeriod={3} />
+      );
+      const flexContainer = container.querySelector(".flex.max-w-7xl");
+      expect(flexContainer).toBeTruthy();
+      expect(flexContainer!.className).toContain("items-start");
+      expect(flexContainer!.className).toContain("sm:items-center");
+    });
+
+    it("LOCKED container has items-start and sm:items-center", () => {
+      const { container } = render(<PaymentBanner status="LOCKED" />);
+      const flexContainer = container.querySelector(".flex.max-w-7xl");
+      expect(flexContainer).toBeTruthy();
+      expect(flexContainer!.className).toContain("items-start");
+      expect(flexContainer!.className).toContain("sm:items-center");
+    });
+
+    it("GRACE_PERIOD icon has responsive margin-top (mt-0.5 and sm:mt-0)", () => {
+      const { container } = render(
+        <PaymentBanner status="GRACE_PERIOD" daysIntoGracePeriod={3} />
+      );
+      const svg = container.querySelector("svg");
+      expect(svg).toBeTruthy();
+      const svgClasses = svg!.getAttribute("class") || "";
+      expect(svgClasses).toContain("mt-0.5");
+      expect(svgClasses).toContain("sm:mt-0");
+    });
+
+    it("LOCKED icon has responsive margin-top (mt-0.5 and sm:mt-0)", () => {
+      const { container } = render(<PaymentBanner status="LOCKED" />);
+      const svg = container.querySelector("svg");
+      expect(svg).toBeTruthy();
+      const svgClasses = svg!.getAttribute("class") || "";
+      expect(svgClasses).toContain("mt-0.5");
+      expect(svgClasses).toContain("sm:mt-0");
+    });
+  });
 });

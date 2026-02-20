@@ -899,4 +899,165 @@ describe("DatePicker", () => {
       expect(trigger.id).toBe(htmlFor);
     });
   });
+
+  // ─── Viewport Clamping ──────────────────────────────────────
+
+  describe("viewport clamping of dropdown position", () => {
+    it("clamps dropdown left position when near right edge of viewport", () => {
+      // Mock the button to be positioned near the right edge
+      const mockGetBoundingClientRect = vi.fn().mockReturnValue({
+        bottom: 40,
+        left: 900,
+        right: 1000,
+        top: 0,
+        width: 100,
+        height: 40,
+        x: 900,
+        y: 0,
+        toJSON: vi.fn(),
+      });
+
+      // Mock window dimensions (small viewport)
+      Object.defineProperty(window, "innerWidth", {
+        value: 400,
+        writable: true,
+        configurable: true,
+      });
+      Object.defineProperty(window, "innerHeight", {
+        value: 800,
+        writable: true,
+        configurable: true,
+      });
+
+      render(<DatePicker value="" onChange={vi.fn()} />);
+
+      // Get the trigger button and mock its getBoundingClientRect
+      const trigger = screen.getByRole("button", { name: "Select a date" });
+      trigger.getBoundingClientRect = mockGetBoundingClientRect;
+
+      // Open the calendar
+      fireEvent.click(trigger);
+
+      // The dropdown should be clamped. With innerWidth=400, dropdownWidth=320,
+      // max left = 400 - 320 - 8 = 72. And clampedLeft = min(900, 72) = 72.
+      // Then finalLeft = max(8, 72) = 72.
+      const dialog = screen.getByRole("dialog", { name: "Choose date" });
+      const leftValue = parseInt(dialog.style.left, 10);
+      expect(leftValue).toBeLessThanOrEqual(400 - 320);
+    });
+
+    it("clamps dropdown left position to minimum of 8px from left edge", () => {
+      const mockGetBoundingClientRect = vi.fn().mockReturnValue({
+        bottom: 40,
+        left: -100, // Button positioned off-screen to the left
+        right: 0,
+        top: 0,
+        width: 100,
+        height: 40,
+        x: -100,
+        y: 0,
+        toJSON: vi.fn(),
+      });
+
+      Object.defineProperty(window, "innerWidth", {
+        value: 400,
+        writable: true,
+        configurable: true,
+      });
+      Object.defineProperty(window, "innerHeight", {
+        value: 800,
+        writable: true,
+        configurable: true,
+      });
+
+      render(<DatePicker value="" onChange={vi.fn()} />);
+
+      const trigger = screen.getByRole("button", { name: "Select a date" });
+      trigger.getBoundingClientRect = mockGetBoundingClientRect;
+
+      fireEvent.click(trigger);
+
+      const dialog = screen.getByRole("dialog", { name: "Choose date" });
+      const leftValue = parseInt(dialog.style.left, 10);
+      // finalLeft = max(8, clampedLeft) so it should be at least 8
+      expect(leftValue).toBeGreaterThanOrEqual(8);
+    });
+
+    it("positions dropdown above trigger when near bottom of viewport", () => {
+      const mockGetBoundingClientRect = vi.fn().mockReturnValue({
+        bottom: 750, // Near bottom of viewport
+        left: 50,
+        right: 150,
+        top: 710,
+        width: 100,
+        height: 40,
+        x: 50,
+        y: 710,
+        toJSON: vi.fn(),
+      });
+
+      Object.defineProperty(window, "innerWidth", {
+        value: 400,
+        writable: true,
+        configurable: true,
+      });
+      Object.defineProperty(window, "innerHeight", {
+        value: 800, // Viewport height
+        writable: true,
+        configurable: true,
+      });
+
+      render(<DatePicker value="" onChange={vi.fn()} />);
+
+      const trigger = screen.getByRole("button", { name: "Select a date" });
+      trigger.getBoundingClientRect = mockGetBoundingClientRect;
+
+      fireEvent.click(trigger);
+
+      const dialog = screen.getByRole("dialog", { name: "Choose date" });
+      const topValue = parseInt(dialog.style.top, 10);
+      // rawTop = 750 + 4 = 754
+      // rawTop + dropdownHeight = 754 + 340 = 1094 > 800
+      // So it should flip above: 754 - 340 - 4 = 410
+      expect(topValue).toBeLessThan(750);
+    });
+
+    it("positions dropdown below trigger when there is enough space", () => {
+      const mockGetBoundingClientRect = vi.fn().mockReturnValue({
+        bottom: 40,
+        left: 50,
+        right: 150,
+        top: 0,
+        width: 100,
+        height: 40,
+        x: 50,
+        y: 0,
+        toJSON: vi.fn(),
+      });
+
+      Object.defineProperty(window, "innerWidth", {
+        value: 800,
+        writable: true,
+        configurable: true,
+      });
+      Object.defineProperty(window, "innerHeight", {
+        value: 800,
+        writable: true,
+        configurable: true,
+      });
+
+      render(<DatePicker value="" onChange={vi.fn()} />);
+
+      const trigger = screen.getByRole("button", { name: "Select a date" });
+      trigger.getBoundingClientRect = mockGetBoundingClientRect;
+
+      fireEvent.click(trigger);
+
+      const dialog = screen.getByRole("dialog", { name: "Choose date" });
+      const topValue = parseInt(dialog.style.top, 10);
+      // rawTop = 40 + 4 = 44
+      // 44 + 340 = 384 < 800, so should remain at 44
+      expect(topValue).toBe(44);
+    });
+  });
 });

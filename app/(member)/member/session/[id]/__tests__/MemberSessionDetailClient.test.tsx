@@ -2053,4 +2053,208 @@ describe("MemberSessionDetailClient", () => {
       vi.useRealTimers();
     });
   });
+
+  // ─── Mobile UX: Back button and header ──────────────────────────
+
+  describe("mobile UX: back button and header", () => {
+    it("renders 'Back to schedule' text in back button", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession()}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      expect(screen.getByText("Back to schedule")).toBeTruthy();
+    });
+
+    it("back button contains a chevron SVG icon", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession()}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      const backButton = screen.getByText("Back to schedule").closest("button")!;
+      const svg = backButton.querySelector("svg");
+      expect(svg).toBeTruthy();
+      expect(svg!.classList.contains("h-4")).toBe(true);
+      expect(svg!.classList.contains("w-4")).toBe(true);
+    });
+  });
+
+  // ─── Mobile UX: responsive voting layout ────────────────────────
+
+  describe("mobile UX: responsive voting container", () => {
+    it("voting buttons container has responsive flex classes (flex-col sm:flex-row)", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession()}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      const comingButton = screen.getByText("I'm Coming").closest("button")!;
+      const container = comingButton.parentElement!;
+      expect(container.className).toContain("flex-col");
+      expect(container.className).toContain("sm:flex-row");
+    });
+
+    it("voting buttons use size md", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession()}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      // Size md buttons use px-4 py-2 (Button component mapping)
+      const comingButton = screen.getByText("I'm Coming").closest("button")!;
+      expect(comingButton.className).toContain("px-4");
+      expect(comingButton.className).toContain("py-2");
+    });
+  });
+
+  // ─── Mobile UX: Who's Coming chips layout ───────────────────────
+
+  describe("mobile UX: who's coming layout", () => {
+    it("renders coming member names correctly with chip layout", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            comingMemberNames: ["Alice", "Bob"],
+            votesCount: { coming: 2 },
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      expect(screen.getByText("Alice")).toBeTruthy();
+      expect(screen.getByText("Bob")).toBeTruthy();
+    });
+
+    it("who's coming container has responsive flex-wrap and sm:flex-col classes", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            comingMemberNames: ["Alice"],
+            votesCount: { coming: 1 },
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      const memberItem = screen.getByText("Alice").closest("div[class*='rounded']")!;
+      const container = memberItem.parentElement!;
+      expect(container.className).toContain("flex-wrap");
+      expect(container.className).toContain("sm:flex-col");
+    });
+
+    it("who's coming chips have rounded-full class on mobile", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            comingMemberNames: ["Alice"],
+            votesCount: { coming: 1 },
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      // The member item should have rounded-full class
+      const memberName = screen.getByText("Alice");
+      const chipDiv = memberName.closest("div[class*='rounded-full']");
+      expect(chipDiv).toBeTruthy();
+    });
+  });
+
+  // ─── Mobile UX: Haptic feedback on vote ─────────────────────────
+
+  describe("mobile UX: haptic feedback on vote", () => {
+    it("calls navigator.vibrate(50) on successful vote", async () => {
+      const vibrateMock = vi.fn();
+      Object.defineProperty(navigator, "vibrate", {
+        value: vibrateMock,
+        writable: true,
+        configurable: true,
+      });
+
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        json: async () => ({ data: { attending: true } }),
+      });
+
+      render(
+        <MemberSessionDetailClient
+          session={makeSession()}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      fireEvent.click(screen.getByText("I'm Coming"));
+
+      await waitFor(() => {
+        expect(vibrateMock).toHaveBeenCalledWith(50);
+      });
+    });
+
+    it("does NOT call navigator.vibrate when vote fails", async () => {
+      const vibrateMock = vi.fn();
+      Object.defineProperty(navigator, "vibrate", {
+        value: vibrateMock,
+        writable: true,
+        configurable: true,
+      });
+
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: false,
+        json: async () => ({ error: "Deadline passed" }),
+      });
+
+      render(
+        <MemberSessionDetailClient
+          session={makeSession()}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+        />
+      );
+
+      fireEvent.click(screen.getByText("I'm Coming"));
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledWith(
+          expect.objectContaining({ type: "error" })
+        );
+      });
+
+      expect(vibrateMock).not.toHaveBeenCalled();
+    });
+  });
 });

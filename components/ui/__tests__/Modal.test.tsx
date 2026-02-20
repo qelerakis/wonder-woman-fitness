@@ -616,4 +616,33 @@ describe("Modal", () => {
       expect(closeCalls).toEqual([3]);
     });
   });
+
+  // --- Mobile UX: responsive padding classes ---
+
+  describe("mobile UX responsive padding", () => {
+    it("close button has p-2.5 padding class", () => {
+      renderModal();
+      const closeBtn = screen.getByLabelText("Close");
+      expect(closeBtn.className).toContain("p-2.5");
+    });
+
+    it("header has responsive horizontal padding (px-4 and sm:px-6)", () => {
+      renderModal();
+      const dialog = screen.getByRole("dialog");
+      // The header is the first child div with border-b
+      const header = dialog.querySelector(".border-b.border-surface-700");
+      expect(header).toBeTruthy();
+      expect(header!.className).toContain("px-4");
+      expect(header!.className).toContain("sm:px-6");
+    });
+
+    it("body has responsive horizontal padding (px-4 and sm:px-6)", () => {
+      renderModal({ children: <p data-testid="body-content">Body text</p> });
+      const bodyContent = screen.getByTestId("body-content");
+      const bodyDiv = bodyContent.parentElement;
+      expect(bodyDiv).toBeTruthy();
+      expect(bodyDiv!.className).toContain("px-4");
+      expect(bodyDiv!.className).toContain("sm:px-6");
+    });
+  });
 });
