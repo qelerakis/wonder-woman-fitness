@@ -93,6 +93,10 @@ export function MemberSessionDetailClient(
 
       if (res.ok) {
         setCurrentVote(attending);
+        // Haptic feedback on mobile (supported on Android)
+        if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+          navigator.vibrate(50);
+        }
         addToast({
           type: "success",
           title: attending
