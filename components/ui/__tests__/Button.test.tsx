@@ -80,7 +80,7 @@ describe("Button", () => {
     render(<Button size="sm">Click</Button>);
     const btn = screen.getByRole("button", { name: "Click" });
     expect(btn.className).toContain("px-3");
-    expect(btn.className).toContain("py-1.5");
+    expect(btn.className).toContain("py-2");
   });
 
   it("renders lg size classes", () => {
