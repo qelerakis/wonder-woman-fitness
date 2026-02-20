@@ -43,6 +43,12 @@ export function SessionCard({
 
   const showDeadline = showVotingIndicator && session.votingEnabled && !isCancelled && deadlineInFuture && !userVote;
 
+  const voteBorderClass = userVote
+    ? userVote.attending
+      ? "border-l-4 border-l-success-500"
+      : "border-l-4 border-l-error-500"
+    : "";
+
   return (
     <Link
       href={`${basePath}/${session.id}`}
@@ -54,6 +60,7 @@ export function SessionCard({
             ? "border-surface-700 bg-surface-800/50 opacity-60"
             : "border-surface-700 bg-surface-800 hover:border-primary-600/50 hover:bg-surface-700"
         }
+        ${!isCancelled ? voteBorderClass : ""}
       `}
     >
       {/* Time + Status */}

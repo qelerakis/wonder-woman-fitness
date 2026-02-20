@@ -1298,4 +1298,77 @@ describe("SessionCard", () => {
       expect(link.className).toContain("p-3");
     });
   });
+
+  // ─── Vote Border ─────────────────────────────────────────────────
+
+  describe("vote border", () => {
+    it("shows green left border when user voted coming", () => {
+      const session = makeSession({
+        votes: [
+          {
+            id: "vote-1",
+            userId: "member-1",
+            attending: true,
+            votedAt: new Date("2026-02-09T10:00:00.000Z"),
+          },
+        ],
+      });
+      render(
+        <SessionCard
+          session={session}
+          basePath="/member/session"
+          currentUserId="member-1"
+        />
+      );
+
+      const link = screen.getByRole("link");
+      expect(link.className).toContain("border-l-success-500");
+    });
+
+    it("shows red left border when user voted not coming", () => {
+      const session = makeSession({
+        votes: [
+          {
+            id: "vote-1",
+            userId: "member-1",
+            attending: false,
+            votedAt: new Date("2026-02-09T10:00:00.000Z"),
+          },
+        ],
+      });
+      render(
+        <SessionCard
+          session={session}
+          basePath="/member/session"
+          currentUserId="member-1"
+        />
+      );
+
+      const link = screen.getByRole("link");
+      expect(link.className).toContain("border-l-error-500");
+    });
+
+    it("shows no left border when user has not voted", () => {
+      const session = makeSession({
+        votes: [
+          {
+            id: "vote-1",
+            userId: "member-2",
+            attending: true,
+            votedAt: new Date("2026-02-09T10:00:00.000Z"),
+          },
+        ],
+      });
+      render(
+        <SessionCard
+          session={session}
+          basePath="/member/session"
+          currentUserId="member-99"
+        />
+      );
+
+      const link = screen.getByRole("link");
+      expect(link.className).not.toContain("border-l-4");
+    });
+  });
 });
