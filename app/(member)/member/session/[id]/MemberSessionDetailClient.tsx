@@ -125,7 +125,7 @@ export function MemberSessionDetailClient(
       <div className="space-y-3">
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-1 text-sm text-surface-400 hover:text-surface-200 transition-colors"
+          className="flex items-center gap-1 py-2 text-sm text-surface-400 hover:text-surface-200 transition-colors"
         >
           <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
             <path

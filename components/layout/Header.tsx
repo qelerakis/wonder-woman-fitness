@@ -180,11 +180,11 @@ export function Header({
       {mobileMenuOpen && (
         <>
           <div
-            className="fixed inset-0 z-30 md:hidden"
+            className="fixed inset-0 z-50 md:hidden"
             onClick={() => setMobileMenuOpen(false)}
             aria-hidden="true"
           />
-          <div className="relative z-40 border-t border-surface-700 md:hidden">
+          <div className="relative z-[51] border-t border-surface-700 md:hidden">
             <div className="mx-auto max-w-7xl px-4 py-2">
               <Navigation
                 role={userRole}

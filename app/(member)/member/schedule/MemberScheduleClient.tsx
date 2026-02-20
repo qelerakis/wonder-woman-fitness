@@ -60,7 +60,7 @@ export function MemberScheduleClient({
           </p>
         </div>
         <button
-          onClick={() => router.refresh()}
+          onClick={() => void fetchSessions()}
           className="rounded-lg p-2.5 text-surface-400 hover:bg-surface-800 hover:text-surface-200 transition-colors"
           aria-label="Refresh schedule"
         >

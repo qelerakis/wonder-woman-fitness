@@ -278,7 +278,7 @@ function DatePicker({
 
                   // If dropdown would overflow bottom, show above the input instead
                   finalTop = rawTop + dropdownHeight > window.innerHeight
-                    ? rawTop - dropdownHeight - 4
+                    ? Math.max(8, rawTop - dropdownHeight - 4)
                     : rawTop;
                 }
 

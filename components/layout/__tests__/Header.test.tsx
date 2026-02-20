@@ -89,7 +89,7 @@ describe("Header", () => {
       renderHeader();
       openMobileMenu();
 
-      // The overlay is the div with aria-hidden="true" and class "fixed inset-0 z-30"
+      // The overlay is the div with aria-hidden="true" and class "fixed inset-0 z-50"
       const overlay = document.querySelector('[aria-hidden="true"].fixed');
       expect(overlay).toBeTruthy();
       expect(overlay!.className).toContain("fixed");

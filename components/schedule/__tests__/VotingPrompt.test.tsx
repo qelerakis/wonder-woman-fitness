@@ -277,9 +277,9 @@ describe("VotingPrompt", () => {
     const notComingBtn = getNotComingButton();
 
     expect(comingBtn.className).toContain("px-3");
-    expect(comingBtn.className).toContain("py-1.5");
+    expect(comingBtn.className).toContain("py-2");
     expect(notComingBtn.className).toContain("px-3");
-    expect(notComingBtn.className).toContain("py-1.5");
+    expect(notComingBtn.className).toContain("py-2");
   });
 
   // ─── SessionId passed through correctly ────────────────────────
