@@ -61,6 +61,8 @@ const defaultProps = {
   voteMembers: [],
   allTrainers: [{ id: "t1", name: "Coach" }],
   allMembers: [{ id: "m1", name: "Alice" }],
+  attendanceMembers: [],
+  hasStarted: false,
 };
 
 function renderSessionDetail(sessionOverrides: Record<string, unknown> = {}) {
@@ -398,5 +400,104 @@ describe("SessionDetailClient — Confirmation Modals", () => {
       expect(screen.getByText("Permanently delete this session? This cannot be undone.")).toBeDefined();
       expect(screen.queryByText("Cancel this session? All assigned members will be notified.")).toBeNull();
     });
+  });
+});
+
+// ===== Attendance Checklist Integration Tests =====
+
+describe("SessionDetailClient — AttendanceChecklist rendering", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubGlobal("fetch", vi.fn());
+  });
+
+  function renderWithAttendance(overrides: Record<string, unknown> = {}, propsOverrides: Record<string, unknown> = {}) {
+    const session = makeSession(overrides);
+    const props = {
+      ...defaultProps,
+      ...propsOverrides,
+    };
+    return render(
+      <SessionDetailClient
+        session={session as Parameters<typeof SessionDetailClient>[0]["session"]}
+        {...props}
+      />
+    );
+  }
+
+  it("renders AttendanceChecklist when hasStarted is true and session is not cancelled", () => {
+    renderWithAttendance({}, {
+      hasStarted: true,
+      attendanceMembers: [
+        { userId: "m1", name: "Alice", present: true },
+      ],
+      allMembers: [{ id: "m1", name: "Alice" }],
+    });
+
+    // AttendanceChecklist renders "Attendance" title
+    expect(screen.getByText("Attendance")).toBeDefined();
+  });
+
+  it("does NOT render AttendanceChecklist when hasStarted is false", () => {
+    renderWithAttendance({}, {
+      hasStarted: false,
+      attendanceMembers: [
+        { userId: "m1", name: "Alice", present: true },
+      ],
+    });
+
+    // "Attendance" should NOT appear as a card title
+    expect(screen.queryByText("Attendance")).toBeNull();
+  });
+
+  it("does NOT render AttendanceChecklist when session is cancelled", () => {
+    renderWithAttendance({ status: "CANCELLED" }, {
+      hasStarted: true,
+      attendanceMembers: [
+        { userId: "m1", name: "Alice", present: true },
+      ],
+    });
+
+    // "Attendance" should NOT appear even if hasStarted is true
+    expect(screen.queryByText("Attendance")).toBeNull();
+  });
+
+  it("does NOT render AttendanceChecklist when both hasStarted is false and session is cancelled", () => {
+    renderWithAttendance({ status: "CANCELLED" }, {
+      hasStarted: false,
+      attendanceMembers: [],
+    });
+
+    expect(screen.queryByText("Attendance")).toBeNull();
+  });
+
+  it("renders AttendanceChecklist with multiple members showing correct count", () => {
+    renderWithAttendance({}, {
+      hasStarted: true,
+      attendanceMembers: [
+        { userId: "m1", name: "Alice", present: true },
+        { userId: "m2", name: "Bob", present: false },
+        { userId: "m3", name: "Charlie", present: null },
+      ],
+      allMembers: [
+        { id: "m1", name: "Alice" },
+        { id: "m2", name: "Bob" },
+        { id: "m3", name: "Charlie" },
+      ],
+    });
+
+    expect(screen.getByText("Attendance")).toBeDefined();
+    expect(screen.getByText("1 / 3 present")).toBeDefined();
+  });
+
+  it("renders AttendanceChecklist with empty attendance members", () => {
+    renderWithAttendance({}, {
+      hasStarted: true,
+      attendanceMembers: [],
+      allMembers: [{ id: "m1", name: "Alice" }],
+    });
+
+    expect(screen.getByText("Attendance")).toBeDefined();
+    expect(screen.getByText("0 / 0 present")).toBeDefined();
   });
 });

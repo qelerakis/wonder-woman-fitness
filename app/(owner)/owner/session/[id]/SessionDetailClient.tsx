@@ -10,6 +10,7 @@ import { WorkoutDisplay } from "@/components/schedule/WorkoutDisplay";
 import { VoteSummary } from "@/components/schedule/VoteSummary";
 import { useToast } from "@/components/ui/Toast";
 import { AssignmentToggleList } from "@/components/schedule/AssignmentToggleList";
+import { AttendanceChecklist } from "@/components/schedule/AttendanceChecklist";
 import { DeleteRecurringSlotModal } from "@/components/schedule/DeleteRecurringSlotModal";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { DAY_NAMES, MAX_CLASS_SIZE } from "@/lib/constants";
@@ -48,6 +49,8 @@ interface SessionDetailClientProps {
   voteMembers: VoteMember[];
   allTrainers: Array<{ id: string; name: string }>;
   allMembers: Array<{ id: string; name: string }>;
+  attendanceMembers: Array<{ userId: string; name: string; present: boolean | null }>;
+  hasStarted: boolean;
 }
 
 export function SessionDetailClient({
@@ -55,6 +58,8 @@ export function SessionDetailClient({
   voteMembers,
   allTrainers,
   allMembers,
+  attendanceMembers,
+  hasStarted,
 }: SessionDetailClientProps): React.ReactElement {
   const router = useRouter();
   const { addToast } = useToast();
@@ -326,6 +331,15 @@ export function SessionDetailClient({
             <Button variant="ghost" size="sm" onClick={handleToggleVoting}>
               {session.votingEnabled ? "Disable Voting" : "Enable Voting"}
             </Button>
+          )}
+
+          {/* Attendance — only shown after session has started */}
+          {hasStarted && !isCancelled && (
+            <AttendanceChecklist
+              sessionId={session.id}
+              members={attendanceMembers}
+              allActiveMembers={allMembers}
+            />
           )}
         </div>
 

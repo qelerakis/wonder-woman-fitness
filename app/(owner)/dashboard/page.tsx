@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getPaymentStatus } from "@/lib/payment-logic";
 import type { PaymentRecord } from "@/lib/payment-logic";
 import { startOfMonth, endOfMonth } from "date-fns";
+import { computeAttendanceAnalytics } from "@/lib/attendance-analytics";
 import { DashboardClient } from "./DashboardClient";
 
 export const metadata = {
@@ -21,7 +22,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
   const monthEnd = endOfMonth(now);
 
   // Fetch all data in parallel
-  const [members, payments, sessionsThisMonth, privateSessions] =
+  const [members, payments, sessionsThisMonth, privateSessions, attendanceRecords] =
     await Promise.all([
       prisma.user.findMany({
         where: { role: "MEMBER" },
@@ -64,6 +65,28 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
           paid: true,
         },
         select: { amount: true },
+      }),
+      prisma.attendanceRecord.findMany({
+        where: {
+          session: {
+            weekDate: { gte: monthStart, lte: monthEnd },
+          },
+        },
+        select: {
+          sessionId: true,
+          userId: true,
+          present: true,
+          session: {
+            select: {
+              weekDate: true,
+              recurringSlotId: true,
+              recurringSlot: { select: { dayOfWeek: true, startHour: true } },
+              customDay: true,
+              customStartHour: true,
+              votes: { select: { userId: true, attending: true } },
+            },
+          },
+        },
       }),
     ]);
 
@@ -114,8 +137,10 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
     if (status === "GRACE_PERIOD" || status === "LOCKED") outstandingCount++;
   }
 
-  // Slot performance for attendance chart
+  // Day name mapping
   const DAY_NAMES = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+  // Slot performance for attendance chart
   const slotPerformance = new Map<
     string,
     { total: number; totalAttending: number; count: number }
@@ -157,6 +182,10 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
     .sort((a, b) => b.avgAttendance - a.avgAttendance)
     .slice(0, 10);
 
+  // ===== ATTENDANCE ANALYTICS =====
+  const { memberRates, slotRates, voteVsActual, trend: attendanceTrend } =
+    computeAttendanceAnalytics(attendanceRecords, members);
+
   return (
     <DashboardClient
       totalActive={totalActive}
@@ -170,6 +199,10 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
       popularSlots={popularSlots}
       initialMonth={now.getMonth()}
       initialYear={now.getFullYear()}
+      initialMemberRates={memberRates}
+      initialSlotRates={slotRates}
+      initialVoteVsActual={voteVsActual}
+      initialAttendanceTrend={attendanceTrend}
     />
   );
 }

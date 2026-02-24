@@ -10,6 +10,7 @@ import { WorkoutDisplay } from "@/components/schedule/WorkoutDisplay";
 import { VoteSummary } from "@/components/schedule/VoteSummary";
 import { useToast } from "@/components/ui/Toast";
 import { AssignmentToggleList } from "@/components/schedule/AssignmentToggleList";
+import { AttendanceChecklist } from "@/components/schedule/AttendanceChecklist";
 import { DAY_NAMES, MAX_CLASS_SIZE } from "@/lib/constants";
 import { formatTime } from "@/components/schedule/SessionCard";
 import type { VoteMember } from "@/components/schedule/VoteSummary";
@@ -44,12 +45,16 @@ interface TrainerSessionDetailClientProps {
   session: SessionData;
   voteMembers: VoteMember[];
   allMembers: Array<{ id: string; name: string }>;
+  attendanceMembers: Array<{ userId: string; name: string; present: boolean | null }>;
+  hasStarted: boolean;
 }
 
 export function TrainerSessionDetailClient({
   session,
   voteMembers,
   allMembers,
+  attendanceMembers,
+  hasStarted,
 }: TrainerSessionDetailClientProps): React.ReactElement {
   const router = useRouter();
   const { addToast } = useToast();
@@ -233,6 +238,15 @@ export function TrainerSessionDetailClient({
             <Button variant="ghost" size="sm" onClick={handleToggleVoting}>
               {session.votingEnabled ? "Disable Voting" : "Enable Voting"}
             </Button>
+          )}
+
+          {/* Attendance — only shown after session has started */}
+          {hasStarted && !isCancelled && (
+            <AttendanceChecklist
+              sessionId={session.id}
+              members={attendanceMembers}
+              allActiveMembers={allMembers}
+            />
           )}
         </div>
 

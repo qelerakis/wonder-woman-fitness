@@ -35,6 +35,8 @@ vi.mock("recharts", () => ({
   Pie: () => null,
   Cell: () => null,
   Legend: () => null,
+  LineChart: ({ children }: { children: React.ReactNode }) => <div data-testid="line-chart">{children}</div>,
+  Line: () => null,
 }));
 
 // ===== Helpers =====
@@ -53,9 +55,13 @@ const defaultProps = {
   outstandingCount: 2,
   gracePeriodCount: 1,
   lockedCount: 1,
-  popularSlots: [],
+  popularSlots: [] as Array<{ day: string; hour: number; avgAttendance: number; avgFillRate: number; sessionCount: number }>,
   initialMonth: 1,  // February (0-indexed)
   initialYear: 2026,
+  initialMemberRates: [] as Array<{ name: string; expected: number; attended: number; rate: number }>,
+  initialSlotRates: [] as Array<{ day: string; hour: number; avgPresent: number; avgExpected: number; showUpRate: number; sessionCount: number }>,
+  initialVoteVsActual: { totalVotedComing: 0, totalActuallyAttended: 0, reliability: 0 },
+  initialAttendanceTrend: [] as Array<{ week: string; rate: number; present: number; total: number }>,
 };
 
 function makeApiResponse(overrides: Record<string, unknown> = {}): object {
@@ -70,6 +76,13 @@ function makeApiResponse(overrides: Record<string, unknown> = {}): object {
         latePayers: [],
         outstandingMembers: [],
         ...((overrides.financial as object) || {}),
+      },
+      attendance: {
+        memberRates: [],
+        slotRates: [],
+        voteVsActual: { totalVotedComing: 0, totalActuallyAttended: 0, reliability: 0 },
+        trend: [],
+        ...((overrides.attendance as object) || {}),
       },
     },
   };

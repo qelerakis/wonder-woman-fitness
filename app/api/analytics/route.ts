@@ -13,6 +13,7 @@ import { getPaymentStatus } from "@/lib/payment-logic";
 import type { PaymentRecord } from "@/lib/payment-logic";
 import { authReadLimiter, createRateLimitResponse } from "@/lib/rate-limit";
 import { AnalyticsQuerySchema } from "@/types";
+import { computeAttendanceAnalytics } from "@/lib/attendance-analytics";
 
 export async function GET(req: Request): Promise<Response> {
   try {
@@ -47,7 +48,7 @@ export async function GET(req: Request): Promise<Response> {
     const wantsCsv = acceptHeader.includes("text/csv");
 
     // Fetch all data in parallel
-    const [members, sessions, payments, privateSessions] = await Promise.all([
+    const [members, sessions, payments, privateSessions, attendanceRecords] = await Promise.all([
       // All members (including departed for retention analysis)
       prisma.user.findMany({
         where: { role: "MEMBER" },
@@ -95,6 +96,30 @@ export async function GET(req: Request): Promise<Response> {
           id: true,
           amount: true,
           paid: true,
+        },
+      }),
+      // Attendance records in date range
+      prisma.attendanceRecord.findMany({
+        where: {
+          session: {
+            weekDate: { gte: start, lte: end },
+          },
+        },
+        select: {
+          sessionId: true,
+          userId: true,
+          present: true,
+          session: {
+            select: {
+              weekDate: true,
+              recurringSlotId: true,
+              recurringSlot: { select: { dayOfWeek: true, startHour: true } },
+              customDay: true,
+              customStartHour: true,
+              votes: { select: { userId: true, attending: true } },
+              members: { select: { userId: true } },
+            },
+          },
         },
       }),
     ]);
@@ -238,6 +263,10 @@ export async function GET(req: Request): Promise<Response> {
       ? lifespans.reduce((a, b) => a + b, 0) / lifespans.length
       : 0;
 
+    // ===== ATTENDANCE =====
+    const { memberRates, slotRates, voteVsActual, trend } =
+      computeAttendanceAnalytics(attendanceRecords, members);
+
     const analytics = {
       dateRange: { startDate, endDate },
       memberEngagement: {
@@ -265,6 +294,12 @@ export async function GET(req: Request): Promise<Response> {
         departedInPeriod: departedInRange.length,
         avgLifespanDays: Math.round(avgLifespanDays),
       },
+      attendance: {
+        memberRates,
+        slotRates,
+        voteVsActual,
+        trend,
+      },
     };
 
     // CSV export
@@ -283,6 +318,9 @@ export async function GET(req: Request): Promise<Response> {
       csvRows.push(`Retention Rate,${Math.round(retentionRate * 100)}%`);
       csvRows.push(`Churn Rate,${Math.round(churnRate * 100)}%`);
       csvRows.push(`Avg Member Lifespan (days),${Math.round(avgLifespanDays)}`);
+      csvRows.push(`Attendance - Weeks Tracked,${trend.length}`);
+      csvRows.push(`Attendance - Avg Show-up Rate,${trend.length > 0 ? Math.round(trend.reduce((s, t) => s + t.rate, 0) / trend.length) : 0}%`);
+      csvRows.push(`Vote Reliability,${voteVsActual.reliability}%`);
 
       const csvContent = csvRows.join("\n");
       return new Response(csvContent, {

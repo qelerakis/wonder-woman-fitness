@@ -140,6 +140,15 @@ export const SessionMemberAssignmentSchema = z.object({
 
 export type SessionMemberAssignmentInput = z.infer<typeof SessionMemberAssignmentSchema>;
 
+// ===== ATTENDANCE SCHEMA =====
+
+export const AttendanceMarkSchema = z.object({
+  userId: z.string().cuid('Invalid user ID'),
+  present: z.boolean(),
+}).strict();
+
+export type AttendanceMarkInput = z.infer<typeof AttendanceMarkSchema>;
+
 // ===== MEMBER SCHEMAS =====
 
 export const MemberUpdateSchema = z.object({
