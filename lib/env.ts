@@ -9,14 +9,21 @@ function requireEnv(name: string): string {
   return value;
 }
 
+/**
+ * Centralized environment variable access with validation.
+ *
+ * Uses lazy getters so validation only runs at runtime (when values are
+ * actually accessed), NOT at build time. This is critical for Vercel
+ * deployments where runtime env vars aren't available during `next build`.
+ */
 export const env = {
-  DATABASE_URL: requireEnv("DATABASE_URL"),
-  NEXTAUTH_SECRET: requireEnv("NEXTAUTH_SECRET"),
-  NEXTAUTH_URL: requireEnv("NEXTAUTH_URL"),
-  CRON_SECRET: requireEnv("CRON_SECRET"),
-  RESEND_API_KEY: process.env.RESEND_API_KEY ?? null,
-  EMAIL_FROM: process.env.EMAIL_FROM ?? "noreply@wonderwomanfitness.mk",
-  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME ?? null,
-  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY ?? null,
-  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET ?? null,
+  get DATABASE_URL(): string { return requireEnv("DATABASE_URL"); },
+  get NEXTAUTH_SECRET(): string { return requireEnv("NEXTAUTH_SECRET"); },
+  get NEXTAUTH_URL(): string { return requireEnv("NEXTAUTH_URL"); },
+  get CRON_SECRET(): string { return requireEnv("CRON_SECRET"); },
+  get RESEND_API_KEY(): string | null { return process.env.RESEND_API_KEY ?? null; },
+  get EMAIL_FROM(): string { return process.env.EMAIL_FROM ?? "noreply@wonderwomanfitness.mk"; },
+  get CLOUDINARY_CLOUD_NAME(): string | null { return process.env.CLOUDINARY_CLOUD_NAME ?? null; },
+  get CLOUDINARY_API_KEY(): string | null { return process.env.CLOUDINARY_API_KEY ?? null; },
+  get CLOUDINARY_API_SECRET(): string | null { return process.env.CLOUDINARY_API_SECRET ?? null; },
 };

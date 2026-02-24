@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterAll } from "vitest";
 // Save original env so we can restore after all tests
 const originalEnv = { ...process.env };
 
-// Minimum required env vars for a successful import
+// Minimum required env vars for a successful access
 const requiredEnv = {
   DATABASE_URL: "postgresql://test",
   NEXTAUTH_SECRET: "test-secret-32chars-minimum-value",
@@ -23,14 +23,16 @@ describe("lib/env", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 1. Required env vars throw when missing
+  // 1. Required env vars throw when accessed while missing
   // ---------------------------------------------------------------------------
   describe("required env vars throw when missing", () => {
     it("throws when DATABASE_URL is missing", async () => {
       process.env = { ...originalEnv, ...requiredEnv };
       delete process.env.DATABASE_URL;
 
-      await expect(import("@/lib/env")).rejects.toThrow(
+      const { env } = await import("@/lib/env");
+
+      expect(() => env.DATABASE_URL).toThrow(
         "Missing required environment variable: DATABASE_URL"
       );
     });
@@ -39,7 +41,9 @@ describe("lib/env", () => {
       process.env = { ...originalEnv, ...requiredEnv };
       delete process.env.NEXTAUTH_SECRET;
 
-      await expect(import("@/lib/env")).rejects.toThrow(
+      const { env } = await import("@/lib/env");
+
+      expect(() => env.NEXTAUTH_SECRET).toThrow(
         "Missing required environment variable: NEXTAUTH_SECRET"
       );
     });
@@ -48,7 +52,9 @@ describe("lib/env", () => {
       process.env = { ...originalEnv, ...requiredEnv };
       delete process.env.NEXTAUTH_URL;
 
-      await expect(import("@/lib/env")).rejects.toThrow(
+      const { env } = await import("@/lib/env");
+
+      expect(() => env.NEXTAUTH_URL).toThrow(
         "Missing required environment variable: NEXTAUTH_URL"
       );
     });
@@ -57,7 +63,9 @@ describe("lib/env", () => {
       process.env = { ...originalEnv, ...requiredEnv };
       delete process.env.CRON_SECRET;
 
-      await expect(import("@/lib/env")).rejects.toThrow(
+      const { env } = await import("@/lib/env");
+
+      expect(() => env.CRON_SECRET).toThrow(
         "Missing required environment variable: CRON_SECRET"
       );
     });
@@ -148,7 +156,9 @@ describe("lib/env", () => {
       process.env = { ...originalEnv, ...requiredEnv };
       delete process.env.DATABASE_URL;
 
-      await expect(import("@/lib/env")).rejects.toThrow(
+      const { env } = await import("@/lib/env");
+
+      expect(() => env.DATABASE_URL).toThrow(
         /FATAL: Missing required environment variable: DATABASE_URL\. Check your \.env\.local \(dev\) or Vercel environment variables \(production\)\./
       );
     });
@@ -161,9 +171,31 @@ describe("lib/env", () => {
     it('treats "" as a missing required variable and throws', async () => {
       process.env = { ...originalEnv, ...requiredEnv, DATABASE_URL: "" };
 
-      await expect(import("@/lib/env")).rejects.toThrow(
+      const { env } = await import("@/lib/env");
+
+      expect(() => env.DATABASE_URL).toThrow(
         "Missing required environment variable: DATABASE_URL"
       );
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // 7. Lazy getters - import succeeds even without env vars
+  // ---------------------------------------------------------------------------
+  describe("lazy getter behavior", () => {
+    it("imports successfully without any env vars set (no eager throw)", async () => {
+      process.env = { ...originalEnv };
+      delete process.env.DATABASE_URL;
+      delete process.env.NEXTAUTH_SECRET;
+      delete process.env.NEXTAUTH_URL;
+      delete process.env.CRON_SECRET;
+
+      // Import should NOT throw — getters are lazy
+      const { env } = await import("@/lib/env");
+      expect(env).toBeDefined();
+
+      // Only accessing required vars should throw
+      expect(() => env.DATABASE_URL).toThrow();
     });
   });
 });
