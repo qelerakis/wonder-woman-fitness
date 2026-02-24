@@ -33,6 +33,10 @@ const mockPrisma = {
     count: vi.fn(),
     findFirst: vi.fn(),
   },
+  $transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => {
+    // Execute the transaction callback with mockPrisma as the tx client
+    return fn(mockPrisma);
+  }),
 };
 vi.mock("@/lib/prisma", () => ({
   prisma: mockPrisma,
