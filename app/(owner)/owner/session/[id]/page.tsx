@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getSessionDateTime } from "@/lib/session-generation";
 import { SessionDetailClient } from "./SessionDetailClient";
 
 export const metadata = {
@@ -56,6 +57,9 @@ export default async function OwnerSessionDetailPage({
           votedAt: true,
         },
       },
+      attendanceRecords: {
+        select: { userId: true, present: true },
+      },
     },
   });
 
@@ -98,6 +102,55 @@ export default async function OwnerSessionDetailPage({
         };
       });
 
+  // Compute whether session has started
+  const dayOfWeek = session.recurringSlot?.dayOfWeek ?? session.customDay ?? 1;
+  const startHour = session.recurringSlot?.startHour ?? session.customStartHour ?? 0;
+  const sessionStart = getSessionDateTime(session.weekDate, dayOfWeek, startHour);
+  const hasStarted = new Date() >= sessionStart;
+
+  // Build attendance member list: assigned members (voting off) or voted-coming members (voting on)
+  // Plus any walk-ins who have attendance records but aren't in the normal lists
+  const attendanceMemberMap = new Map<string, { userId: string; name: string; present: boolean | null }>();
+
+  if (session.votingEnabled) {
+    // When voting is on: show all who voted "coming"
+    for (const vote of session.votes) {
+      if (vote.attending) {
+        const member = allMembers.find((m) => m.id === vote.userId);
+        const record = session.attendanceRecords.find((ar) => ar.userId === vote.userId);
+        attendanceMemberMap.set(vote.userId, {
+          userId: vote.userId,
+          name: member?.name || "Unknown",
+          present: record?.present ?? null,
+        });
+      }
+    }
+  } else {
+    // When voting is off: show assigned members
+    for (const sm of session.members) {
+      const record = session.attendanceRecords.find((ar) => ar.userId === sm.userId);
+      attendanceMemberMap.set(sm.userId, {
+        userId: sm.userId,
+        name: sm.user.name,
+        present: record?.present ?? null,
+      });
+    }
+  }
+
+  // Add walk-ins (people with attendance records not in the above lists)
+  for (const ar of session.attendanceRecords) {
+    if (!attendanceMemberMap.has(ar.userId)) {
+      const member = allMembers.find((m) => m.id === ar.userId);
+      attendanceMemberMap.set(ar.userId, {
+        userId: ar.userId,
+        name: member?.name || "Unknown",
+        present: ar.present,
+      });
+    }
+  }
+
+  const attendanceMembers = Array.from(attendanceMemberMap.values());
+
   // Serialize dates for client
   return (
     <SessionDetailClient
@@ -130,6 +183,8 @@ export default async function OwnerSessionDetailPage({
       voteMembers={voteMembers}
       allTrainers={allTrainers}
       allMembers={allMembers}
+      attendanceMembers={attendanceMembers}
+      hasStarted={hasStarted}
     />
   );
 }

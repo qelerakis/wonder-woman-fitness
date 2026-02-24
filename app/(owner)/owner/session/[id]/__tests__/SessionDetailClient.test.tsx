@@ -61,6 +61,8 @@ const defaultProps = {
   voteMembers: [],
   allTrainers: [{ id: "t1", name: "Coach" }],
   allMembers: [{ id: "m1", name: "Alice" }],
+  attendanceMembers: [],
+  hasStarted: false,
 };
 
 function renderSessionDetail(sessionOverrides: Record<string, unknown> = {}) {
