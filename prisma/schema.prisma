@@ -75,6 +75,7 @@ model User {
   notifications    Notification[]
   createdSessions  Session[]        @relation("CreatedSessions")
 
+  @@index([role, status])
   @@map("users")
 }
 
@@ -114,6 +115,7 @@ model Session {
 
   @@unique([recurringSlotId, weekDate])
   @@unique([weekDate, customDay, customStartHour])
+  @@index([weekDate])
   @@map("sessions")
 }
 
@@ -150,6 +152,7 @@ model Vote {
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([sessionId, userId])
+  @@index([sessionId])
   @@map("votes")
 }
 
@@ -167,6 +170,7 @@ model Payment {
   user       User @relation("MemberPayments", fields: [userId], references: [id], onDelete: Cascade)
   recordedBy User @relation("RecorderPayments", fields: [recordedById], references: [id])
 
+  @@index([userId, paidAt])
   @@map("payments")
 }
 
@@ -186,6 +190,7 @@ model PrivateSession {
   createdBy    User  @relation("CreatedPrivateSessions", fields: [createdById], references: [id], onDelete: Cascade)
   paidMarkedBy User? @relation("MarkedPaidPrivateSessions", fields: [paidMarkedById], references: [id], onDelete: SetNull)
 
+  @@index([createdById])
   @@map("private_sessions")
 }
 
