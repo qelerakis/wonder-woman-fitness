@@ -74,6 +74,8 @@ model User {
   markedPaidPrivateSessions PrivateSession[] @relation("MarkedPaidPrivateSessions")
   notifications    Notification[]
   createdSessions  Session[]        @relation("CreatedSessions")
+  attendanceRecords      AttendanceRecord[] @relation("AttendanceUser")
+  markedAttendanceRecords AttendanceRecord[] @relation("AttendanceMarkedBy")
 
   @@index([role, status])
   @@map("users")
@@ -112,6 +114,7 @@ model Session {
   members       SessionMember[]
   trainers      SessionTrainer[]
   votes         Vote[]
+  attendanceRecords AttendanceRecord[]
 
   @@unique([recurringSlotId, weekDate])
   @@unique([weekDate, customDay, customStartHour])
@@ -154,6 +157,25 @@ model Vote {
   @@unique([sessionId, userId])
   @@index([sessionId])
   @@map("votes")
+}
+
+model AttendanceRecord {
+  id         String   @id @default(cuid())
+  sessionId  String
+  userId     String
+  present    Boolean  @default(false)
+  markedById String
+  markedAt   DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  session  Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user     User    @relation("AttendanceUser", fields: [userId], references: [id], onDelete: Cascade)
+  markedBy User    @relation("AttendanceMarkedBy", fields: [markedById], references: [id])
+
+  @@unique([sessionId, userId])
+  @@index([sessionId])
+  @@map("attendance_records")
 }
 
 model Payment {
