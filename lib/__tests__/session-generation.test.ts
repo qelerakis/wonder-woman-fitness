@@ -6,7 +6,11 @@
  * (generateSessionsForWeek, getSessionsForWeek) which require DB mocking.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+// Mock prisma to prevent env.ts validation from running (these tests only use pure utility functions)
+vi.mock("@/lib/prisma", () => ({ prisma: {} }));
+
 import {
   getWeekStart,
   getSessionDateTime,

@@ -1237,3 +1237,315 @@ describe("GET /api/votes", () => {
     );
   });
 });
+
+// ===== POST /api/votes — $transaction behavior =====
+
+describe("POST /api/votes — $transaction behavior", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Restore the default $transaction implementation after each test
+    // (some tests override it with mockRejectedValueOnce)
+    mockPrisma.$transaction.mockImplementation(
+      async (fn: (tx: unknown) => Promise<unknown>) => fn(mockPrisma)
+    );
+  });
+
+  it("uses $transaction for attending=true votes", async () => {
+    mockAuth.mockResolvedValue(memberSession("member-1"));
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "cm1234567890abcdef",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      votingDeadline: new Date("2099-01-01"),
+      weekDate: new Date("2026-03-09"),
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+    });
+    mockPrisma.vote.count.mockResolvedValue(0);
+    mockPrisma.vote.findFirst.mockResolvedValue(null);
+    mockPrisma.vote.upsert.mockResolvedValue({
+      id: "v-tx-1",
+      sessionId: "cm1234567890abcdef",
+      userId: "member-1",
+      attending: true,
+      votedAt: new Date(),
+    });
+
+    const { POST } = await import("@/app/api/votes/route");
+    const response = await POST(
+      new Request("http://localhost/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "cm1234567890abcdef",
+          attending: true,
+        }),
+      })
+    );
+
+    expect(response.status).toBe(201);
+    expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.$transaction).toHaveBeenCalledWith(expect.any(Function));
+  });
+
+  it("does not use $transaction for attending=false votes", async () => {
+    mockAuth.mockResolvedValue(memberSession("member-1"));
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "cm1234567890abcdef",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      votingDeadline: new Date("2099-01-01"),
+      weekDate: new Date("2026-03-09"),
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+    });
+    mockPrisma.vote.upsert.mockResolvedValue({
+      id: "v-no-tx",
+      sessionId: "cm1234567890abcdef",
+      userId: "member-1",
+      attending: false,
+      votedAt: new Date(),
+    });
+
+    const { POST } = await import("@/app/api/votes/route");
+    const response = await POST(
+      new Request("http://localhost/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "cm1234567890abcdef",
+          attending: false,
+        }),
+      })
+    );
+
+    expect(response.status).toBe(201);
+    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+    expect(mockPrisma.vote.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          sessionId_userId: {
+            sessionId: "cm1234567890abcdef",
+            userId: "member-1",
+          },
+        },
+        update: expect.objectContaining({ attending: false }),
+        create: expect.objectContaining({
+          sessionId: "cm1234567890abcdef",
+          userId: "member-1",
+          attending: false,
+        }),
+      })
+    );
+  });
+
+  it("performs capacity check inside the transaction callback", async () => {
+    mockAuth.mockResolvedValue(memberSession("member-1"));
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "cm1234567890abcdef",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      votingDeadline: new Date("2099-01-01"),
+      weekDate: new Date("2026-03-09"),
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+    });
+    mockPrisma.vote.count.mockResolvedValue(5);
+    mockPrisma.vote.findFirst.mockResolvedValue(null);
+    mockPrisma.vote.upsert.mockResolvedValue({
+      id: "v-cap-check",
+      sessionId: "cm1234567890abcdef",
+      userId: "member-1",
+      attending: true,
+      votedAt: new Date(),
+    });
+
+    const { POST } = await import("@/app/api/votes/route");
+    await POST(
+      new Request("http://localhost/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "cm1234567890abcdef",
+          attending: true,
+        }),
+      })
+    );
+
+    // The $transaction mock passes mockPrisma as tx, so vote.count IS called through tx
+    expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.vote.count).toHaveBeenCalledWith({
+      where: { sessionId: "cm1234567890abcdef", attending: true },
+    });
+  });
+
+  it("performs same-day check inside the transaction callback", async () => {
+    mockAuth.mockResolvedValue(memberSession("member-1"));
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "cm1234567890abcdef",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      votingDeadline: new Date("2099-01-01"),
+      weekDate: new Date("2026-03-09"),
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+    });
+    mockPrisma.vote.count.mockResolvedValue(5);
+    mockPrisma.vote.findFirst.mockResolvedValue(null);
+    mockPrisma.vote.upsert.mockResolvedValue({
+      id: "v-sameday-check",
+      sessionId: "cm1234567890abcdef",
+      userId: "member-1",
+      attending: true,
+      votedAt: new Date(),
+    });
+
+    const { POST } = await import("@/app/api/votes/route");
+    await POST(
+      new Request("http://localhost/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "cm1234567890abcdef",
+          attending: true,
+        }),
+      })
+    );
+
+    // The $transaction mock passes mockPrisma as tx, so vote.findFirst IS called through tx
+    expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.vote.findFirst).toHaveBeenCalledWith({
+      where: {
+        userId: "member-1",
+        attending: true,
+        sessionId: { not: "cm1234567890abcdef" },
+        session: {
+          weekDate: new Date("2026-03-09"),
+          status: { not: "CANCELLED" },
+          OR: [
+            { recurringSlot: { dayOfWeek: 1 } },
+            { customDay: 1 },
+          ],
+        },
+      },
+    });
+  });
+
+  it("performs vote upsert inside the transaction callback", async () => {
+    mockAuth.mockResolvedValue(memberSession("member-1"));
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "cm1234567890abcdef",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      votingDeadline: new Date("2099-01-01"),
+      weekDate: new Date("2026-03-09"),
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+    });
+    mockPrisma.vote.count.mockResolvedValue(0);
+    mockPrisma.vote.findFirst.mockResolvedValue(null);
+    mockPrisma.vote.upsert.mockResolvedValue({
+      id: "v-upsert-tx",
+      sessionId: "cm1234567890abcdef",
+      userId: "member-1",
+      attending: true,
+      votedAt: new Date(),
+    });
+
+    const { POST } = await import("@/app/api/votes/route");
+    const response = await POST(
+      new Request("http://localhost/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "cm1234567890abcdef",
+          attending: true,
+        }),
+      })
+    );
+
+    expect(response.status).toBe(201);
+    // Both $transaction and upsert must have been called
+    expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(mockPrisma.vote.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          sessionId_userId: {
+            sessionId: "cm1234567890abcdef",
+            userId: "member-1",
+          },
+        },
+        update: expect.objectContaining({ attending: true }),
+        create: expect.objectContaining({
+          sessionId: "cm1234567890abcdef",
+          userId: "member-1",
+          attending: true,
+        }),
+      })
+    );
+  });
+
+  it("returns error when transaction detects session is full", async () => {
+    mockAuth.mockResolvedValue(memberSession("member-1"));
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "cm1234567890abcdef",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      votingDeadline: new Date("2099-01-01"),
+      weekDate: new Date("2026-03-09"),
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+    });
+    mockPrisma.vote.count.mockResolvedValue(20); // full (MAX_CLASS_SIZE)
+
+    const { POST } = await import("@/app/api/votes/route");
+    const response = await POST(
+      new Request("http://localhost/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "cm1234567890abcdef",
+          attending: true,
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toContain("full");
+    // Transaction was called but returned an error object
+    expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
+    // Upsert should NOT have been called because capacity check failed first
+    expect(mockPrisma.vote.upsert).not.toHaveBeenCalled();
+  });
+
+  it("returns 500 when $transaction throws an error", async () => {
+    mockAuth.mockResolvedValue(memberSession("member-1"));
+    mockPrisma.session.findUnique.mockResolvedValue({
+      id: "cm1234567890abcdef",
+      status: "SCHEDULED",
+      votingEnabled: true,
+      votingDeadline: new Date("2099-01-01"),
+      weekDate: new Date("2026-03-09"),
+      recurringSlot: { dayOfWeek: 1, startHour: 9 },
+      customDay: null,
+    });
+    mockPrisma.$transaction.mockRejectedValueOnce(new Error("DB error"));
+
+    const { POST } = await import("@/app/api/votes/route");
+    const response = await POST(
+      new Request("http://localhost/api/votes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: "cm1234567890abcdef",
+          attending: true,
+        }),
+      })
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(body.error).toContain("Internal server error");
+  });
+});

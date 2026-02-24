@@ -557,3 +557,210 @@ describe("Valid data still passes — positive validation tests", () => {
     }
   });
 });
+
+describe("PaymentSchema — periodStart/periodEnd refine validation", () => {
+  const validPayment = {
+    userId: "cm1234567890abcdef",
+    amount: 2500,
+    paidAt: "2026-02-15T10:30:00.000Z",
+    periodStart: "2026-02-01",
+    periodEnd: "2026-02-28",
+  };
+
+  it("rejects periodStart after periodEnd", () => {
+    const result = PaymentSchema.safeParse({
+      ...validPayment,
+      periodStart: "2026-03-01",
+      periodEnd: "2026-02-01",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts periodStart equal to periodEnd", () => {
+    const result = PaymentSchema.safeParse({
+      ...validPayment,
+      periodStart: "2026-02-15",
+      periodEnd: "2026-02-15",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts periodStart before periodEnd", () => {
+    const result = PaymentSchema.safeParse({
+      ...validPayment,
+      periodStart: "2026-02-01",
+      periodEnd: "2026-02-28",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("refine error has path ['periodEnd']", () => {
+    const result = PaymentSchema.safeParse({
+      ...validPayment,
+      periodStart: "2026-03-01",
+      periodEnd: "2026-02-01",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const periodEndErrors = result.error.issues.filter(
+        (issue) => issue.path.length === 1 && issue.path[0] === "periodEnd"
+      );
+      expect(periodEndErrors.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("refine error has message 'periodStart must not be after periodEnd'", () => {
+    const result = PaymentSchema.safeParse({
+      ...validPayment,
+      periodStart: "2026-03-01",
+      periodEnd: "2026-02-01",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const messages = result.error.issues.map((issue) => issue.message);
+      expect(messages).toContain("periodStart must not be after periodEnd");
+    }
+  });
+
+  it("still validates other fields before reaching refine", () => {
+    const result = PaymentSchema.safeParse({
+      ...validPayment,
+      amount: -100,
+      periodStart: "2026-03-01",
+      periodEnd: "2026-02-01",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const amountErrors = result.error.flatten().fieldErrors.amount;
+      expect(amountErrors).toBeDefined();
+    }
+  });
+
+  it("accepts valid payment with no notes (optional field)", () => {
+    const result = PaymentSchema.safeParse(validPayment);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.notes).toBeUndefined();
+    }
+  });
+
+  it("rejects when periodStart is much later than periodEnd", () => {
+    const result = PaymentSchema.safeParse({
+      ...validPayment,
+      periodStart: "2027-01-01",
+      periodEnd: "2026-01-01",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("OneOffSessionCreateSchema — hour boundary validation", () => {
+  const validOneOff = {
+    customDay: 1,
+    customStartHour: 9,
+    weekDate: "2026-01-05",
+  };
+
+  it("rejects customStartHour below SLOT_START_HOUR (6)", () => {
+    const result = OneOffSessionCreateSchema.safeParse({
+      ...validOneOff,
+      customStartHour: 6,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts customStartHour at SLOT_START_HOUR boundary (7)", () => {
+    const result = OneOffSessionCreateSchema.safeParse({
+      ...validOneOff,
+      customStartHour: 7,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts customStartHour at SLOT_END_HOUR boundary (22)", () => {
+    const result = OneOffSessionCreateSchema.safeParse({
+      ...validOneOff,
+      customStartHour: 22,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects customStartHour above SLOT_END_HOUR (23)", () => {
+    const result = OneOffSessionCreateSchema.safeParse({
+      ...validOneOff,
+      customStartHour: 23,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects customStartHour of 0 (midnight)", () => {
+    const result = OneOffSessionCreateSchema.safeParse({
+      ...validOneOff,
+      customStartHour: 0,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts customStartHour in middle range (14)", () => {
+    const result = OneOffSessionCreateSchema.safeParse({
+      ...validOneOff,
+      customStartHour: 14,
+    });
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("RecurringSlotSchema — hour boundary validation", () => {
+  const validSlot = {
+    dayOfWeek: 1,
+    startHour: 9,
+  };
+
+  it("rejects startHour below SLOT_START_HOUR (6)", () => {
+    const result = RecurringSlotSchema.safeParse({
+      ...validSlot,
+      startHour: 6,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts startHour at SLOT_START_HOUR boundary (7)", () => {
+    const result = RecurringSlotSchema.safeParse({
+      ...validSlot,
+      startHour: 7,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts startHour at SLOT_END_HOUR boundary (22)", () => {
+    const result = RecurringSlotSchema.safeParse({
+      ...validSlot,
+      startHour: 22,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects startHour above SLOT_END_HOUR (23)", () => {
+    const result = RecurringSlotSchema.safeParse({
+      ...validSlot,
+      startHour: 23,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects startHour of 0 (midnight)", () => {
+    const result = RecurringSlotSchema.safeParse({
+      ...validSlot,
+      startHour: 0,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts startHour in middle range (14)", () => {
+    const result = RecurringSlotSchema.safeParse({
+      ...validSlot,
+      startHour: 14,
+    });
+    expect(result.success).toBe(true);
+  });
+});
