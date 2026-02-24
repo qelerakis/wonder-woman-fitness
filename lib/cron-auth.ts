@@ -7,19 +7,19 @@
 import { timingSafeEqual } from "crypto";
 
 export function verifyCronSecret(req: Request): boolean {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) {
+    console.error("CRON_SECRET is not configured. Rejecting cron request.");
+    return false;
+  }
+
   const authHeader = req.headers.get("authorization") ?? "";
-  const expected = `Bearer ${process.env.CRON_SECRET ?? ""}`;
+  const expected = `Bearer ${cronSecret}`;
 
-  if (authHeader.length !== expected.length) {
-    return false;
-  }
+  if (authHeader.length !== expected.length) return false;
 
-  try {
-    return timingSafeEqual(
-      Buffer.from(authHeader),
-      Buffer.from(expected)
-    );
-  } catch {
-    return false;
-  }
+  return timingSafeEqual(
+    Buffer.from(authHeader),
+    Buffer.from(expected)
+  );
 }
