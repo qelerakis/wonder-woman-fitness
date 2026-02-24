@@ -268,4 +268,346 @@ describe("AttendanceChecklist", () => {
       ).toBeDefined();
     });
   });
+
+  // ─── Additional tests: network errors, Add Member flows, edge cases ───
+
+  describe("network error handling", () => {
+    it("shows error toast and rolls back on network error (fetch throws)", async () => {
+      (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("Network error"));
+      renderChecklist();
+
+      // Initially "1 / 3 present"
+      expect(screen.getByText("1 / 3 present")).toBeDefined();
+
+      // Click Charlie (null -> present: true)
+      const charlieRow = screen.getByTestId("attendance-row-m-3");
+      await act(async () => {
+        fireEvent.click(charlieRow);
+      });
+
+      // After network error, should rollback to "1 / 3 present"
+      await waitFor(() => {
+        expect(screen.getByText("1 / 3 present")).toBeDefined();
+      });
+
+      // Should have shown an error toast
+      expect(mockAddToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "error",
+          title: "Failed to update attendance",
+        })
+      );
+    });
+  });
+
+  describe("add member flow — API calls", () => {
+    it("makes both API calls in order: assign then attendance", async () => {
+      // First call: assign member to session
+      (global.fetch as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ data: {} }),
+        })
+        // Second call: mark attendance
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ data: {} }),
+        });
+
+      renderChecklist();
+
+      // Open add dropdown
+      const addBtn = screen.getByText("+ Add Member");
+      await act(async () => {
+        fireEvent.click(addBtn);
+      });
+
+      // Click Diana to add
+      await act(async () => {
+        fireEvent.click(screen.getByText("Diana"));
+      });
+
+      await waitFor(() => {
+        // First call: POST to /api/sessions/session-1/members
+        expect(global.fetch).toHaveBeenNthCalledWith(
+          1,
+          "/api/sessions/session-1/members",
+          expect.objectContaining({
+            method: "POST",
+            body: JSON.stringify({ userId: "m-4", action: "add" }),
+          })
+        );
+
+        // Second call: POST to /api/sessions/session-1/attendance
+        expect(global.fetch).toHaveBeenNthCalledWith(
+          2,
+          "/api/sessions/session-1/attendance",
+          expect.objectContaining({
+            method: "POST",
+            body: JSON.stringify({ userId: "m-4", present: true }),
+          })
+        );
+      });
+    });
+
+    it("shows error and does not add to list when assign API call fails", async () => {
+      // First call fails
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: async () => ({ error: "Server error" }),
+      });
+
+      renderChecklist();
+
+      const addBtn = screen.getByText("+ Add Member");
+      await act(async () => {
+        fireEvent.click(addBtn);
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText("Diana"));
+      });
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: "error",
+            title: "Failed to add member to session",
+          })
+        );
+      });
+
+      // Diana should NOT appear in the attendance list
+      // Count should still be "1 / 3 present"
+      expect(screen.getByText("1 / 3 present")).toBeDefined();
+      // Only 1 fetch call was made (no attendance call)
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows error when assign succeeds but attendance API call fails", async () => {
+      // First call (assign): success
+      (global.fetch as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ data: {} }),
+        })
+        // Second call (attendance): fails
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 500,
+          json: async () => ({ error: "Server error" }),
+        });
+
+      renderChecklist();
+
+      const addBtn = screen.getByText("+ Add Member");
+      await act(async () => {
+        fireEvent.click(addBtn);
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText("Diana"));
+      });
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: "error",
+            title: "Failed to mark attendance",
+          })
+        );
+      });
+
+      // 2 fetch calls were made
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
+
+    it("shows success toast with correct member name", async () => {
+      (global.fetch as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ data: {} }) })
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ data: {} }) });
+
+      renderChecklist();
+
+      const addBtn = screen.getByText("+ Add Member");
+      await act(async () => {
+        fireEvent.click(addBtn);
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText("Eve"));
+      });
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: "success",
+            title: "Eve added and marked present",
+          })
+        );
+      });
+    });
+
+    it("closes dropdown after successful add", async () => {
+      (global.fetch as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ data: {} }) })
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ data: {} }) });
+
+      renderChecklist();
+
+      const addBtn = screen.getByText("+ Add Member");
+      await act(async () => {
+        fireEvent.click(addBtn);
+      });
+
+      // Dropdown is open, Diana and Eve visible
+      expect(screen.getByText("Diana")).toBeDefined();
+
+      await act(async () => {
+        fireEvent.click(screen.getByText("Diana"));
+      });
+
+      // After adding, dropdown closes and "+ Add Member" button is back
+      await waitFor(() => {
+        expect(screen.getByText("+ Add Member")).toBeDefined();
+      });
+    });
+
+    it("Cancel button closes the dropdown", async () => {
+      renderChecklist();
+
+      const addBtn = screen.getByText("+ Add Member");
+      await act(async () => {
+        fireEvent.click(addBtn);
+      });
+
+      // Dropdown is open, Cancel button visible
+      expect(screen.getByText("Cancel")).toBeDefined();
+
+      await act(async () => {
+        fireEvent.click(screen.getByText("Cancel"));
+      });
+
+      // Dropdown closed, "+ Add Member" button is back
+      expect(screen.getByText("+ Add Member")).toBeDefined();
+    });
+
+    it("shows error toast when add member throws network error", async () => {
+      (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error("Network failure"));
+
+      renderChecklist();
+
+      const addBtn = screen.getByText("+ Add Member");
+      await act(async () => {
+        fireEvent.click(addBtn);
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByText("Diana"));
+      });
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: "error",
+            title: "Failed to add member",
+          })
+        );
+      });
+    });
+  });
+
+  describe("count display edge cases", () => {
+    it("shows correct count when all members are present", () => {
+      const allPresent: AttendanceMember[] = [
+        { userId: "m-1", name: "Alice", present: true },
+        { userId: "m-2", name: "Bob", present: true },
+        { userId: "m-3", name: "Charlie", present: true },
+      ];
+      renderChecklist({ members: allPresent });
+      expect(screen.getByText("3 / 3 present")).toBeDefined();
+    });
+
+    it("shows '0 / N present' when all members are absent", () => {
+      const allAbsent: AttendanceMember[] = [
+        { userId: "m-1", name: "Alice", present: false },
+        { userId: "m-2", name: "Bob", present: false },
+        { userId: "m-3", name: "Charlie", present: false },
+      ];
+      renderChecklist({ members: allAbsent });
+      expect(screen.getByText("0 / 3 present")).toBeDefined();
+    });
+
+    it("shows '0 / N present' when all members have null (unmarked)", () => {
+      const allNull: AttendanceMember[] = [
+        { userId: "m-1", name: "Alice", present: null },
+        { userId: "m-2", name: "Bob", present: null },
+      ];
+      renderChecklist({ members: allNull });
+      expect(screen.getByText("0 / 2 present")).toBeDefined();
+    });
+  });
+
+  describe("toggle from explicit false to true", () => {
+    it("toggles member from false to true correctly", async () => {
+      mockFetchSuccess();
+      const membersWithFalse: AttendanceMember[] = [
+        { userId: "m-1", name: "Alice", present: false },
+      ];
+      renderChecklist({ members: membersWithFalse });
+
+      expect(screen.getByText("0 / 1 present")).toBeDefined();
+
+      const aliceRow = screen.getByTestId("attendance-row-m-1");
+      await act(async () => {
+        fireEvent.click(aliceRow);
+      });
+
+      // Optimistic update: should now be 1/1
+      expect(screen.getByText("1 / 1 present")).toBeDefined();
+
+      // Should send present: true
+      expect(global.fetch).toHaveBeenCalledWith(
+        "/api/sessions/session-1/attendance",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ userId: "m-1", present: true }),
+        })
+      );
+    });
+  });
+
+  describe("large member list", () => {
+    it("renders all members in a large list", () => {
+      const largeList: AttendanceMember[] = Array.from({ length: 20 }, (_, i) => ({
+        userId: `m-${i + 1}`,
+        name: `Member ${i + 1}`,
+        present: i % 2 === 0,
+      }));
+      renderChecklist({ members: largeList });
+
+      // 10 out of 20 are present (even indices)
+      expect(screen.getByText("10 / 20 present")).toBeDefined();
+
+      // All members rendered
+      for (let i = 1; i <= 20; i++) {
+        expect(screen.getByText(`Member ${i}`)).toBeDefined();
+      }
+    });
+  });
+
+  describe("fetch call count", () => {
+    it("calls fetch exactly once per tap", async () => {
+      mockFetchSuccess();
+      renderChecklist();
+
+      const aliceRow = screen.getByTestId("attendance-row-m-1");
+      await act(async () => {
+        fireEvent.click(aliceRow);
+      });
+
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+  });
 });
