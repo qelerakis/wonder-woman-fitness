@@ -23,7 +23,7 @@ export function PaymentBanner({
 
   if (status === "GRACE_PERIOD") {
     return (
-      <div className="border-b border-warning-700/30 bg-warning-700/10 px-4 py-3">
+      <div role="alert" className="border-b border-warning-700/30 bg-warning-700/10 px-4 py-3">
         <div className="mx-auto flex max-w-7xl items-center gap-3">
           <svg
             className="h-5 w-5 shrink-0 text-warning-500"
@@ -49,7 +49,7 @@ export function PaymentBanner({
 
   // LOCKED status
   return (
-    <div className="border-b border-error-700/30 bg-error-700/10 px-4 py-3">
+    <div role="alert" className="border-b border-error-700/30 bg-error-700/10 px-4 py-3">
       <div className="mx-auto flex max-w-7xl items-center gap-3">
         <svg
           className="h-5 w-5 shrink-0 text-error-500"

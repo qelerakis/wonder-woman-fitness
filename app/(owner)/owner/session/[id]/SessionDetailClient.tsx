@@ -158,19 +158,23 @@ export function SessionDetailClient({
   }
 
   async function handleToggleVoting(): Promise<void> {
-    const res = await fetch(`/api/sessions/${session.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ votingEnabled: !session.votingEnabled }),
-    });
-    if (res.ok) {
-      addToast({
-        type: "success",
-        title: session.votingEnabled ? "Voting disabled" : "Voting enabled",
+    try {
+      const res = await fetch(`/api/sessions/${session.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ votingEnabled: !session.votingEnabled }),
       });
-      router.refresh();
-    } else {
-      addToast({ type: "error", title: "Failed to update voting" });
+      if (res.ok) {
+        addToast({
+          type: "success",
+          title: session.votingEnabled ? "Voting disabled" : "Voting enabled",
+        });
+        router.refresh();
+      } else {
+        addToast({ type: "error", title: "Failed to update voting" });
+      }
+    } catch {
+      addToast({ type: "error", title: "Network error" });
     }
   }
 

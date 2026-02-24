@@ -111,7 +111,7 @@ export function Header({
                     className="fixed inset-0 z-10"
                     onClick={() => setUserMenuOpen(false)}
                   />
-                  <div className="absolute right-0 z-20 mt-1 w-56 rounded-lg border border-surface-700 bg-surface-800 py-1 shadow-xl">
+                  <div role="menu" className="absolute right-0 z-20 mt-1 w-56 rounded-lg border border-surface-700 bg-surface-800 py-1 shadow-xl">
                     <div className="border-b border-surface-700 px-4 py-2.5">
                       <p className="text-sm font-medium text-surface-100 truncate">
                         {userName}
@@ -120,6 +120,7 @@ export function Header({
                     </div>
                     {userRole !== "OWNER" && (
                       <Link
+                        role="menuitem"
                         href="/member/profile"
                         onClick={() => setUserMenuOpen(false)}
                         className="flex w-full items-center gap-2 px-4 py-2 text-sm text-surface-300 hover:bg-surface-700 hover:text-surface-100"
@@ -131,6 +132,7 @@ export function Header({
                       </Link>
                     )}
                     <button
+                      role="menuitem"
                       onClick={() => signOut({ callbackUrl: "/login" })}
                       className="flex w-full items-center gap-2 px-4 py-2 text-sm text-error-400 hover:bg-surface-700 hover:text-error-300"
                     >
