@@ -245,19 +245,8 @@ describe("AttendanceChecklist", () => {
       expect(screen.getByText("Diana")).toBeDefined();
       expect(screen.getByText("Eve")).toBeDefined();
 
-      // These should already be visible as member rows, not duplicated in dropdown
-      // The dropdown should NOT have Alice, Bob, or Charlie listed as options to add
-      const dropdownItems = screen
-        .getAllByRole("button")
-        .filter(
-          (btn) =>
-            btn.textContent === "Alice" ||
-            btn.textContent === "Bob" ||
-            btn.textContent === "Charlie"
-        );
-      // We expect 0 dropdown buttons with these names (the row buttons exist but we check for dropdown-specific ones)
-      // Actually, the member rows are buttons too. Let's check specifically that only Diana and Eve are in the add dropdown
-      // by verifying we can find them as new options
+      // Verify Diana and Eve are available in the add dropdown
+      // (Alice, Bob, Charlie are already in the attendance list so they shouldn't appear as add options)
     });
 
     it("shows 'All members are already in the list' when no available members", async () => {
