@@ -15,8 +15,9 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
-    setError("");
     setLoading(true);
+    setError("");
+    setShowVerificationHint(false);
 
     try {
       const result = await signIn("credentials", {
@@ -28,7 +29,6 @@ export default function LoginPage() {
       if (result?.error) {
         setError("Invalid email or password");
         setShowVerificationHint(true);
-        setLoading(false);
         return;
       }
 
@@ -48,6 +48,7 @@ export default function LoginPage() {
       }
     } catch {
       setError("An unexpected error occurred");
+    } finally {
       setLoading(false);
     }
   }
@@ -59,7 +60,7 @@ export default function LoginPage() {
       </h2>
 
       {error && (
-        <div className="mb-4 rounded-lg bg-error-50 p-3 text-sm text-error-700">
+        <div className="mb-4 rounded-lg border border-error-700/30 bg-error-700/20 p-3 text-sm text-error-500" role="alert">
           {error}
         </div>
       )}
@@ -93,6 +94,7 @@ export default function LoginPage() {
               setShowVerificationHint(false);
             }}
             required
+            autoComplete="email"
             className="w-full rounded-lg border border-surface-600 bg-surface-800 px-4 py-2.5 text-surface-100 placeholder-surface-500 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             placeholder="you@example.com"
           />
@@ -114,6 +116,7 @@ export default function LoginPage() {
               setShowVerificationHint(false);
             }}
             required
+            autoComplete="current-password"
             className="w-full rounded-lg border border-surface-600 bg-surface-800 px-4 py-2.5 text-surface-100 placeholder-surface-500 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             placeholder="Enter your password"
           />

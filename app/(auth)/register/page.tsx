@@ -101,7 +101,7 @@ export default function RegisterPage() {
       </h2>
 
       {serverError && (
-        <div className="mb-4 rounded-lg bg-error-50 p-3 text-sm text-error-700">
+        <div className="mb-4 rounded-lg border border-error-700/30 bg-error-700/20 p-3 text-sm text-error-500" role="alert">
           {serverError}
         </div>
       )}
@@ -121,11 +121,12 @@ export default function RegisterPage() {
             value={formData.name}
             onChange={handleChange}
             required
+            autoComplete="name"
             className="w-full rounded-lg border border-surface-600 bg-surface-800 px-4 py-2.5 text-surface-100 placeholder-surface-500 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             placeholder="Your full name"
           />
           {errors.name && (
-            <p className="mt-1 text-sm text-error-500">{errors.name}</p>
+            <p className="mt-1 text-sm text-error-500" role="alert">{errors.name}</p>
           )}
         </div>
 
@@ -142,6 +143,7 @@ export default function RegisterPage() {
             type="tel"
             value={formData.phone}
             onChange={handleChange}
+            autoComplete="tel"
             className="w-full rounded-lg border border-surface-600 bg-surface-800 px-4 py-2.5 text-surface-100 placeholder-surface-500 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             placeholder="+389 70 123 456"
           />
@@ -161,11 +163,12 @@ export default function RegisterPage() {
             value={formData.email}
             onChange={handleChange}
             required
+            autoComplete="email"
             className="w-full rounded-lg border border-surface-600 bg-surface-800 px-4 py-2.5 text-surface-100 placeholder-surface-500 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             placeholder="you@example.com"
           />
           {errors.email && (
-            <p className="mt-1 text-sm text-error-500">{errors.email}</p>
+            <p className="mt-1 text-sm text-error-500" role="alert">{errors.email}</p>
           )}
         </div>
 
@@ -183,11 +186,12 @@ export default function RegisterPage() {
             value={formData.password}
             onChange={handleChange}
             required
+            autoComplete="new-password"
             className="w-full rounded-lg border border-surface-600 bg-surface-800 px-4 py-2.5 text-surface-100 placeholder-surface-500 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             placeholder="8+ characters, 1 number, 1 special"
           />
           {errors.password && (
-            <p className="mt-1 text-sm text-error-500">{errors.password}</p>
+            <p className="mt-1 text-sm text-error-500" role="alert">{errors.password}</p>
           )}
         </div>
 
@@ -205,11 +209,12 @@ export default function RegisterPage() {
             value={formData.confirmPassword}
             onChange={handleChange}
             required
+            autoComplete="new-password"
             className="w-full rounded-lg border border-surface-600 bg-surface-800 px-4 py-2.5 text-surface-100 placeholder-surface-500 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             placeholder="Confirm your password"
           />
           {errors.confirmPassword && (
-            <p className="mt-1 text-sm text-error-500">
+            <p className="mt-1 text-sm text-error-500" role="alert">
               {errors.confirmPassword}
             </p>
           )}
