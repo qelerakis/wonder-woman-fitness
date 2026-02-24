@@ -6,6 +6,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Wonder Woman Fitness",
   description: "Studio management platform for Wonder Woman Fitness",
+  openGraph: {
+    title: "Wonder Woman Fitness",
+    description: "Studio management platform for Wonder Woman Fitness",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
