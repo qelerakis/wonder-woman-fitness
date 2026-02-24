@@ -61,9 +61,9 @@ export function MemberAttendanceTable({
             </tr>
           </thead>
           <tbody>
-            {members.map((member) => (
+            {members.map((member, index) => (
               <tr
-                key={member.name}
+                key={`${member.name}-${index}`}
                 className="border-b border-surface-700 last:border-b-0"
               >
                 <td className="py-2 text-surface-300">{member.name}</td>

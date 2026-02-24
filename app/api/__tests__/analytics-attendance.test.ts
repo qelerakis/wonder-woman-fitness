@@ -291,7 +291,7 @@ describe("GET /api/analytics — attendance metrics", () => {
     expect(response.headers.get("Content-Type")).toBe("text/csv");
     const csv = await response.text();
 
-    expect(csv).toContain("Attendance - Sessions Tracked,1");
+    expect(csv).toContain("Attendance - Weeks Tracked,1");
     expect(csv).toContain("Attendance - Avg Show-up Rate,50%");
     expect(csv).toContain("Vote Reliability,100%");
   });
@@ -475,7 +475,7 @@ describe("GET /api/analytics — attendance edge cases", () => {
     const csv = await response.text();
 
     // Verify attendance-specific CSV rows exist
-    expect(csv).toContain("Attendance - Sessions Tracked,2");
+    expect(csv).toContain("Attendance - Weeks Tracked,2");
     expect(csv).toContain("Vote Reliability,");
     expect(csv).toContain("Attendance - Avg Show-up Rate,");
   });

@@ -214,7 +214,15 @@ export async function GET(
     // Fetch attendance records with user details
     const records = await prisma.attendanceRecord.findMany({
       where: { sessionId },
-      include: {
+      select: {
+        id: true,
+        sessionId: true,
+        userId: true,
+        present: true,
+        markedById: true,
+        markedAt: true,
+        createdAt: true,
+        updatedAt: true,
         user: {
           select: { id: true, name: true, email: true },
         },

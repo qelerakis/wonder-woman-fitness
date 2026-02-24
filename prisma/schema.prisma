@@ -164,14 +164,14 @@ model AttendanceRecord {
   sessionId  String
   userId     String
   present    Boolean  @default(false)
-  markedById String
+  markedById String?
   markedAt   DateTime
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   session  Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   user     User    @relation("AttendanceUser", fields: [userId], references: [id], onDelete: Cascade)
-  markedBy User    @relation("AttendanceMarkedBy", fields: [markedById], references: [id])
+  markedBy User?   @relation("AttendanceMarkedBy", fields: [markedById], references: [id], onDelete: SetNull)
 
   @@unique([sessionId, userId])
   @@index([sessionId])
