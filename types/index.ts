@@ -24,6 +24,8 @@ import {
   MAX_RESET_TOKEN_LENGTH,
   MAX_BROADCAST_TITLE_LENGTH,
   MAX_BROADCAST_BODY_LENGTH,
+  SLOT_START_HOUR,
+  SLOT_END_HOUR,
 } from '@/lib/constants';
 
 // ===== AUTHENTICATION SCHEMAS =====
@@ -82,7 +84,10 @@ export const PaymentSchema = z.object({
   periodStart: z.string().date('Invalid date format'),
   periodEnd: z.string().date('Invalid date format'),
   notes: z.string().max(MAX_PAYMENT_NOTES_LENGTH, `Notes too long (max ${MAX_PAYMENT_NOTES_LENGTH} chars)`).optional(),
-}).strict();
+}).strict().refine(
+  (data) => data.periodStart <= data.periodEnd,
+  { message: "periodStart must not be after periodEnd", path: ["periodEnd"] }
+);
 
 export type PaymentInput = z.infer<typeof PaymentSchema>;
 
@@ -104,7 +109,7 @@ export type SessionCreateInput = z.infer<typeof SessionCreateSchema>;
 
 export const OneOffSessionCreateSchema = z.object({
   customDay: z.number().int().min(1).max(7, 'Day of week must be 1-7'),
-  customStartHour: z.number().int().min(7).max(22, 'Start hour must be 7-22'),
+  customStartHour: z.number().int().min(SLOT_START_HOUR).max(SLOT_END_HOUR, `Start hour must be ${SLOT_START_HOUR}-${SLOT_END_HOUR}`),
   weekDate: z.string().date('Invalid date format'),
 }).strict();
 
@@ -193,7 +198,7 @@ export type NotificationCreateInput = z.infer<typeof NotificationCreateSchema>;
 
 export const RecurringSlotSchema = z.object({
   dayOfWeek: z.number().int().min(1).max(7, 'Day of week must be 1-7 (ISO: Mon=1, Sun=7)'),
-  startHour: z.number().int().min(7).max(22, 'Start hour must be 7-22'),
+  startHour: z.number().int().min(SLOT_START_HOUR).max(SLOT_END_HOUR, `Start hour must be ${SLOT_START_HOUR}-${SLOT_END_HOUR}`),
 }).strict();
 
 export type RecurringSlotInput = z.infer<typeof RecurringSlotSchema>;

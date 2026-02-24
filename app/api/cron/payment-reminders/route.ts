@@ -101,7 +101,13 @@ export async function GET(req: Request): Promise<Response> {
 
       // Day 1 or 7: send payment reminder
       if (paymentStatus === "GRACE_PERIOD") {
-        const daysLeft = GRACE_PERIOD_DAYS - dayOfMonth + 1;
+        let daysLeft: number;
+        if (member.status === "TRIAL" && member.trialEndsAt) {
+          const msLeft = member.trialEndsAt.getTime() - today.getTime();
+          daysLeft = Math.max(0, Math.ceil(msLeft / (24 * 60 * 60 * 1000)));
+        } else {
+          daysLeft = Math.max(0, GRACE_PERIOD_DAYS - dayOfMonth + 1);
+        }
         await dispatchNotification({
           userId: member.id,
           type: "PAYMENT_REMINDER",

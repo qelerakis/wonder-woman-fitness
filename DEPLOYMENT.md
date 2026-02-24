@@ -356,9 +356,25 @@ Run through this checklist to verify everything works:
 
 ### Payment Lockout Not Working
 - Verify `getPaymentStatus()` is called on every member request
-- Check middleware is enforcing lockout (returns 403)
+- Verify the member layout Server Component (app/(member)/layout.tsx) calls getPaymentStatus() and redirects to /member/locked when status is LOCKED
+- Note: Middleware does NOT enforce lockout (edge runtime cannot access Prisma). Lockout is enforced at the layout level.
 - Verify `GRACE_PERIOD_DAYS` constant is set correctly (10 days)
 - Test with manual date change (create member with old joinDate)
+
+---
+
+## Known Limitations
+
+### In-Memory Rate Limiting
+The rate limiter (`lib/rate-limit.ts`) uses an in-memory `Map` for storing request counts. On Vercel's serverless platform, each function instance has its own memory space. This means:
+
+- Rate limits provide **per-instance burst protection** only
+- Concurrent requests to different instances may bypass the limit
+- Rate limit state is lost on cold starts
+
+**For a single-gym app with low traffic, this is acceptable.** If you need stronger protection:
+- Use [Upstash Redis](https://upstash.com/) with `@upstash/ratelimit` (free tier: 10,000 requests/day)
+- Or enable Vercel WAF/Firewall rules (Pro plan) to rate-limit at the edge
 
 ---
 

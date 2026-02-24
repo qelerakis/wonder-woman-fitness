@@ -13,7 +13,7 @@ export function LockoutScreen({
 }: LockoutScreenProps): React.ReactElement {
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-4">
-      <div className="max-w-md text-center">
+      <div role="alert" className="max-w-md text-center">
         {/* Lock icon */}
         <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-error-700/20 border border-error-700/30">
           <svg

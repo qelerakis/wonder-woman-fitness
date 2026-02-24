@@ -23,9 +23,10 @@ import type { UserRole } from './constants';
  * @returns The Monday of that week at midnight UTC
  */
 export function getWeekStart(date: Date): Date {
-  // date-fns startOfWeek with weekStartsOn: 1 gives Monday
+  // date-fns startOfWeek with weekStartsOn: 1 gives Monday in local timezone
   const monday = startOfWeek(date, { weekStartsOn: 1 });
-  // Normalize to midnight UTC
+  // Use local-time getters because startOfWeek returns a local-timezone date.
+  // We extract the calendar date (which is the correct Monday) and normalize to midnight UTC.
   return new Date(
     Date.UTC(monday.getFullYear(), monday.getMonth(), monday.getDate())
   );

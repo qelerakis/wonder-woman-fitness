@@ -93,17 +93,6 @@ export async function POST(
       );
     }
 
-    // Check capacity
-    const currentTargetSize = targetSession.members.length;
-    if (currentTargetSize + memberIds.length > MAX_CLASS_SIZE) {
-      return Response.json(
-        {
-          error: `Target session would exceed max capacity of ${MAX_CLASS_SIZE}. Current: ${currentTargetSize}, Moving: ${memberIds.length}`,
-        },
-        { status: 400 }
-      );
-    }
-
     // Verify all memberIds are in the source session
     const sourceMemberIds = new Set(
       sourceSession.members.map((m) => m.userId)
@@ -122,8 +111,20 @@ export async function POST(
     );
     const membersToMove = memberIds.filter((id) => !targetMemberIds.has(id));
 
-    // Perform the move in a transaction
-    await prisma.$transaction(async (tx) => {
+    // Perform the move in a transaction with capacity check inside to prevent race conditions
+    const txResult = await prisma.$transaction(async (tx) => {
+      // Re-check capacity inside the transaction
+      const currentCount = await tx.sessionMember.count({
+        where: { sessionId: targetSessionId },
+      });
+
+      if (currentCount + membersToMove.length > MAX_CLASS_SIZE) {
+        return {
+          error: `Target session would exceed max capacity of ${MAX_CLASS_SIZE}. Current: ${currentCount}, Moving: ${membersToMove.length}`,
+          status: 400,
+        } as const;
+      }
+
       // Remove from source session
       await tx.sessionMember.deleteMany({
         where: {
@@ -142,7 +143,13 @@ export async function POST(
           skipDuplicates: true,
         });
       }
+
+      return null;
     });
+
+    if (txResult) {
+      return Response.json({ error: txResult.error }, { status: txResult.status });
+    }
 
     // Send notifications (move is final, per CLAUDE.md section 6.3)
     const sourceDayOfWeek = sourceSession.recurringSlot?.dayOfWeek ?? sourceSession.customDay ?? 0;

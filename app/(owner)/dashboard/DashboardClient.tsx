@@ -3,12 +3,27 @@
 import { useState, useCallback } from "react";
 import { format } from "date-fns";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { MetricCard } from "@/components/analytics/MetricCard";
-import { AttendanceChart } from "@/components/analytics/AttendanceChart";
-import { RevenueChart } from "@/components/analytics/RevenueChart";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import type { SlotData } from "@/components/analytics/AttendanceChart";
+
+const AttendanceChart = dynamic(
+  () => import("@/components/analytics/AttendanceChart").then((m) => ({ default: m.AttendanceChart })),
+  {
+    ssr: false,
+    loading: () => <div className="h-64 animate-pulse rounded-xl bg-surface-800" />,
+  }
+);
+
+const RevenueChart = dynamic(
+  () => import("@/components/analytics/RevenueChart").then((m) => ({ default: m.RevenueChart })),
+  {
+    ssr: false,
+    loading: () => <div className="h-64 animate-pulse rounded-xl bg-surface-800" />,
+  }
+);
 
 interface DashboardClientProps {
   totalActive: number;

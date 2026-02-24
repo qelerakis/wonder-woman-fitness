@@ -142,6 +142,7 @@ export function Navigation({
           >
             {link.icon}
             <span className="hidden lg:inline">{link.label}</span>
+            <span className="sr-only lg:hidden">{link.label}</span>
           </Link>
         );
       })}

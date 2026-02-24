@@ -160,7 +160,6 @@ export function WeeklyCalendar({
       <div className="flex flex-col gap-4 md:hidden">
         {days.map(({ dayNumber, date, isToday }) => {
           const daySessions = grouped.get(dayNumber) || [];
-          if (daySessions.length === 0) return null;
           return (
             <div key={dayNumber}>
               <div
@@ -189,17 +188,23 @@ export function WeeklyCalendar({
                   </span>
                 )}
               </div>
-              <div className="flex flex-col gap-2">
-                {daySessions.map((session) => (
-                  <SessionCard
-                    key={session.id}
-                    session={session}
-                    basePath={basePath}
-                    showVotingIndicator={showVotingIndicator}
-                    currentUserId={currentUserId}
-                  />
-                ))}
-              </div>
+              {daySessions.length > 0 ? (
+                <div className="flex flex-col gap-2">
+                  {daySessions.map((session) => (
+                    <SessionCard
+                      key={session.id}
+                      session={session}
+                      basePath={basePath}
+                      showVotingIndicator={showVotingIndicator}
+                      currentUserId={currentUserId}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-surface-700 bg-surface-900/50 p-3 text-center text-sm text-surface-500">
+                  No sessions
+                </div>
+              )}
             </div>
           );
         })}

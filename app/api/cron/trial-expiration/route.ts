@@ -11,7 +11,7 @@
 import { prisma } from "@/lib/prisma";
 import { dispatchNotification } from "@/lib/notifications";
 import { TRIAL_EXPIRATION_WARNING_DAYS } from "@/lib/constants";
-import { addDays } from "date-fns";
+import { addDays, format } from "date-fns";
 import { verifyCronSecret } from "@/lib/cron-auth";
 import { cronLimiter, getClientIp, createRateLimitResponse } from "@/lib/rate-limit";
 
@@ -67,7 +67,7 @@ export async function GET(req: Request): Promise<Response> {
         userId: owner.id,
         type: "TRIAL_EXPIRING",
         title: `Payment deadline approaching: ${member.name}`,
-        body: `${member.name}'s payment deadline is ${member.trialEndsAt?.toLocaleDateString()}. They will be locked out if payment is not received.`,
+        body: `${member.name}'s payment deadline is ${member.trialEndsAt ? format(member.trialEndsAt, "MMM d, yyyy") : "unknown"}. They will be locked out if payment is not received.`,
       });
 
       // Notify member
@@ -75,7 +75,7 @@ export async function GET(req: Request): Promise<Response> {
         userId: member.id,
         type: "TRIAL_EXPIRING",
         title: "Payment deadline approaching",
-        body: `Your payment is due by ${member.trialEndsAt?.toLocaleDateString()}. Your account will be locked if payment is not received.`,
+        body: `Your payment is due by ${member.trialEndsAt ? format(member.trialEndsAt, "MMM d, yyyy") : "unknown"}. Your account will be locked if payment is not received.`,
       });
 
       warnings++;

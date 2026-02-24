@@ -94,54 +94,75 @@ export async function POST(req: Request): Promise<Response> {
       );
     }
 
-    // Check if session is full (coming votes >= MAX_CLASS_SIZE)
-    // Only block "Coming" votes — members can still vote "Not Coming" to free a spot
+    // "Coming" votes need a transaction to prevent race conditions on capacity
     if (attending) {
-      const comingCount = await prisma.vote.count({
-        where: { sessionId, attending: true },
-      });
+      const result = await prisma.$transaction(async (tx) => {
+        // 1. Capacity check — atomic with the upsert
+        const comingCount = await tx.vote.count({
+          where: { sessionId, attending: true },
+        });
 
-      if (comingCount >= MAX_CLASS_SIZE) {
-        return Response.json(
-          { error: "This session is full" },
-          { status: 400 }
-        );
-      }
-    }
+        if (comingCount >= MAX_CLASS_SIZE) {
+          return { error: "This session is full", status: 400 } as const;
+        }
 
-    // One-Coming-per-day: if voting Coming, check no other Coming vote on same day
-    if (attending) {
-      const targetDay = targetSession.recurringSlot?.dayOfWeek
-        ?? targetSession.customDay;
+        // 2. One-Coming-per-day check
+        const targetDay = targetSession.recurringSlot?.dayOfWeek
+          ?? targetSession.customDay;
 
-      if (targetDay != null) {
-        const existingComing = await prisma.vote.findFirst({
-          where: {
-            userId,
-            attending: true,
-            sessionId: { not: sessionId },
-            session: {
-              weekDate: targetSession.weekDate,
-              // Exclude cancelled sessions — votes on them shouldn't block new same-day votes
-              status: { not: "CANCELLED" },
-              OR: [
-                { recurringSlot: { dayOfWeek: targetDay } },
-                { customDay: targetDay },
-              ],
+        if (targetDay != null) {
+          const existingComing = await tx.vote.findFirst({
+            where: {
+              userId,
+              attending: true,
+              sessionId: { not: sessionId },
+              session: {
+                weekDate: targetSession.weekDate,
+                // Exclude cancelled sessions — votes on them shouldn't block new same-day votes
+                status: { not: "CANCELLED" },
+                OR: [
+                  { recurringSlot: { dayOfWeek: targetDay } },
+                  { customDay: targetDay },
+                ],
+              },
             },
+          });
+
+          if (existingComing) {
+            return {
+              error: "You're already marked as coming to another session on this day. Change that vote first.",
+              status: 400,
+            } as const;
+          }
+        }
+
+        // 3. Upsert vote (can change vote before deadline)
+        const vote = await tx.vote.upsert({
+          where: {
+            sessionId_userId: { sessionId, userId },
+          },
+          update: {
+            attending,
+            votedAt: new Date(),
+          },
+          create: {
+            sessionId,
+            userId,
+            attending,
           },
         });
 
-        if (existingComing) {
-          return Response.json(
-            { error: "You're already marked as coming to another session on this day. Change that vote first." },
-            { status: 400 }
-          );
-        }
+        return { data: vote };
+      });
+
+      if ("error" in result) {
+        return Response.json({ error: result.error }, { status: result.status });
       }
+
+      return Response.json({ data: result.data }, { status: 201 });
     }
 
-    // Upsert vote (can change vote before deadline)
+    // "Not coming" case — no capacity concern, no transaction needed
     const vote = await prisma.vote.upsert({
       where: {
         sessionId_userId: { sessionId, userId },

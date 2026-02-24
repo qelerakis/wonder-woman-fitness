@@ -1,11 +1,6 @@
 /**
- * Voting Deadline Cron — Hourly
- *
- * GET /api/cron/voting-deadline
- * Secured with CRON_SECRET header.
- *
+ * Voting Deadline Cron — Runs hourly
  * Locks voting on sessions where the deadline has passed.
- * This is a safety net — voting is also checked at request time in the votes API.
  */
 
 import { prisma } from "@/lib/prisma";

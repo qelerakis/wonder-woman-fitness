@@ -82,20 +82,17 @@ export function NotificationsClient({
   async function handleMarkAllRead(): Promise<void> {
     setLoading(true);
     try {
-      const unread = notifications.filter((n) => !n.read);
-      await Promise.all(
-        unread.map((n) =>
-          fetch(`/api/notifications/${n.id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ read: true }),
-          })
-        )
-      );
-      addToast({ type: "success", title: "All marked as read" });
-      router.refresh();
+      const res = await fetch("/api/notifications/mark-all-read", {
+        method: "POST",
+      });
+      if (res.ok) {
+        addToast({ type: "success", title: "All marked as read" });
+        router.refresh();
+      } else {
+        addToast({ type: "error", title: "Failed to mark all as read" });
+      }
     } catch {
-      addToast({ type: "error", title: "Failed to mark all as read" });
+      addToast({ type: "error", title: "Network error" });
     } finally {
       setLoading(false);
     }
