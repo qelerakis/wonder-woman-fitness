@@ -12,6 +12,7 @@ import { getPaymentStatus } from "@/lib/payment-logic";
 import type { PaymentRecord } from "@/lib/payment-logic";
 import { z } from "zod";
 import { authReadLimiter, authWriteLimiter, createRateLimitResponse } from "@/lib/rate-limit";
+import { MAX_NAME_LENGTH, MAX_EMAIL_LENGTH, MAX_PHONE_LENGTH } from "@/lib/constants";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -113,15 +114,15 @@ export async function GET(
 
 // Schema for owner-level updates (broader permissions)
 const OwnerMemberUpdateSchema = z.object({
-  name: z.string().min(1).optional(),
-  email: z.string().email().optional(),
-  phone: z.string().min(1).optional(),
+  name: z.string().min(1).max(MAX_NAME_LENGTH).optional(),
+  email: z.string().email().max(MAX_EMAIL_LENGTH).optional(),
+  phone: z.string().min(1).max(MAX_PHONE_LENGTH).optional(),
   status: z.enum(["TRIAL", "ACTIVE", "DEPARTED"]).optional(),
   monthlyRate: z.number().positive().optional(),
   overrideActive: z.boolean().optional(),
   departedAt: z.string().datetime().optional(),
-  departReason: z.string().optional(),
-});
+  departReason: z.string().max(500).optional(),
+}).strict();
 
 export async function PATCH(
   req: Request,

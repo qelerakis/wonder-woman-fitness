@@ -10,6 +10,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { authReadLimiter, authWriteLimiter, createRateLimitResponse } from "@/lib/rate-limit";
+import { MAX_PAYMENT_NOTES_LENGTH } from "@/lib/constants";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -75,8 +76,8 @@ const PaymentUpdateSchema = z.object({
   paidAt: z.string().datetime().optional(),
   periodStart: z.string().date().optional(),
   periodEnd: z.string().date().optional(),
-  notes: z.string().optional(),
-});
+  notes: z.string().max(MAX_PAYMENT_NOTES_LENGTH).optional(),
+}).strict();
 
 export async function PATCH(
   req: Request,
