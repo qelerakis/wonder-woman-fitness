@@ -25,6 +25,67 @@ const RevenueChart = dynamic(
   }
 );
 
+const MemberAttendanceTable = dynamic(
+  () => import("@/components/analytics/MemberAttendanceTable").then((m) => ({ default: m.MemberAttendanceTable })),
+  {
+    ssr: false,
+    loading: () => <div className="h-64 animate-pulse rounded-xl bg-surface-800" />,
+  }
+);
+
+const SlotAttendanceChart = dynamic(
+  () => import("@/components/analytics/SlotAttendanceChart").then((m) => ({ default: m.SlotAttendanceChart })),
+  {
+    ssr: false,
+    loading: () => <div className="h-64 animate-pulse rounded-xl bg-surface-800" />,
+  }
+);
+
+const VoteVsActualCards = dynamic(
+  () => import("@/components/analytics/VoteVsActualCards").then((m) => ({ default: m.VoteVsActualCards })),
+  {
+    ssr: false,
+    loading: () => <div className="h-64 animate-pulse rounded-xl bg-surface-800" />,
+  }
+);
+
+const AttendanceTrendChart = dynamic(
+  () => import("@/components/analytics/AttendanceTrendChart").then((m) => ({ default: m.AttendanceTrendChart })),
+  {
+    ssr: false,
+    loading: () => <div className="h-64 animate-pulse rounded-xl bg-surface-800" />,
+  }
+);
+
+interface MemberRate {
+  name: string;
+  expected: number;
+  attended: number;
+  rate: number;
+}
+
+interface SlotRate {
+  day: string;
+  hour: number;
+  avgPresent: number;
+  avgExpected: number;
+  showUpRate: number;
+  sessionCount: number;
+}
+
+interface VoteVsActualData {
+  totalVotedComing: number;
+  totalActuallyAttended: number;
+  reliability: number;
+}
+
+interface TrendEntry {
+  week: string;
+  rate: number;
+  present: number;
+  total: number;
+}
+
 interface DashboardClientProps {
   totalActive: number;
   trialCount: number;
@@ -37,6 +98,10 @@ interface DashboardClientProps {
   popularSlots: SlotData[];
   initialMonth: number;  // 0-11
   initialYear: number;   // e.g. 2026
+  initialMemberRates: MemberRate[];
+  initialSlotRates: SlotRate[];
+  initialVoteVsActual: VoteVsActualData;
+  initialAttendanceTrend: TrendEntry[];
 }
 
 function formatCurrency(amount: number): string {
@@ -56,6 +121,10 @@ export function DashboardClient(props: DashboardClientProps): React.ReactElement
     popularSlots: initialPopularSlots,
     initialMonth,
     initialYear,
+    initialMemberRates,
+    initialSlotRates,
+    initialVoteVsActual,
+    initialAttendanceTrend,
   } = props;
 
   const { addToast } = useToast();
@@ -73,6 +142,12 @@ export function DashboardClient(props: DashboardClientProps): React.ReactElement
   const [gracePeriodCount, setGracePeriodCount] = useState(initialGracePeriodCount);
   const [lockedCount, setLockedCount] = useState(initialLockedCount);
   const [popularSlots, setPopularSlots] = useState(initialPopularSlots);
+
+  // Attendance analytics state
+  const [memberRates, setMemberRates] = useState<MemberRate[]>(initialMemberRates);
+  const [slotRates, setSlotRates] = useState<SlotRate[]>(initialSlotRates);
+  const [voteVsActual, setVoteVsActual] = useState<VoteVsActualData>(initialVoteVsActual);
+  const [attendanceTrend, setAttendanceTrend] = useState<TrendEntry[]>(initialAttendanceTrend);
 
   const [currentMonth] = useState(() => new Date().getMonth());
   const [currentYear] = useState(() => new Date().getFullYear());
@@ -111,6 +186,12 @@ export function DashboardClient(props: DashboardClientProps): React.ReactElement
             sessionCount: s.sessionCount,
           }))
         );
+        if (data.attendance) {
+          setMemberRates(data.attendance.memberRates || []);
+          setSlotRates(data.attendance.slotRates || []);
+          setVoteVsActual(data.attendance.voteVsActual || { totalVotedComing: 0, totalActuallyAttended: 0, reliability: 0 });
+          setAttendanceTrend(data.attendance.trend || []);
+        }
       } else {
         addToast({ type: "error", title: "Failed to load dashboard data" });
       }
@@ -246,6 +327,17 @@ export function DashboardClient(props: DashboardClientProps): React.ReactElement
           privateSessionRevenue={privateRevenue}
           totalRevenue={totalRevenue}
         />
+      </div>
+
+      {/* Attendance Analytics */}
+      <div className={`space-y-6 transition-opacity ${loading ? "opacity-50" : ""}`}>
+        <h2 className="text-lg font-semibold text-surface-100">Attendance Tracking</h2>
+        <VoteVsActualCards data={voteVsActual} />
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <SlotAttendanceChart slots={slotRates} />
+          <AttendanceTrendChart trend={attendanceTrend} />
+        </div>
+        <MemberAttendanceTable members={memberRates} />
       </div>
 
       {/* Quick actions */}
