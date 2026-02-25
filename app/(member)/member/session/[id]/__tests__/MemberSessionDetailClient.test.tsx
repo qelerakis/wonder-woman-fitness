@@ -2272,5 +2272,152 @@ describe("MemberSessionDetailClient", () => {
       expect(screen.getByText("0 assigned")).toBeTruthy();
       expect(screen.getByText("No members assigned yet")).toBeTruthy();
     });
+
+    it("shows correct count for single assigned member", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingEnabled: false,
+            assignedMemberNames: ["Alice"],
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.getByText("1 assigned")).toBeTruthy();
+      expect(screen.getByText("Alice")).toBeTruthy();
+    });
+
+    it("uppercases avatar initials for lowercase names", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingEnabled: false,
+            assignedMemberNames: ["alice smith"],
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.getByText("A")).toBeTruthy();
+      expect(screen.getByText("alice smith")).toBeTruthy();
+    });
+
+    it("Members card and Who's Coming card are mutually exclusive", () => {
+      // Non-voting session: Members card should show, Who's Coming should NOT
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingEnabled: false,
+            assignedMemberNames: ["Alice", "Bob"],
+            comingMemberNames: [],
+            votesCount: { coming: 0 },
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.getByText("Members")).toBeTruthy();
+      expect(screen.getByText("2 assigned")).toBeTruthy();
+      expect(screen.queryByText("Who's Coming")).toBeNull();
+    });
+
+    it("Members card still shows when session is cancelled (non-voting, assigned)", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingEnabled: false,
+            status: "CANCELLED",
+            assignedMemberNames: ["Alice", "Bob"],
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.getByText("Members")).toBeTruthy();
+      expect(screen.getByText("Alice")).toBeTruthy();
+      expect(screen.getByText("Bob")).toBeTruthy();
+    });
+
+    it("Members card coexists with Trainers card", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingEnabled: false,
+            assignedMemberNames: ["Alice"],
+            trainerNames: ["Coach Ana"],
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.getByText("Members")).toBeTruthy();
+      expect(screen.getByText("Alice")).toBeTruthy();
+      expect(screen.getByText("Trainers")).toBeTruthy();
+      expect(screen.getByText("Coach Ana")).toBeTruthy();
+    });
+
+    it("avatar initials use purple styling (bg-primary-700)", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingEnabled: false,
+            assignedMemberNames: ["Diana"],
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      const avatarEl = screen.getByText("D");
+      expect(avatarEl.className).toContain("bg-primary-700");
+      // Should NOT use the green success color used by Who's Coming
+      expect(avatarEl.className).not.toContain("bg-success-700");
+    });
+
+    it("renders multiple members with the same initial correctly", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingEnabled: false,
+            assignedMemberNames: ["Alice", "Ana"],
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.getByText("Alice")).toBeTruthy();
+      expect(screen.getByText("Ana")).toBeTruthy();
+      // Both should have "A" initials
+      const avatarInitials = screen.getAllByText("A");
+      expect(avatarInitials.length).toBe(2);
+    });
   });
 });
