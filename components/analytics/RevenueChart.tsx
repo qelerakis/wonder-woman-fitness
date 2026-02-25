@@ -73,7 +73,7 @@ export function RevenueChart({
               ))}
             </Pie>
             <Tooltip
-              content={({ active, payload }: { active?: boolean; payload?: Array<{ name?: string; value?: number; payload?: { fill?: string } }> }) => {
+              content={({ active, payload }: { active?: boolean; payload?: ReadonlyArray<{ name?: string; value?: number; payload?: { fill?: string } }> }) => {
                 if (!active || !payload || payload.length === 0) return null;
                 const entry = payload[0];
                 const color = entry?.payload?.fill ?? "#f1f5f9";
