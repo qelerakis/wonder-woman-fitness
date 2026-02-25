@@ -1,16 +1,13 @@
 /**
  * Attendance Analytics Components - Unit Tests
  *
- * Tests for MemberAttendanceTable, SlotAttendanceChart,
- * VoteVsActualCards, and AttendanceTrendChart components.
+ * Tests for MemberAttendanceTable and VoteVsActualCards components.
  */
 
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemberAttendanceTable } from "../MemberAttendanceTable";
-import { SlotAttendanceChart } from "../SlotAttendanceChart";
 import { VoteVsActualCards } from "../VoteVsActualCards";
-import { AttendanceTrendChart } from "../AttendanceTrendChart";
 
 // Mock Recharts components to avoid SSR/canvas issues in tests
 vi.mock("recharts", () => ({
@@ -21,10 +18,6 @@ vi.mock("recharts", () => ({
     <div data-testid="bar-chart">{children}</div>
   ),
   Bar: () => null,
-  LineChart: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="line-chart">{children}</div>
-  ),
-  Line: () => null,
   XAxis: () => null,
   YAxis: () => null,
   CartesianGrid: () => null,
@@ -140,56 +133,6 @@ describe("MemberAttendanceTable", () => {
   });
 });
 
-// ===== SlotAttendanceChart =====
-
-describe("SlotAttendanceChart", () => {
-  const sampleSlots = [
-    {
-      day: "Monday",
-      hour: 9,
-      avgPresent: 8,
-      avgExpected: 10,
-      showUpRate: 80,
-      sessionCount: 4,
-    },
-    {
-      day: "Wednesday",
-      hour: 17,
-      avgPresent: 5,
-      avgExpected: 10,
-      showUpRate: 50,
-      sessionCount: 4,
-    },
-  ];
-
-  it("renders the bar chart", () => {
-    render(<SlotAttendanceChart slots={sampleSlots} />);
-
-    expect(screen.getByTestId("bar-chart")).toBeTruthy();
-  });
-
-  it("shows empty state when no slots", () => {
-    render(<SlotAttendanceChart slots={[]} />);
-
-    expect(screen.getByText("No attendance data available")).toBeTruthy();
-  });
-
-  it("renders the card header with correct title", () => {
-    render(<SlotAttendanceChart slots={sampleSlots} />);
-
-    expect(screen.getByText("Slot Show-up Rates")).toBeTruthy();
-    expect(
-      screen.getByText("Average attendance rate by time slot")
-    ).toBeTruthy();
-  });
-
-  it("does not render chart for empty data", () => {
-    render(<SlotAttendanceChart slots={[]} />);
-
-    expect(screen.queryByTestId("bar-chart")).toBeNull();
-  });
-});
-
 // ===== VoteVsActualCards =====
 
 describe("VoteVsActualCards", () => {
@@ -244,41 +187,6 @@ describe("VoteVsActualCards", () => {
     expect(screen.getByText("Voted Coming")).toBeTruthy();
     expect(screen.getByText("Actually Attended")).toBeTruthy();
     expect(screen.getByText("Vote Reliability")).toBeTruthy();
-  });
-});
-
-// ===== AttendanceTrendChart =====
-
-describe("AttendanceTrendChart", () => {
-  const sampleTrend = [
-    { week: "2026-02-03", rate: 75, present: 15, total: 20 },
-    { week: "2026-02-10", rate: 80, present: 16, total: 20 },
-    { week: "2026-02-17", rate: 85, present: 17, total: 20 },
-  ];
-
-  it("renders the line chart", () => {
-    render(<AttendanceTrendChart trend={sampleTrend} />);
-
-    expect(screen.getByTestId("line-chart")).toBeTruthy();
-  });
-
-  it("shows empty state when no trend data", () => {
-    render(<AttendanceTrendChart trend={[]} />);
-
-    expect(screen.getByText("No trend data available")).toBeTruthy();
-  });
-
-  it("renders the card header with correct title", () => {
-    render(<AttendanceTrendChart trend={sampleTrend} />);
-
-    expect(screen.getByText("Attendance Trend")).toBeTruthy();
-    expect(screen.getByText("Weekly show-up rate over time")).toBeTruthy();
-  });
-
-  it("does not render chart for empty data", () => {
-    render(<AttendanceTrendChart trend={[]} />);
-
-    expect(screen.queryByTestId("line-chart")).toBeNull();
   });
 });
 
@@ -368,57 +276,6 @@ describe("MemberAttendanceTable — additional coverage", () => {
   });
 });
 
-// ===== Additional SlotAttendanceChart tests =====
-
-describe("SlotAttendanceChart — formatHour edge cases", () => {
-  it("formats noon (12) as '12PM' in the chart data", () => {
-    render(
-      <SlotAttendanceChart
-        slots={[{ day: "Monday", hour: 12, avgPresent: 5, avgExpected: 10, showUpRate: 50, sessionCount: 1 }]}
-      />
-    );
-    // The chart formats label as "Mon 12PM"
-    expect(screen.getByTestId("bar-chart")).toBeTruthy();
-  });
-
-  it("formats midnight (0) as '12AM' in the chart data", () => {
-    render(
-      <SlotAttendanceChart
-        slots={[{ day: "Saturday", hour: 0, avgPresent: 5, avgExpected: 10, showUpRate: 50, sessionCount: 1 }]}
-      />
-    );
-    expect(screen.getByTestId("bar-chart")).toBeTruthy();
-  });
-
-  it("formats 13 as '1PM' in the chart data", () => {
-    render(
-      <SlotAttendanceChart
-        slots={[{ day: "Tuesday", hour: 13, avgPresent: 5, avgExpected: 10, showUpRate: 50, sessionCount: 1 }]}
-      />
-    );
-    expect(screen.getByTestId("bar-chart")).toBeTruthy();
-  });
-
-  it("formats 9 as '9AM' in the chart data", () => {
-    render(
-      <SlotAttendanceChart
-        slots={[{ day: "Wednesday", hour: 9, avgPresent: 5, avgExpected: 10, showUpRate: 50, sessionCount: 1 }]}
-      />
-    );
-    expect(screen.getByTestId("bar-chart")).toBeTruthy();
-  });
-
-  it("renders multiple slots in the chart", () => {
-    const slots = [
-      { day: "Monday", hour: 9, avgPresent: 8, avgExpected: 10, showUpRate: 80, sessionCount: 4 },
-      { day: "Tuesday", hour: 14, avgPresent: 6, avgExpected: 10, showUpRate: 60, sessionCount: 3 },
-      { day: "Friday", hour: 17, avgPresent: 9, avgExpected: 10, showUpRate: 90, sessionCount: 5 },
-    ];
-    render(<SlotAttendanceChart slots={slots} />);
-    expect(screen.getByTestId("bar-chart")).toBeTruthy();
-  });
-});
-
 // ===== Additional VoteVsActualCards tests =====
 
 describe("VoteVsActualCards — additional coverage", () => {
@@ -471,48 +328,3 @@ describe("VoteVsActualCards — additional coverage", () => {
   });
 });
 
-// ===== Additional AttendanceTrendChart tests =====
-
-describe("AttendanceTrendChart — additional coverage", () => {
-  it("renders a single-week trend", () => {
-    render(
-      <AttendanceTrendChart
-        trend={[{ week: "2026-02-03", rate: 75, present: 15, total: 20 }]}
-      />
-    );
-
-    expect(screen.getByTestId("line-chart")).toBeTruthy();
-  });
-
-  it("renders multiple weeks in order", () => {
-    const multiWeek = [
-      { week: "2026-01-05", rate: 60, present: 12, total: 20 },
-      { week: "2026-01-12", rate: 70, present: 14, total: 20 },
-      { week: "2026-01-19", rate: 80, present: 16, total: 20 },
-      { week: "2026-01-26", rate: 90, present: 18, total: 20 },
-    ];
-    render(<AttendanceTrendChart trend={multiWeek} />);
-
-    expect(screen.getByTestId("line-chart")).toBeTruthy();
-  });
-
-  it("handles trend with 0% rate week", () => {
-    render(
-      <AttendanceTrendChart
-        trend={[{ week: "2026-02-03", rate: 0, present: 0, total: 10 }]}
-      />
-    );
-
-    expect(screen.getByTestId("line-chart")).toBeTruthy();
-  });
-
-  it("handles trend with 100% rate week", () => {
-    render(
-      <AttendanceTrendChart
-        trend={[{ week: "2026-02-03", rate: 100, present: 20, total: 20 }]}
-      />
-    );
-
-    expect(screen.getByTestId("line-chart")).toBeTruthy();
-  });
-});

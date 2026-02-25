@@ -76,16 +76,6 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
           sessionId: true,
           userId: true,
           present: true,
-          session: {
-            select: {
-              weekDate: true,
-              recurringSlotId: true,
-              recurringSlot: { select: { dayOfWeek: true, startHour: true } },
-              customDay: true,
-              customStartHour: true,
-              votes: { select: { userId: true, attending: true } },
-            },
-          },
         },
       }),
     ]);
@@ -183,8 +173,13 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
     .slice(0, 10);
 
   // ===== ATTENDANCE ANALYTICS =====
-  const { memberRates, slotRates, voteVsActual, trend: attendanceTrend } =
-    computeAttendanceAnalytics(attendanceRecords, members);
+  const sessionVotes = sessionsThisMonth.map((s) => ({
+    sessionId: s.id,
+    votes: s.votes,
+  }));
+
+  const { memberRates, voteVsActual } =
+    computeAttendanceAnalytics(attendanceRecords, members, sessionVotes);
 
   return (
     <DashboardClient
@@ -200,9 +195,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
       initialMonth={now.getMonth()}
       initialYear={now.getFullYear()}
       initialMemberRates={memberRates}
-      initialSlotRates={slotRates}
       initialVoteVsActual={voteVsActual}
-      initialAttendanceTrend={attendanceTrend}
     />
   );
 }

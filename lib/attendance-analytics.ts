@@ -13,14 +13,6 @@ export interface AttendanceRecordInput {
   sessionId: string;
   userId: string;
   present: boolean;
-  session: {
-    weekDate: Date | string;
-    recurringSlotId: string | null;
-    recurringSlot: { dayOfWeek: number; startHour: number } | null;
-    customDay: number | null;
-    customStartHour: number | null;
-    votes: Array<{ userId: string; attending: boolean }>;
-  };
 }
 
 /** Minimal member shape required for name lookups. */
@@ -29,165 +21,113 @@ export interface MemberInput {
   name: string;
 }
 
-export interface MemberRate {
-  name: string;
-  expected: number;
-  attended: number;
-  rate: number;
+/** Minimal session-vote shape: one entry per session with its votes. */
+export interface SessionVoteInput {
+  sessionId: string;
+  votes: Array<{ userId: string; attending: boolean }>;
 }
 
-export interface SlotRate {
-  day: string;
-  hour: number;
-  avgPresent: number;
-  avgExpected: number;
-  showUpRate: number;
-  sessionCount: number;
+export interface MemberRate {
+  name: string;
+  /** Number of unique sessions where the member has an attendance record OR voted yes. */
+  expected: number;
+  attended: number;
+  /** Rounded integer percentage (0–100). */
+  rate: number;
 }
 
 export interface VoteVsActualData {
+  /** Count of votes with attending=true across all voting sessions. */
   totalVotedComing: number;
+  /**
+   * Count of all present attendance records in voting sessions.
+   * Includes non-voters who were present, so this can exceed totalVotedComing.
+   */
   totalActuallyAttended: number;
+  /** Rounded integer percentage. Can exceed 100 if walk-ins attended. */
   reliability: number;
-}
-
-export interface TrendEntry {
-  week: string;
-  rate: number;
-  present: number;
-  total: number;
 }
 
 export interface AttendanceAnalyticsResult {
   memberRates: MemberRate[];
-  slotRates: SlotRate[];
   voteVsActual: VoteVsActualData;
-  trend: TrendEntry[];
 }
-
-// ─── Constants ──────────────────────────────────────────────────────
-
-const DAY_NAMES = [
-  "",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
-];
 
 // ─── Computation ────────────────────────────────────────────────────
 
 /**
- * Compute all attendance analytics from raw attendance records.
+ * Compute all attendance analytics from raw attendance records and
+ * session votes.
  *
- * Returns per-member rates, per-slot rates, vote-vs-actual reliability,
- * and a weekly attendance trend.
+ * Returns per-member rates and vote-vs-actual reliability.
  */
 export function computeAttendanceAnalytics(
   attendanceRecords: AttendanceRecordInput[],
-  members: MemberInput[]
+  members: MemberInput[],
+  sessionVotes: SessionVoteInput[]
 ): AttendanceAnalyticsResult {
-  // a) Per-member attendance rates
-  const memberAttendanceMap = new Map<
-    string,
-    { expected: number; attended: number }
-  >();
-  for (const rec of attendanceRecords) {
-    const existing = memberAttendanceMap.get(rec.userId) || {
-      expected: 0,
-      attended: 0,
-    };
-    existing.expected += 1;
-    if (rec.present) existing.attended += 1;
-    memberAttendanceMap.set(rec.userId, existing);
+  // Build O(1) member name lookup
+  const memberNameMap = new Map<string, string>();
+  for (const m of members) {
+    memberNameMap.set(m.id, m.name);
   }
 
-  const memberRates: MemberRate[] = Array.from(
-    memberAttendanceMap.entries()
-  )
-    .map(([userId, data]) => {
-      const member = members.find((m) => m.id === userId);
+  // a) Per-member attendance rates
+  const memberSessionsMap = new Map<string, Set<string>>();
+  const memberAttendedMap = new Map<string, number>();
+
+  for (const rec of attendanceRecords) {
+    if (!memberSessionsMap.has(rec.userId)) {
+      memberSessionsMap.set(rec.userId, new Set());
+      memberAttendedMap.set(rec.userId, 0);
+    }
+    memberSessionsMap.get(rec.userId)!.add(rec.sessionId);
+    if (rec.present) {
+      memberAttendedMap.set(rec.userId, memberAttendedMap.get(rec.userId)! + 1);
+    }
+  }
+
+  for (const sv of sessionVotes) {
+    for (const vote of sv.votes) {
+      if (vote.attending) {
+        if (!memberSessionsMap.has(vote.userId)) {
+          memberSessionsMap.set(vote.userId, new Set());
+          memberAttendedMap.set(vote.userId, 0);
+        }
+        memberSessionsMap.get(vote.userId)!.add(sv.sessionId);
+      }
+    }
+  }
+
+  const memberRates: MemberRate[] = Array.from(memberSessionsMap.entries())
+    .map(([userId, sessionIds]) => {
+      const expected = sessionIds.size;
+      const attended = memberAttendedMap.get(userId) || 0;
       return {
-        name: member?.name || "Unknown",
-        expected: data.expected,
-        attended: data.attended,
-        rate: Math.round((data.attended / data.expected) * 100),
+        name: memberNameMap.get(userId) || "Unknown",
+        expected,
+        attended,
+        rate: expected > 0 ? Math.round((attended / expected) * 100) : 0,
       };
     })
     .sort((a, b) => a.rate - b.rate);
 
-  // b) Per-slot attendance rates
-  const slotAttendanceMap = new Map<
-    string,
-    { totalPresent: number; totalRecords: number; sessionIds: Set<string> }
-  >();
-  for (const rec of attendanceRecords) {
-    const day =
-      rec.session.recurringSlot?.dayOfWeek ?? rec.session.customDay ?? 0;
-    const hour =
-      rec.session.recurringSlot?.startHour ?? rec.session.customStartHour ?? 0;
-    const key = `${day}-${hour}`;
-    const existing = slotAttendanceMap.get(key) || {
-      totalPresent: 0,
-      totalRecords: 0,
-      sessionIds: new Set<string>(),
-    };
-    if (rec.present) existing.totalPresent += 1;
-    existing.totalRecords += 1;
-    existing.sessionIds.add(rec.sessionId);
-    slotAttendanceMap.set(key, existing);
-  }
-
-  const slotRates: SlotRate[] = Array.from(slotAttendanceMap.entries())
-    .map(([key, data]) => {
-      const [dayStr, hourStr] = key.split("-");
-      const sessionCount = data.sessionIds.size;
-      const avgPresent =
-        sessionCount > 0 ? data.totalPresent / sessionCount : 0;
-      const avgExpected =
-        sessionCount > 0 ? data.totalRecords / sessionCount : 0;
-      const showUpRate =
-        data.totalRecords > 0
-          ? Math.round((data.totalPresent / data.totalRecords) * 100)
-          : 0;
-      return {
-        day: DAY_NAMES[parseInt(dayStr)] || "Unknown",
-        hour: parseInt(hourStr),
-        avgPresent,
-        avgExpected,
-        showUpRate,
-        sessionCount,
-      };
-    })
-    .sort((a, b) => a.showUpRate - b.showUpRate);
-
-  // c) Vote vs. Actual
-  const attendanceBySession = new Map<
-    string,
-    { votedComing: number; actuallyAttended: number }
-  >();
-  for (const rec of attendanceRecords) {
-    if (!attendanceBySession.has(rec.sessionId)) {
-      const votedComing = rec.session.votes.filter(
-        (v) => v.attending
-      ).length;
-      attendanceBySession.set(rec.sessionId, {
-        votedComing,
-        actuallyAttended: 0,
-      });
-    }
-    const sessionData = attendanceBySession.get(rec.sessionId)!;
-    if (rec.present) sessionData.actuallyAttended += 1;
-  }
-
+  // b) Vote vs. Actual
+  const votingSessionIds = new Set<string>();
   let totalVotedComing = 0;
+  for (const sv of sessionVotes) {
+    if (sv.votes.length > 0) {
+      votingSessionIds.add(sv.sessionId);
+      totalVotedComing += sv.votes.filter((v) => v.attending).length;
+    }
+  }
+
   let totalActuallyAttended = 0;
-  for (const data of attendanceBySession.values()) {
-    totalVotedComing += data.votedComing;
-    totalActuallyAttended += data.actuallyAttended;
+
+  for (const rec of attendanceRecords) {
+    if (votingSessionIds.has(rec.sessionId) && rec.present) {
+      totalActuallyAttended += 1;
+    }
   }
 
   const reliability =
@@ -201,33 +141,5 @@ export function computeAttendanceAnalytics(
     reliability,
   };
 
-  // d) Attendance trend (weekly)
-  const weeklyAttendanceMap = new Map<
-    string,
-    { present: number; total: number }
-  >();
-  for (const rec of attendanceRecords) {
-    const weekDate =
-      rec.session.weekDate instanceof Date
-        ? rec.session.weekDate.toISOString().split("T")[0]
-        : new Date(rec.session.weekDate).toISOString().split("T")[0];
-    const existing = weeklyAttendanceMap.get(weekDate) || {
-      present: 0,
-      total: 0,
-    };
-    existing.total += 1;
-    if (rec.present) existing.present += 1;
-    weeklyAttendanceMap.set(weekDate, existing);
-  }
-
-  const trend: TrendEntry[] = Array.from(weeklyAttendanceMap.entries())
-    .map(([week, data]) => ({
-      week,
-      rate: Math.round((data.present / data.total) * 100),
-      present: data.present,
-      total: data.total,
-    }))
-    .sort((a, b) => a.week.localeCompare(b.week));
-
-  return { memberRates, slotRates, voteVsActual, trend };
+  return { memberRates, voteVsActual };
 }

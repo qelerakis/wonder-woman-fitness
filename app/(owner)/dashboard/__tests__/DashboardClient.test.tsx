@@ -59,9 +59,7 @@ const defaultProps = {
   initialMonth: 1,  // February (0-indexed)
   initialYear: 2026,
   initialMemberRates: [] as Array<{ name: string; expected: number; attended: number; rate: number }>,
-  initialSlotRates: [] as Array<{ day: string; hour: number; avgPresent: number; avgExpected: number; showUpRate: number; sessionCount: number }>,
   initialVoteVsActual: { totalVotedComing: 0, totalActuallyAttended: 0, reliability: 0 },
-  initialAttendanceTrend: [] as Array<{ week: string; rate: number; present: number; total: number }>,
 };
 
 function makeApiResponse(overrides: Record<string, unknown> = {}): object {
@@ -79,9 +77,7 @@ function makeApiResponse(overrides: Record<string, unknown> = {}): object {
       },
       attendance: {
         memberRates: [],
-        slotRates: [],
         voteVsActual: { totalVotedComing: 0, totalActuallyAttended: 0, reliability: 0 },
-        trend: [],
         ...((overrides.attendance as object) || {}),
       },
     },
@@ -985,5 +981,230 @@ describe("DashboardClient month navigator", () => {
   it("displays revenue chart total in description", () => {
     render(<DashboardClient {...defaultProps} />);
     expect(screen.getByText(`Total: ${fmtCurrency(50000)}`)).toBeDefined();
+  });
+
+  // ─── Attendance Tracking section ────────────────────────────────
+
+  it("renders 'Attendance Tracking' section heading", () => {
+    render(<DashboardClient {...defaultProps} />);
+    expect(screen.getByText("Attendance Tracking")).toBeDefined();
+  });
+
+  it("renders VoteVsActualCards with initial data showing zeros", () => {
+    render(<DashboardClient {...defaultProps} />);
+    // Default initialVoteVsActual has all zeros
+    expect(screen.getByText("Voted Coming")).toBeDefined();
+    expect(screen.getByText("Actually Attended")).toBeDefined();
+    expect(screen.getByText("Vote Reliability")).toBeDefined();
+    expect(screen.getByText("0%")).toBeDefined();
+  });
+
+  it("renders VoteVsActualCards with non-zero initial data", () => {
+    render(
+      <DashboardClient
+        {...defaultProps}
+        initialVoteVsActual={{ totalVotedComing: 45, totalActuallyAttended: 38, reliability: 84 }}
+      />
+    );
+    expect(screen.getByText("45")).toBeDefined();
+    expect(screen.getByText("38")).toBeDefined();
+    expect(screen.getByText("84%")).toBeDefined();
+  });
+
+  it("renders MemberAttendanceTable empty state when no member rates", () => {
+    render(<DashboardClient {...defaultProps} initialMemberRates={[]} />);
+    expect(screen.getByText("No attendance data available")).toBeDefined();
+  });
+
+  it("renders MemberAttendanceTable with initial member rates data", () => {
+    render(
+      <DashboardClient
+        {...defaultProps}
+        initialMemberRates={[
+          { name: "Alice", expected: 10, attended: 9, rate: 90 },
+          { name: "Bob", expected: 10, attended: 5, rate: 50 },
+        ]}
+      />
+    );
+    expect(screen.getByText("Alice")).toBeDefined();
+    expect(screen.getByText("Bob")).toBeDefined();
+    expect(screen.getByText("90%")).toBeDefined();
+    expect(screen.getByText("50%")).toBeDefined();
+  });
+
+  it("renders Member Attendance Rates heading in attendance table", () => {
+    render(
+      <DashboardClient
+        {...defaultProps}
+        initialMemberRates={[
+          { name: "Alice", expected: 10, attended: 9, rate: 90 },
+        ]}
+      />
+    );
+    expect(screen.getByText("Member Attendance Rates")).toBeDefined();
+    expect(screen.getByText("Show-up rate per member")).toBeDefined();
+  });
+
+  it("updates attendance data after API fetch", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => makeApiResponse({
+        attendance: {
+          memberRates: [
+            { name: "Carol", expected: 8, attended: 7, rate: 88 },
+          ],
+          voteVsActual: { totalVotedComing: 33, totalActuallyAttended: 27, reliability: 82 },
+        },
+      }),
+    });
+    global.fetch = mockFetch;
+
+    render(<DashboardClient {...defaultProps} />);
+
+    // Initially no member data
+    expect(screen.getByText("No attendance data available")).toBeDefined();
+
+    const prevBtn = screen.getByRole("button", { name: "Previous month" });
+    await act(async () => {
+      fireEvent.click(prevBtn);
+    });
+
+    // After fetch, attendance data should be updated
+    expect(screen.getByText("Carol")).toBeDefined();
+    expect(screen.getByText("88%")).toBeDefined();
+    expect(screen.getByText("33")).toBeDefined(); // totalVotedComing
+    expect(screen.getByText("27")).toBeDefined(); // totalActuallyAttended
+    expect(screen.getByText("82%")).toBeDefined(); // reliability
+  });
+
+  it("handles missing attendance key in API response gracefully", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: {
+          memberEngagement: { totalActiveMembers: 20 },
+          classPerformance: { popularSlots: [] },
+          financial: {
+            totalRevenue: 30000,
+            membershipRevenue: 25000,
+            privateSessionRevenue: 5000,
+            latePayers: [],
+            outstandingMembers: [],
+          },
+          // No attendance key
+        },
+      }),
+    });
+    global.fetch = mockFetch;
+
+    render(
+      <DashboardClient
+        {...defaultProps}
+        initialVoteVsActual={{ totalVotedComing: 10, totalActuallyAttended: 8, reliability: 80 }}
+      />
+    );
+
+    // Initial values
+    expect(screen.getByText("10")).toBeDefined();
+    expect(screen.getByText("80%")).toBeDefined();
+
+    const prevBtn = screen.getByRole("button", { name: "Previous month" });
+    await act(async () => {
+      fireEvent.click(prevBtn);
+    });
+
+    // Should retain initial values since attendance is not in response
+    expect(screen.getByText("10")).toBeDefined();
+    expect(screen.getByText("80%")).toBeDefined();
+  });
+
+  it("falls back to defaults when attendance.memberRates is missing", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => makeApiResponse({
+        attendance: {
+          // memberRates is undefined
+          voteVsActual: { totalVotedComing: 5, totalActuallyAttended: 3, reliability: 60 },
+        },
+      }),
+    });
+    global.fetch = mockFetch;
+
+    render(
+      <DashboardClient
+        {...defaultProps}
+        initialMemberRates={[{ name: "Alice", expected: 10, attended: 9, rate: 90 }]}
+      />
+    );
+
+    const prevBtn = screen.getByRole("button", { name: "Previous month" });
+    await act(async () => {
+      fireEvent.click(prevBtn);
+    });
+
+    // memberRates fallback to [] → shows empty state
+    expect(screen.getByText("No attendance data available")).toBeDefined();
+    // voteVsActual should be updated
+    expect(screen.getByText("60%")).toBeDefined();
+  });
+
+  it("falls back to defaults when attendance.voteVsActual is missing", async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => makeApiResponse({
+        attendance: {
+          memberRates: [{ name: "Bob", expected: 5, attended: 3, rate: 60 }],
+          // voteVsActual is undefined
+        },
+      }),
+    });
+    global.fetch = mockFetch;
+
+    render(<DashboardClient {...defaultProps} />);
+
+    const prevBtn = screen.getByRole("button", { name: "Previous month" });
+    await act(async () => {
+      fireEvent.click(prevBtn);
+    });
+
+    // memberRates should be updated
+    expect(screen.getByText("Bob")).toBeDefined();
+    expect(screen.getByText("60%")).toBeDefined();
+    // voteVsActual fallback to zeros
+    expect(screen.getByText("0%")).toBeDefined();
+  });
+
+  it("applies opacity-50 to attendance section during loading", async () => {
+    let resolveFetch: (value: unknown) => void;
+    const fetchPromise = new Promise((resolve) => { resolveFetch = resolve; });
+    const mockFetch = vi.fn().mockReturnValue(fetchPromise);
+    global.fetch = mockFetch;
+
+    const { container } = render(<DashboardClient {...defaultProps} />);
+
+    const prevBtn = screen.getByRole("button", { name: "Previous month" });
+    await act(async () => {
+      fireEvent.click(prevBtn);
+    });
+
+    // The attendance section uses transition-opacity
+    const transitionElements = container.querySelectorAll(".transition-opacity");
+    // At least 3: metric cards grid, charts grid, attendance section
+    expect(transitionElements.length).toBeGreaterThanOrEqual(3);
+    // The attendance section (last one) should have opacity-50
+    const attendanceSection = transitionElements[transitionElements.length - 1];
+    expect(attendanceSection?.className).toContain("opacity-50");
+
+    await act(async () => {
+      resolveFetch!({
+        ok: true,
+        json: async () => makeApiResponse(),
+      });
+    });
+
+    // After loading, opacity should be removed
+    const updatedElements = container.querySelectorAll(".transition-opacity");
+    const updatedAttendance = updatedElements[updatedElements.length - 1];
+    expect(updatedAttendance?.className).not.toContain("opacity-50");
   });
 });

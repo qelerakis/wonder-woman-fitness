@@ -2,10 +2,13 @@
  * Analytics Attendance Metrics Tests
  *
  * Tests the attendance analytics section of GET /api/analytics:
- * - memberRates: per-member attendance rates
- * - slotRates: per-slot attendance rates
- * - voteVsActual: vote reliability metric
- * - trend: weekly attendance trend
+ * - memberRates: per-member attendance rates (from attendance records + session votes)
+ * - voteVsActual: vote reliability metric (only counts voting sessions)
+ *
+ * The analytics route delegates to computeAttendanceAnalytics() which receives:
+ *   - attendanceRecords: { sessionId, userId, present }[]
+ *   - members: { id, name }[]
+ *   - sessionVotes: { sessionId, votes: { userId, attending }[] }[]
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -53,6 +56,13 @@ function makeRequest(startDate: string, endDate: string): Request {
   );
 }
 
+function makeCsvRequest(startDate: string, endDate: string): Request {
+  return new Request(
+    `http://localhost/api/analytics?startDate=${startDate}&endDate=${endDate}`,
+    { headers: { Accept: "text/csv" } }
+  );
+}
+
 function defaultMocks(): void {
   mockAuth.mockResolvedValue(ownerSession());
   mockPrisma.user.findMany.mockResolvedValue([]);
@@ -64,12 +74,12 @@ function defaultMocks(): void {
 
 // ===== Tests =====
 
-describe("GET /api/analytics — attendance metrics", () => {
+describe("GET /api/analytics — attendance response shape", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("includes attendance key in analytics response", async () => {
+  it("includes attendance key with memberRates and voteVsActual", async () => {
     defaultMocks();
 
     const { GET } = await import("@/app/api/analytics/route");
@@ -79,12 +89,21 @@ describe("GET /api/analytics — attendance metrics", () => {
     expect(response.status).toBe(200);
     expect(body.data).toHaveProperty("attendance");
     expect(body.data.attendance).toHaveProperty("memberRates");
-    expect(body.data.attendance).toHaveProperty("slotRates");
     expect(body.data.attendance).toHaveProperty("voteVsActual");
-    expect(body.data.attendance).toHaveProperty("trend");
   });
 
-  it("returns empty arrays and zero reliability for no attendance records", async () => {
+  it("does NOT include slotRates or trend (removed features)", async () => {
+    defaultMocks();
+
+    const { GET } = await import("@/app/api/analytics/route");
+    const response = await GET(makeRequest("2026-01-01", "2026-01-31"));
+    const body = await response.json();
+
+    expect(body.data.attendance).not.toHaveProperty("slotRates");
+    expect(body.data.attendance).not.toHaveProperty("trend");
+  });
+
+  it("returns empty memberRates and zero reliability for no data", async () => {
     defaultMocks();
 
     const { GET } = await import("@/app/api/analytics/route");
@@ -93,16 +112,20 @@ describe("GET /api/analytics — attendance metrics", () => {
 
     const { attendance } = body.data;
     expect(attendance.memberRates).toEqual([]);
-    expect(attendance.slotRates).toEqual([]);
     expect(attendance.voteVsActual).toEqual({
       totalVotedComing: 0,
       totalActuallyAttended: 0,
       reliability: 0,
     });
-    expect(attendance.trend).toEqual([]);
+  });
+});
+
+describe("GET /api/analytics — memberRates from attendance records", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it("computes correct per-member attendance rates", async () => {
+  it("computes correct per-member rates from attendance records", async () => {
     defaultMocks();
 
     mockPrisma.user.findMany.mockResolvedValue([
@@ -110,15 +133,22 @@ describe("GET /api/analytics — attendance metrics", () => {
       { id: "m-2", name: "Bob", status: "ACTIVE", joinDate: new Date("2025-01-01"), trialEndsAt: null, departedAt: null, overrideActive: false },
     ]);
 
+    // Sessions with no votes (non-voting sessions)
+    mockPrisma.session.findMany.mockResolvedValue([
+      { id: "s-1", weekDate: new Date("2026-01-05"), status: "SCHEDULED", recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [{ userId: "m-1" }, { userId: "m-2" }] },
+      { id: "s-2", weekDate: new Date("2026-01-12"), status: "SCHEDULED", recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [{ userId: "m-1" }, { userId: "m-2" }] },
+      { id: "s-3", weekDate: new Date("2026-01-19"), status: "SCHEDULED", recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [{ userId: "m-1" }, { userId: "m-2" }] },
+    ]);
+
     mockPrisma.attendanceRecord.findMany.mockResolvedValue([
-      // Alice: 2 out of 3 sessions attended
-      { sessionId: "s-1", userId: "m-1", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: true }], members: [{ userId: "m-1" }] } },
-      { sessionId: "s-2", userId: "m-1", present: true, session: { weekDate: new Date("2026-01-12"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: true }], members: [{ userId: "m-1" }] } },
-      { sessionId: "s-3", userId: "m-1", present: false, session: { weekDate: new Date("2026-01-19"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: true }], members: [{ userId: "m-1" }] } },
-      // Bob: 1 out of 3 sessions attended
-      { sessionId: "s-1", userId: "m-2", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-2", attending: true }], members: [{ userId: "m-2" }] } },
-      { sessionId: "s-2", userId: "m-2", present: false, session: { weekDate: new Date("2026-01-12"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-2", attending: false }], members: [{ userId: "m-2" }] } },
-      { sessionId: "s-3", userId: "m-2", present: false, session: { weekDate: new Date("2026-01-19"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-2", attending: false }], members: [{ userId: "m-2" }] } },
+      // Alice: 2 out of 3 sessions present
+      { sessionId: "s-1", userId: "m-1", present: true },
+      { sessionId: "s-2", userId: "m-1", present: true },
+      { sessionId: "s-3", userId: "m-1", present: false },
+      // Bob: 1 out of 3 sessions present
+      { sessionId: "s-1", userId: "m-2", present: true },
+      { sessionId: "s-2", userId: "m-2", present: false },
+      { sessionId: "s-3", userId: "m-2", present: false },
     ]);
 
     const { GET } = await import("@/app/api/analytics/route");
@@ -140,116 +170,7 @@ describe("GET /api/analytics — attendance metrics", () => {
     expect(memberRates[1].rate).toBe(67);
   });
 
-  it("groups slot rates by dayOfWeek + startHour correctly", async () => {
-    defaultMocks();
-
-    mockPrisma.attendanceRecord.findMany.mockResolvedValue([
-      // Slot 1: Monday 9 AM - session s-1 (2 records, 1 present)
-      { sessionId: "s-1", userId: "m-1", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
-      { sessionId: "s-1", userId: "m-2", present: false, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
-      // Slot 2: Wednesday 17 PM - session s-2 (2 records, 2 present)
-      { sessionId: "s-2", userId: "m-1", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-2", recurringSlot: { dayOfWeek: 3, startHour: 17 }, customDay: null, customStartHour: null, votes: [], members: [] } },
-      { sessionId: "s-2", userId: "m-2", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-2", recurringSlot: { dayOfWeek: 3, startHour: 17 }, customDay: null, customStartHour: null, votes: [], members: [] } },
-    ]);
-
-    const { GET } = await import("@/app/api/analytics/route");
-    const response = await GET(makeRequest("2026-01-01", "2026-01-31"));
-    const body = await response.json();
-
-    const { slotRates } = body.data.attendance;
-    expect(slotRates).toHaveLength(2);
-
-    // Sorted ascending by showUpRate: Monday 9AM (50%) first, then Wednesday 17 (100%)
-    expect(slotRates[0].day).toBe("Monday");
-    expect(slotRates[0].hour).toBe(9);
-    expect(slotRates[0].showUpRate).toBe(50);
-    expect(slotRates[0].avgPresent).toBe(1);
-    expect(slotRates[0].avgExpected).toBe(2);
-
-    expect(slotRates[1].day).toBe("Wednesday");
-    expect(slotRates[1].hour).toBe(17);
-    expect(slotRates[1].showUpRate).toBe(100);
-    expect(slotRates[1].avgPresent).toBe(2);
-    expect(slotRates[1].avgExpected).toBe(2);
-  });
-
-  it("uses customDay and customStartHour for one-off sessions in slotRates", async () => {
-    defaultMocks();
-
-    mockPrisma.attendanceRecord.findMany.mockResolvedValue([
-      { sessionId: "s-custom", userId: "m-1", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: null, recurringSlot: null, customDay: 5, customStartHour: 14, votes: [], members: [] } },
-      { sessionId: "s-custom", userId: "m-2", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: null, recurringSlot: null, customDay: 5, customStartHour: 14, votes: [], members: [] } },
-    ]);
-
-    const { GET } = await import("@/app/api/analytics/route");
-    const response = await GET(makeRequest("2026-01-01", "2026-01-31"));
-    const body = await response.json();
-
-    const { slotRates } = body.data.attendance;
-    expect(slotRates).toHaveLength(1);
-    expect(slotRates[0].day).toBe("Friday");
-    expect(slotRates[0].hour).toBe(14);
-    expect(slotRates[0].showUpRate).toBe(100);
-  });
-
-  it("computes vote vs actual reliability correctly", async () => {
-    defaultMocks();
-
-    // Session s-1: 3 voted coming, 2 actually showed up
-    // Session s-2: 2 voted coming, 1 actually showed up
-    // Total: 5 voted coming, 3 actually attended => reliability = 60%
-    mockPrisma.attendanceRecord.findMany.mockResolvedValue([
-      // Session s-1
-      { sessionId: "s-1", userId: "m-1", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: true }, { userId: "m-2", attending: true }, { userId: "m-3", attending: true }], members: [] } },
-      { sessionId: "s-1", userId: "m-2", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: true }, { userId: "m-2", attending: true }, { userId: "m-3", attending: true }], members: [] } },
-      { sessionId: "s-1", userId: "m-3", present: false, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: true }, { userId: "m-2", attending: true }, { userId: "m-3", attending: true }], members: [] } },
-      // Session s-2
-      { sessionId: "s-2", userId: "m-1", present: true, session: { weekDate: new Date("2026-01-12"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: true }, { userId: "m-2", attending: true }], members: [] } },
-      { sessionId: "s-2", userId: "m-2", present: false, session: { weekDate: new Date("2026-01-12"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: true }, { userId: "m-2", attending: true }], members: [] } },
-    ]);
-
-    const { GET } = await import("@/app/api/analytics/route");
-    const response = await GET(makeRequest("2026-01-01", "2026-01-31"));
-    const body = await response.json();
-
-    const { voteVsActual } = body.data.attendance;
-    expect(voteVsActual.totalVotedComing).toBe(5);
-    expect(voteVsActual.totalActuallyAttended).toBe(3);
-    expect(voteVsActual.reliability).toBe(60);
-  });
-
-  it("returns weekly attendance trend sorted chronologically", async () => {
-    defaultMocks();
-
-    mockPrisma.attendanceRecord.findMany.mockResolvedValue([
-      // Week 2026-01-12: 2 records, 1 present => rate 50%
-      { sessionId: "s-2", userId: "m-1", present: true, session: { weekDate: new Date("2026-01-12"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
-      { sessionId: "s-2", userId: "m-2", present: false, session: { weekDate: new Date("2026-01-12"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
-      // Week 2026-01-05: 2 records, 2 present => rate 100%
-      { sessionId: "s-1", userId: "m-1", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
-      { sessionId: "s-1", userId: "m-2", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
-    ]);
-
-    const { GET } = await import("@/app/api/analytics/route");
-    const response = await GET(makeRequest("2026-01-01", "2026-01-31"));
-    const body = await response.json();
-
-    const { trend } = body.data.attendance;
-    expect(trend).toHaveLength(2);
-
-    // Sorted chronologically
-    expect(trend[0].week).toBe("2026-01-05");
-    expect(trend[0].rate).toBe(100);
-    expect(trend[0].present).toBe(2);
-    expect(trend[0].total).toBe(2);
-
-    expect(trend[1].week).toBe("2026-01-12");
-    expect(trend[1].rate).toBe(50);
-    expect(trend[1].present).toBe(1);
-    expect(trend[1].total).toBe(2);
-  });
-
-  it("members with no attendance records do not appear in memberRates", async () => {
+  it("members with no attendance records and no votes do not appear in memberRates", async () => {
     defaultMocks();
 
     mockPrisma.user.findMany.mockResolvedValue([
@@ -257,9 +178,11 @@ describe("GET /api/analytics — attendance metrics", () => {
       { id: "m-2", name: "Bob", status: "ACTIVE", joinDate: new Date("2025-01-01"), trialEndsAt: null, departedAt: null, overrideActive: false },
     ]);
 
+    mockPrisma.session.findMany.mockResolvedValue([]);
+
     // Only Alice has attendance records
     mockPrisma.attendanceRecord.findMany.mockResolvedValue([
-      { sessionId: "s-1", userId: "m-1", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
+      { sessionId: "s-1", userId: "m-1", present: true },
     ]);
 
     const { GET } = await import("@/app/api/analytics/route");
@@ -272,98 +195,21 @@ describe("GET /api/analytics — attendance metrics", () => {
     expect(memberRates[0].rate).toBe(100);
   });
 
-  it("includes attendance data in CSV export", async () => {
-    defaultMocks();
-
-    mockPrisma.attendanceRecord.findMany.mockResolvedValue([
-      { sessionId: "s-1", userId: "m-1", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: true }], members: [] } },
-      { sessionId: "s-1", userId: "m-2", present: false, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: true }], members: [] } },
-    ]);
-
-    const { GET } = await import("@/app/api/analytics/route");
-    const response = await GET(
-      new Request(
-        "http://localhost/api/analytics?startDate=2026-01-01&endDate=2026-01-31",
-        { headers: { Accept: "text/csv" } }
-      )
-    );
-
-    expect(response.headers.get("Content-Type")).toBe("text/csv");
-    const csv = await response.text();
-
-    expect(csv).toContain("Attendance - Weeks Tracked,1");
-    expect(csv).toContain("Attendance - Avg Show-up Rate,50%");
-    expect(csv).toContain("Vote Reliability,100%");
-  });
-
-  it("handles multiple sessions per slot for slotRates averaging", async () => {
-    defaultMocks();
-
-    // Monday 9AM slot across 2 sessions:
-    // Session s-1: 2 records, 2 present
-    // Session s-3: 2 records, 0 present
-    // avgPresent = (2+0)/2 = 1, avgExpected = (2+2)/2 = 2, showUpRate = 50%
-    mockPrisma.attendanceRecord.findMany.mockResolvedValue([
-      { sessionId: "s-1", userId: "m-1", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
-      { sessionId: "s-1", userId: "m-2", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
-      { sessionId: "s-3", userId: "m-1", present: false, session: { weekDate: new Date("2026-01-12"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
-      { sessionId: "s-3", userId: "m-2", present: false, session: { weekDate: new Date("2026-01-12"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
-    ]);
-
-    const { GET } = await import("@/app/api/analytics/route");
-    const response = await GET(makeRequest("2026-01-01", "2026-01-31"));
-    const body = await response.json();
-
-    const { slotRates } = body.data.attendance;
-    expect(slotRates).toHaveLength(1);
-    expect(slotRates[0].day).toBe("Monday");
-    expect(slotRates[0].hour).toBe(9);
-    expect(slotRates[0].avgPresent).toBe(1);
-    expect(slotRates[0].avgExpected).toBe(2);
-    expect(slotRates[0].showUpRate).toBe(50);
-  });
-});
-
-// ===== Additional analytics-attendance tests =====
-
-describe("GET /api/analytics — attendance edge cases", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("returns 429 when rate limit is exceeded", async () => {
-    mockAuth.mockResolvedValue(ownerSession());
-
-    // Override authReadLimiter to deny
-    const rateLimitModule = await import("@/lib/rate-limit");
-    const originalCheck = rateLimitModule.authReadLimiter.check;
-    rateLimitModule.authReadLimiter.check = () => ({ allowed: false, remaining: 0, retryAfterMs: 3000 });
-
-    const { GET } = await import("@/app/api/analytics/route");
-    const response = await GET(makeRequest("2026-01-01", "2026-01-31"));
-
-    expect(response.status).toBe(429);
-
-    // Restore
-    rateLimitModule.authReadLimiter.check = originalCheck;
-  });
-
   it("departed member with attendance records still appears in memberRates", async () => {
     defaultMocks();
 
-    // Alice is DEPARTED but has historical attendance records
     mockPrisma.user.findMany.mockResolvedValue([
       { id: "m-1", name: "Alice", status: "DEPARTED", joinDate: new Date("2025-01-01"), trialEndsAt: null, departedAt: new Date("2026-01-15"), overrideActive: false },
       { id: "m-2", name: "Bob", status: "ACTIVE", joinDate: new Date("2025-01-01"), trialEndsAt: null, departedAt: null, overrideActive: false },
     ]);
 
+    mockPrisma.session.findMany.mockResolvedValue([]);
+
     mockPrisma.attendanceRecord.findMany.mockResolvedValue([
-      // Alice (DEPARTED): 1/2 sessions
-      { sessionId: "s-1", userId: "m-1", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
-      { sessionId: "s-2", userId: "m-1", present: false, session: { weekDate: new Date("2026-01-12"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
-      // Bob: 2/2 sessions
-      { sessionId: "s-1", userId: "m-2", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
-      { sessionId: "s-2", userId: "m-2", present: true, session: { weekDate: new Date("2026-01-12"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
+      { sessionId: "s-1", userId: "m-1", present: true },
+      { sessionId: "s-2", userId: "m-1", present: false },
+      { sessionId: "s-1", userId: "m-2", present: true },
+      { sessionId: "s-2", userId: "m-2", present: true },
     ]);
 
     const { GET } = await import("@/app/api/analytics/route");
@@ -371,10 +217,8 @@ describe("GET /api/analytics — attendance edge cases", () => {
     const body = await response.json();
 
     const { memberRates } = body.data.attendance;
-    // Both members should appear in memberRates (including departed)
     expect(memberRates).toHaveLength(2);
 
-    // Alice (departed) still has her attendance data
     const alice = memberRates.find((m: { name: string }) => m.name === "Alice");
     expect(alice).toBeDefined();
     expect(alice.expected).toBe(2);
@@ -382,115 +226,19 @@ describe("GET /api/analytics — attendance edge cases", () => {
     expect(alice.rate).toBe(50);
   });
 
-  it("voteVsActual when no one voted coming but people attended (reliability stays 0)", async () => {
-    defaultMocks();
-
-    // Session s-1: 0 voted coming, but 2 actually attended
-    mockPrisma.attendanceRecord.findMany.mockResolvedValue([
-      { sessionId: "s-1", userId: "m-1", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
-      { sessionId: "s-1", userId: "m-2", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
-    ]);
-
-    const { GET } = await import("@/app/api/analytics/route");
-    const response = await GET(makeRequest("2026-01-01", "2026-01-31"));
-    const body = await response.json();
-
-    const { voteVsActual } = body.data.attendance;
-    expect(voteVsActual.totalVotedComing).toBe(0);
-    expect(voteVsActual.totalActuallyAttended).toBe(2);
-    // When totalVotedComing=0, reliability should be 0 (division guard)
-    expect(voteVsActual.reliability).toBe(0);
-  });
-
-  it("trend with single week returns one entry", async () => {
-    defaultMocks();
-
-    mockPrisma.attendanceRecord.findMany.mockResolvedValue([
-      { sessionId: "s-1", userId: "m-1", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
-      { sessionId: "s-1", userId: "m-2", present: false, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
-    ]);
-
-    const { GET } = await import("@/app/api/analytics/route");
-    const response = await GET(makeRequest("2026-01-01", "2026-01-31"));
-    const body = await response.json();
-
-    const { trend } = body.data.attendance;
-    expect(trend).toHaveLength(1);
-    expect(trend[0].week).toBe("2026-01-05");
-    expect(trend[0].rate).toBe(50);
-    expect(trend[0].present).toBe(1);
-    expect(trend[0].total).toBe(2);
-  });
-
-  it("slotRates handles mixed recurring and custom sessions", async () => {
-    defaultMocks();
-
-    mockPrisma.attendanceRecord.findMany.mockResolvedValue([
-      // Recurring: Monday 9AM
-      { sessionId: "s-1", userId: "m-1", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
-      // Custom: Friday 14:00
-      { sessionId: "s-custom", userId: "m-1", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: null, recurringSlot: null, customDay: 5, customStartHour: 14, votes: [], members: [] } },
-      { sessionId: "s-custom", userId: "m-2", present: false, session: { weekDate: new Date("2026-01-05"), recurringSlotId: null, recurringSlot: null, customDay: 5, customStartHour: 14, votes: [], members: [] } },
-    ]);
-
-    const { GET } = await import("@/app/api/analytics/route");
-    const response = await GET(makeRequest("2026-01-01", "2026-01-31"));
-    const body = await response.json();
-
-    const { slotRates } = body.data.attendance;
-    expect(slotRates).toHaveLength(2);
-
-    // Find the custom slot (Friday 14:00)
-    const fridaySlot = slotRates.find((s: { day: string; hour: number }) => s.day === "Friday" && s.hour === 14);
-    expect(fridaySlot).toBeDefined();
-    expect(fridaySlot.showUpRate).toBe(50);
-    expect(fridaySlot.sessionCount).toBe(1);
-
-    // Find the recurring slot (Monday 9:00)
-    const mondaySlot = slotRates.find((s: { day: string; hour: number }) => s.day === "Monday" && s.hour === 9);
-    expect(mondaySlot).toBeDefined();
-    expect(mondaySlot.showUpRate).toBe(100);
-    expect(mondaySlot.sessionCount).toBe(1);
-  });
-
-  it("CSV export includes attendance data rows", async () => {
-    defaultMocks();
-
-    // 2 sessions tracked, both with attendance records
-    mockPrisma.attendanceRecord.findMany.mockResolvedValue([
-      { sessionId: "s-1", userId: "m-1", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: true }], members: [] } },
-      { sessionId: "s-1", userId: "m-2", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: true }], members: [] } },
-      { sessionId: "s-2", userId: "m-1", present: false, session: { weekDate: new Date("2026-01-12"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: true }], members: [] } },
-    ]);
-
-    const { GET } = await import("@/app/api/analytics/route");
-    const response = await GET(
-      new Request(
-        "http://localhost/api/analytics?startDate=2026-01-01&endDate=2026-01-31",
-        { headers: { Accept: "text/csv" } }
-      )
-    );
-
-    expect(response.headers.get("Content-Type")).toBe("text/csv");
-    const csv = await response.text();
-
-    // Verify attendance-specific CSV rows exist
-    expect(csv).toContain("Attendance - Weeks Tracked,2");
-    expect(csv).toContain("Vote Reliability,");
-    expect(csv).toContain("Attendance - Avg Show-up Rate,");
-  });
-
-  it("handles all-present attendance records correctly in memberRates", async () => {
+  it("handles all-present attendance records correctly (100% rate)", async () => {
     defaultMocks();
 
     mockPrisma.user.findMany.mockResolvedValue([
       { id: "m-1", name: "Perfect Alice", status: "ACTIVE", joinDate: new Date("2025-01-01"), trialEndsAt: null, departedAt: null, overrideActive: false },
     ]);
 
+    mockPrisma.session.findMany.mockResolvedValue([]);
+
     mockPrisma.attendanceRecord.findMany.mockResolvedValue([
-      { sessionId: "s-1", userId: "m-1", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
-      { sessionId: "s-2", userId: "m-1", present: true, session: { weekDate: new Date("2026-01-12"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
-      { sessionId: "s-3", userId: "m-1", present: true, session: { weekDate: new Date("2026-01-19"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
+      { sessionId: "s-1", userId: "m-1", present: true },
+      { sessionId: "s-2", userId: "m-1", present: true },
+      { sessionId: "s-3", userId: "m-1", present: true },
     ]);
 
     const { GET } = await import("@/app/api/analytics/route");
@@ -505,16 +253,18 @@ describe("GET /api/analytics — attendance edge cases", () => {
     expect(memberRates[0].attended).toBe(3);
   });
 
-  it("handles all-absent attendance records correctly in memberRates", async () => {
+  it("handles all-absent attendance records correctly (0% rate)", async () => {
     defaultMocks();
 
     mockPrisma.user.findMany.mockResolvedValue([
       { id: "m-1", name: "Absent Bob", status: "ACTIVE", joinDate: new Date("2025-01-01"), trialEndsAt: null, departedAt: null, overrideActive: false },
     ]);
 
+    mockPrisma.session.findMany.mockResolvedValue([]);
+
     mockPrisma.attendanceRecord.findMany.mockResolvedValue([
-      { sessionId: "s-1", userId: "m-1", present: false, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
-      { sessionId: "s-2", userId: "m-1", present: false, session: { weekDate: new Date("2026-01-12"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
+      { sessionId: "s-1", userId: "m-1", present: false },
+      { sessionId: "s-2", userId: "m-1", present: false },
     ]);
 
     const { GET } = await import("@/app/api/analytics/route");
@@ -528,15 +278,244 @@ describe("GET /api/analytics — attendance edge cases", () => {
     expect(memberRates[0].expected).toBe(2);
     expect(memberRates[0].attended).toBe(0);
   });
+});
 
-  it("voteVsActual with perfect reliability (all voters attended)", async () => {
+describe("GET /api/analytics — memberRates from session votes", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("includes sessions where member voted yes in expected count", async () => {
     defaultMocks();
 
-    // 3 voted coming, 3 actually attended
+    mockPrisma.user.findMany.mockResolvedValue([
+      { id: "m-1", name: "Alice", status: "ACTIVE", joinDate: new Date("2025-01-01"), trialEndsAt: null, departedAt: null, overrideActive: false },
+    ]);
+
+    // Session with vote but no attendance record for m-1
+    mockPrisma.session.findMany.mockResolvedValue([
+      { id: "s-1", weekDate: new Date("2026-01-05"), status: "SCHEDULED", recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: true }], members: [] },
+    ]);
+
+    // No attendance records
+    mockPrisma.attendanceRecord.findMany.mockResolvedValue([]);
+
+    const { GET } = await import("@/app/api/analytics/route");
+    const response = await GET(makeRequest("2026-01-01", "2026-01-31"));
+    const body = await response.json();
+
+    const { memberRates } = body.data.attendance;
+    expect(memberRates).toHaveLength(1);
+    expect(memberRates[0].name).toBe("Alice");
+    expect(memberRates[0].expected).toBe(1);
+    expect(memberRates[0].attended).toBe(0);
+    expect(memberRates[0].rate).toBe(0);
+  });
+
+  it("does not count sessions where member voted no", async () => {
+    defaultMocks();
+
+    mockPrisma.user.findMany.mockResolvedValue([
+      { id: "m-1", name: "Alice", status: "ACTIVE", joinDate: new Date("2025-01-01"), trialEndsAt: null, departedAt: null, overrideActive: false },
+    ]);
+
+    // Session where Alice voted "no"
+    mockPrisma.session.findMany.mockResolvedValue([
+      { id: "s-1", weekDate: new Date("2026-01-05"), status: "SCHEDULED", recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: false }], members: [] },
+    ]);
+
+    mockPrisma.attendanceRecord.findMany.mockResolvedValue([]);
+
+    const { GET } = await import("@/app/api/analytics/route");
+    const response = await GET(makeRequest("2026-01-01", "2026-01-31"));
+    const body = await response.json();
+
+    const { memberRates } = body.data.attendance;
+    // Alice voted no, so should not appear at all
+    expect(memberRates).toHaveLength(0);
+  });
+
+  it("does not double-count when member has both attendance record and vote for same session", async () => {
+    defaultMocks();
+
+    mockPrisma.user.findMany.mockResolvedValue([
+      { id: "m-1", name: "Alice", status: "ACTIVE", joinDate: new Date("2025-01-01"), trialEndsAt: null, departedAt: null, overrideActive: false },
+    ]);
+
+    // Session with vote
+    mockPrisma.session.findMany.mockResolvedValue([
+      { id: "s-1", weekDate: new Date("2026-01-05"), status: "SCHEDULED", recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: true }], members: [] },
+    ]);
+
+    // Same session also has attendance record
     mockPrisma.attendanceRecord.findMany.mockResolvedValue([
-      { sessionId: "s-1", userId: "m-1", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: true }, { userId: "m-2", attending: true }, { userId: "m-3", attending: true }], members: [] } },
-      { sessionId: "s-1", userId: "m-2", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: true }, { userId: "m-2", attending: true }, { userId: "m-3", attending: true }], members: [] } },
-      { sessionId: "s-1", userId: "m-3", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: true }, { userId: "m-2", attending: true }, { userId: "m-3", attending: true }], members: [] } },
+      { sessionId: "s-1", userId: "m-1", present: true },
+    ]);
+
+    const { GET } = await import("@/app/api/analytics/route");
+    const response = await GET(makeRequest("2026-01-01", "2026-01-31"));
+    const body = await response.json();
+
+    const { memberRates } = body.data.attendance;
+    expect(memberRates).toHaveLength(1);
+    // Expected should be 1, not 2 (Set dedup)
+    expect(memberRates[0].expected).toBe(1);
+    expect(memberRates[0].attended).toBe(1);
+    expect(memberRates[0].rate).toBe(100);
+  });
+
+  it("combines attendance records and votes for expected count", async () => {
+    defaultMocks();
+
+    mockPrisma.user.findMany.mockResolvedValue([
+      { id: "m-1", name: "Alice", status: "ACTIVE", joinDate: new Date("2025-01-01"), trialEndsAt: null, departedAt: null, overrideActive: false },
+    ]);
+
+    // s-1 has attendance record, s-2 has only a vote (no attendance record yet)
+    mockPrisma.session.findMany.mockResolvedValue([
+      { id: "s-1", weekDate: new Date("2026-01-05"), status: "SCHEDULED", recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] },
+      { id: "s-2", weekDate: new Date("2026-01-12"), status: "SCHEDULED", recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: true }], members: [] },
+    ]);
+
+    mockPrisma.attendanceRecord.findMany.mockResolvedValue([
+      { sessionId: "s-1", userId: "m-1", present: true },
+    ]);
+
+    const { GET } = await import("@/app/api/analytics/route");
+    const response = await GET(makeRequest("2026-01-01", "2026-01-31"));
+    const body = await response.json();
+
+    const { memberRates } = body.data.attendance;
+    expect(memberRates).toHaveLength(1);
+    // Expected: s-1 (from record) + s-2 (from vote) = 2
+    expect(memberRates[0].expected).toBe(2);
+    // Attended: only s-1 where present=true
+    expect(memberRates[0].attended).toBe(1);
+    expect(memberRates[0].rate).toBe(50);
+  });
+});
+
+describe("GET /api/analytics — voteVsActual", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("computes vote reliability from voting sessions only", async () => {
+    defaultMocks();
+
+    // s-1: voting session (3 voted coming, 2 showed up)
+    // s-2: voting session (2 voted coming, 1 showed up)
+    mockPrisma.session.findMany.mockResolvedValue([
+      { id: "s-1", weekDate: new Date("2026-01-05"), status: "SCHEDULED", recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: true }, { userId: "m-2", attending: true }, { userId: "m-3", attending: true }], members: [] },
+      { id: "s-2", weekDate: new Date("2026-01-12"), status: "SCHEDULED", recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: true }, { userId: "m-2", attending: true }], members: [] },
+    ]);
+
+    mockPrisma.user.findMany.mockResolvedValue([
+      { id: "m-1", name: "Alice", status: "ACTIVE", joinDate: new Date("2025-01-01"), trialEndsAt: null, departedAt: null, overrideActive: false },
+      { id: "m-2", name: "Bob", status: "ACTIVE", joinDate: new Date("2025-01-01"), trialEndsAt: null, departedAt: null, overrideActive: false },
+      { id: "m-3", name: "Charlie", status: "ACTIVE", joinDate: new Date("2025-01-01"), trialEndsAt: null, departedAt: null, overrideActive: false },
+    ]);
+
+    mockPrisma.attendanceRecord.findMany.mockResolvedValue([
+      { sessionId: "s-1", userId: "m-1", present: true },
+      { sessionId: "s-1", userId: "m-2", present: true },
+      { sessionId: "s-1", userId: "m-3", present: false },
+      { sessionId: "s-2", userId: "m-1", present: true },
+      { sessionId: "s-2", userId: "m-2", present: false },
+    ]);
+
+    const { GET } = await import("@/app/api/analytics/route");
+    const response = await GET(makeRequest("2026-01-01", "2026-01-31"));
+    const body = await response.json();
+
+    const { voteVsActual } = body.data.attendance;
+    expect(voteVsActual.totalVotedComing).toBe(5);
+    expect(voteVsActual.totalActuallyAttended).toBe(3);
+    expect(voteVsActual.reliability).toBe(60);
+  });
+
+  it("excludes non-voting sessions from voteVsActual counts", async () => {
+    defaultMocks();
+
+    // s-1: voting session, s-2: non-voting session (no votes)
+    mockPrisma.session.findMany.mockResolvedValue([
+      { id: "s-1", weekDate: new Date("2026-01-05"), status: "SCHEDULED", recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: true }], members: [] },
+      { id: "s-2", weekDate: new Date("2026-01-12"), status: "SCHEDULED", recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [{ userId: "m-2" }] },
+    ]);
+
+    mockPrisma.attendanceRecord.findMany.mockResolvedValue([
+      { sessionId: "s-1", userId: "m-1", present: true },
+      // s-2 attendance should NOT count for voteVsActual
+      { sessionId: "s-2", userId: "m-2", present: true },
+    ]);
+
+    const { GET } = await import("@/app/api/analytics/route");
+    const response = await GET(makeRequest("2026-01-01", "2026-01-31"));
+    const body = await response.json();
+
+    const { voteVsActual } = body.data.attendance;
+    // Only s-1 is a voting session
+    expect(voteVsActual.totalVotedComing).toBe(1);
+    expect(voteVsActual.totalActuallyAttended).toBe(1);
+    expect(voteVsActual.reliability).toBe(100);
+  });
+
+  it("returns 0 reliability when no one voted coming", async () => {
+    defaultMocks();
+
+    // Session with votes but all voted "no"
+    mockPrisma.session.findMany.mockResolvedValue([
+      { id: "s-1", weekDate: new Date("2026-01-05"), status: "SCHEDULED", recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: false }], members: [] },
+    ]);
+
+    mockPrisma.attendanceRecord.findMany.mockResolvedValue([
+      { sessionId: "s-1", userId: "m-1", present: true },
+    ]);
+
+    const { GET } = await import("@/app/api/analytics/route");
+    const response = await GET(makeRequest("2026-01-01", "2026-01-31"));
+    const body = await response.json();
+
+    const { voteVsActual } = body.data.attendance;
+    // The session has votes (length > 0) so it IS a voting session,
+    // but no one voted "attending: true", so totalVotedComing = 0
+    expect(voteVsActual.totalVotedComing).toBe(0);
+    expect(voteVsActual.reliability).toBe(0);
+  });
+
+  it("returns 0 when sessionVotes is empty (no sessions with votes)", async () => {
+    defaultMocks();
+
+    // Sessions without votes
+    mockPrisma.session.findMany.mockResolvedValue([
+      { id: "s-1", weekDate: new Date("2026-01-05"), status: "SCHEDULED", recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [{ userId: "m-1" }] },
+    ]);
+
+    mockPrisma.attendanceRecord.findMany.mockResolvedValue([
+      { sessionId: "s-1", userId: "m-1", present: true },
+    ]);
+
+    const { GET } = await import("@/app/api/analytics/route");
+    const response = await GET(makeRequest("2026-01-01", "2026-01-31"));
+    const body = await response.json();
+
+    const { voteVsActual } = body.data.attendance;
+    expect(voteVsActual.totalVotedComing).toBe(0);
+    expect(voteVsActual.totalActuallyAttended).toBe(0);
+    expect(voteVsActual.reliability).toBe(0);
+  });
+
+  it("100% reliability when all voters attended", async () => {
+    defaultMocks();
+
+    mockPrisma.session.findMany.mockResolvedValue([
+      { id: "s-1", weekDate: new Date("2026-01-05"), status: "SCHEDULED", recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: true }, { userId: "m-2", attending: true }, { userId: "m-3", attending: true }], members: [] },
+    ]);
+
+    mockPrisma.attendanceRecord.findMany.mockResolvedValue([
+      { sessionId: "s-1", userId: "m-1", present: true },
+      { sessionId: "s-1", userId: "m-2", present: true },
+      { sessionId: "s-1", userId: "m-3", present: true },
     ]);
 
     const { GET } = await import("@/app/api/analytics/route");
@@ -549,25 +528,131 @@ describe("GET /api/analytics — attendance edge cases", () => {
     expect(voteVsActual.reliability).toBe(100);
   });
 
-  it("trend with multiple weeks is sorted chronologically", async () => {
+  it("aggregates across multiple voting sessions", async () => {
     defaultMocks();
 
-    // Records from 3 different weeks, out of order
+    mockPrisma.session.findMany.mockResolvedValue([
+      { id: "s-1", weekDate: new Date("2026-01-05"), status: "SCHEDULED", recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: true }, { userId: "m-2", attending: true }], members: [] },
+      { id: "s-2", weekDate: new Date("2026-01-12"), status: "SCHEDULED", recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: true }], members: [] },
+    ]);
+
     mockPrisma.attendanceRecord.findMany.mockResolvedValue([
-      { sessionId: "s-3", userId: "m-1", present: true, session: { weekDate: new Date("2026-01-19"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
-      { sessionId: "s-1", userId: "m-1", present: true, session: { weekDate: new Date("2026-01-05"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
-      { sessionId: "s-2", userId: "m-1", present: false, session: { weekDate: new Date("2026-01-12"), recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [], members: [] } },
+      { sessionId: "s-1", userId: "m-1", present: true },
+      { sessionId: "s-1", userId: "m-2", present: true },
+      { sessionId: "s-2", userId: "m-1", present: false },
     ]);
 
     const { GET } = await import("@/app/api/analytics/route");
     const response = await GET(makeRequest("2026-01-01", "2026-01-31"));
     const body = await response.json();
 
-    const { trend } = body.data.attendance;
-    expect(trend).toHaveLength(3);
-    // Verify chronological ordering
-    expect(trend[0].week).toBe("2026-01-05");
-    expect(trend[1].week).toBe("2026-01-12");
-    expect(trend[2].week).toBe("2026-01-19");
+    const { voteVsActual } = body.data.attendance;
+    // s-1: 2 voted, s-2: 1 voted = 3 total
+    expect(voteVsActual.totalVotedComing).toBe(3);
+    // s-1: 2 attended, s-2: 0 attended = 2 total
+    expect(voteVsActual.totalActuallyAttended).toBe(2);
+    // 2/3 = 67%
+    expect(voteVsActual.reliability).toBe(67);
+  });
+});
+
+describe("GET /api/analytics — CSV export with attendance", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("includes Vote Reliability in CSV export", async () => {
+    defaultMocks();
+
+    mockPrisma.session.findMany.mockResolvedValue([
+      { id: "s-1", weekDate: new Date("2026-01-05"), status: "SCHEDULED", recurringSlotId: "slot-1", recurringSlot: { dayOfWeek: 1, startHour: 9 }, customDay: null, customStartHour: null, votes: [{ userId: "m-1", attending: true }], members: [] },
+    ]);
+
+    mockPrisma.attendanceRecord.findMany.mockResolvedValue([
+      { sessionId: "s-1", userId: "m-1", present: true },
+    ]);
+
+    const { GET } = await import("@/app/api/analytics/route");
+    const response = await GET(makeCsvRequest("2026-01-01", "2026-01-31"));
+
+    expect(response.headers.get("Content-Type")).toBe("text/csv");
+    const csv = await response.text();
+
+    expect(csv).toContain("Vote Reliability,100%");
+  });
+
+  it("does NOT include Attendance Weeks Tracked or Avg Show-up Rate (removed)", async () => {
+    defaultMocks();
+
+    const { GET } = await import("@/app/api/analytics/route");
+    const response = await GET(makeCsvRequest("2026-01-01", "2026-01-31"));
+
+    const csv = await response.text();
+
+    expect(csv).not.toContain("Attendance - Weeks Tracked");
+    expect(csv).not.toContain("Attendance - Avg Show-up Rate");
+  });
+
+  it("CSV has correct Content-Disposition header with date range", async () => {
+    defaultMocks();
+
+    const { GET } = await import("@/app/api/analytics/route");
+    const response = await GET(makeCsvRequest("2026-01-01", "2026-01-31"));
+
+    expect(response.headers.get("Content-Disposition")).toBe(
+      'attachment; filename="analytics-2026-01-01-2026-01-31.csv"'
+    );
+  });
+});
+
+describe("GET /api/analytics — auth and rate limiting", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns 401 for unauthenticated request", async () => {
+    mockAuth.mockResolvedValue(null);
+
+    const { GET } = await import("@/app/api/analytics/route");
+    const response = await GET(makeRequest("2026-01-01", "2026-01-31"));
+
+    expect(response.status).toBe(401);
+  });
+
+  it("returns 403 for non-owner role", async () => {
+    mockAuth.mockResolvedValue({
+      user: { id: "m-1", email: "member@test.com", role: "MEMBER", status: "ACTIVE" },
+    });
+
+    const { GET } = await import("@/app/api/analytics/route");
+    const response = await GET(makeRequest("2026-01-01", "2026-01-31"));
+
+    expect(response.status).toBe(403);
+  });
+
+  it("returns 429 when rate limit is exceeded", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+
+    const rateLimitModule = await import("@/lib/rate-limit");
+    const originalCheck = rateLimitModule.authReadLimiter.check;
+    rateLimitModule.authReadLimiter.check = () => ({ allowed: false, remaining: 0, retryAfterMs: 3000 });
+
+    const { GET } = await import("@/app/api/analytics/route");
+    const response = await GET(makeRequest("2026-01-01", "2026-01-31"));
+
+    expect(response.status).toBe(429);
+
+    rateLimitModule.authReadLimiter.check = originalCheck;
+  });
+
+  it("returns 400 for invalid date parameters", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+
+    const { GET } = await import("@/app/api/analytics/route");
+    const response = await GET(
+      new Request("http://localhost/api/analytics?startDate=invalid&endDate=2026-01-31")
+    );
+
+    expect(response.status).toBe(400);
   });
 });

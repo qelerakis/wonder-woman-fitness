@@ -109,17 +109,6 @@ export async function GET(req: Request): Promise<Response> {
           sessionId: true,
           userId: true,
           present: true,
-          session: {
-            select: {
-              weekDate: true,
-              recurringSlotId: true,
-              recurringSlot: { select: { dayOfWeek: true, startHour: true } },
-              customDay: true,
-              customStartHour: true,
-              votes: { select: { userId: true, attending: true } },
-              members: { select: { userId: true } },
-            },
-          },
         },
       }),
     ]);
@@ -264,8 +253,13 @@ export async function GET(req: Request): Promise<Response> {
       : 0;
 
     // ===== ATTENDANCE =====
-    const { memberRates, slotRates, voteVsActual, trend } =
-      computeAttendanceAnalytics(attendanceRecords, members);
+    const sessionVotes = sessions.map((s) => ({
+      sessionId: s.id,
+      votes: s.votes,
+    }));
+
+    const { memberRates, voteVsActual } =
+      computeAttendanceAnalytics(attendanceRecords, members, sessionVotes);
 
     const analytics = {
       dateRange: { startDate, endDate },
@@ -296,9 +290,7 @@ export async function GET(req: Request): Promise<Response> {
       },
       attendance: {
         memberRates,
-        slotRates,
         voteVsActual,
-        trend,
       },
     };
 
@@ -318,8 +310,6 @@ export async function GET(req: Request): Promise<Response> {
       csvRows.push(`Retention Rate,${Math.round(retentionRate * 100)}%`);
       csvRows.push(`Churn Rate,${Math.round(churnRate * 100)}%`);
       csvRows.push(`Avg Member Lifespan (days),${Math.round(avgLifespanDays)}`);
-      csvRows.push(`Attendance - Weeks Tracked,${trend.length}`);
-      csvRows.push(`Attendance - Avg Show-up Rate,${trend.length > 0 ? Math.round(trend.reduce((s, t) => s + t.rate, 0) / trend.length) : 0}%`);
       csvRows.push(`Vote Reliability,${voteVsActual.reliability}%`);
 
       const csvContent = csvRows.join("\n");
