@@ -34,6 +34,8 @@ wonder-woman-fitness/
 │   │   ├── layout.tsx                     # Auth layout wrapper
 │   │   ├── login/page.tsx
 │   │   ├── register/page.tsx
+│   │   ├── check-email/page.tsx           # Post-registration verification prompt
+│   │   ├── verify-email/page.tsx          # Token verification landing page
 │   │   └── forgot-password/page.tsx
 │   ├── (locked)/                  # Locked member route group
 │   │   └── member/
@@ -67,11 +69,13 @@ wonder-woman-fitness/
 │   │   ├── payments/page.tsx              # Payment tracking
 │   │   ├── private-sessions/page.tsx      # Private session management
 │   │   └── trainers/page.tsx              # Trainer account management
-│   ├── api/                       # API route handlers (23 route files, all rate-limited)
-│   │   ├── __tests__/                       # API route tests (8 files, 285 tests)
+│   ├── api/                       # API route handlers (29 route files, all rate-limited)
+│   │   ├── __tests__/                       # API route tests (12 files, 399 tests)
 │   │   ├── auth/
 │   │   │   ├── [...nextauth]/route.ts     # NextAuth v5 handler
-│   │   │   └── register/route.ts          # Member self-registration
+│   │   │   ├── register/route.ts          # Member self-registration (creates PendingVerification)
+│   │   │   ├── verify-email/route.ts      # GET: verify email token, create User
+│   │   │   └── resend-verification/route.ts # POST: resend verification email with cooldown
 │   │   ├── members/
 │   │   │   ├── route.ts                   # GET (list), POST
 │   │   │   └── [id]/
@@ -83,7 +87,8 @@ wonder-woman-fitness/
 │   │   │   │   ├── route.ts               # GET, PATCH, DELETE
 │   │   │   │   ├── trainers/route.ts      # POST (assign/remove trainers)
 │   │   │   │   ├── members/route.ts       # POST (assign/remove members)
-│   │   │   │   └── move-members/route.ts  # POST (move between sessions)
+│   │   │   │   ├── move-members/route.ts  # POST (move between sessions)
+│   │   │   │   └── attendance/route.ts    # POST (mark present/absent)
 │   │   │   └── generate-week/route.ts     # POST (generate from templates)
 │   │   ├── recurring-slots/route.ts       # GET, POST, DELETE (with cascade)
 │   │   ├── votes/route.ts                 # GET, POST, DELETE
@@ -95,29 +100,36 @@ wonder-woman-fitness/
 │   │   │   └── [id]/route.ts              # PATCH, DELETE
 │   │   ├── notifications/
 │   │   │   ├── route.ts                   # GET (list)
-│   │   │   └── [id]/route.ts              # PATCH (mark read)
+│   │   │   ├── [id]/route.ts              # PATCH (mark read)
+│   │   │   ├── mark-all-read/route.ts     # POST (mark all read)
+│   │   │   └── broadcast/
+│   │   │       ├── route.ts               # POST (send broadcast notification)
+│   │   │       └── recipients/route.ts    # GET (preview recipient count)
 │   │   ├── analytics/route.ts             # GET (owner-only dashboard)
 │   │   └── cron/                          # Secured with CRON_SECRET
 │   │       ├── payment-reminders/route.ts # Daily at 9 AM
 │   │       ├── trial-expiration/route.ts  # Daily at 6 AM
-│   │       └── voting-deadline/route.ts   # Hourly
+│   │       ├── voting-deadline/route.ts   # Hourly
+│   │       └── cleanup-pending/route.ts   # Daily at 3 AM (expired verifications)
 │   ├── globals.css                # Tailwind v4 CSS config (@theme directive)
 │   └── layout.tsx                 # Root layout (Header, auth provider)
 ├── components/
 │   ├── ui/                        # 13 primitives (Badge, Button, Card, ConfirmationModal,
 │   │                              #   DatePicker, DateTimePicker, Input, Modal, Select,
 │   │                              #   Spinner, Textarea, Toast)
-│   ├── schedule/                  # 9 components (WeeklyCalendar, SessionCard, CreateSessionModal,
+│   ├── schedule/                  # 10 components (WeeklyCalendar, SessionCard, CreateSessionModal,
 │   │                              #   DeleteRecurringSlotModal, VotingPrompt, VoteSummary,
-│   │                              #   WorkoutDisplay, WorkoutEditor, AssignmentToggleList)
+│   │                              #   WorkoutDisplay, WorkoutEditor, AssignmentToggleList,
+│   │                              #   AttendanceChecklist)
 │   ├── payment/                   # 5 components (PaymentBanner, LockoutScreen, PaymentForm,
 │   │                              #   PaymentHistory, PaymentStatusBadge)
 │   ├── member/                    # 2 components (MemberTable, MemberCard)
-│   ├── notification/              # 4 components (NotificationBell, NotificationList,
-│   │                              #   NotificationItem, NotificationsClient)
-│   ├── analytics/                 # 5 components (MetricCard, AttendanceChart, RevenueChart,
-│   │                              #   RetentionChart, DateRangeFilter)
-│   └── layout/                    # 2 components (Header, Navigation)
+│   ├── notification/              # 5 components (NotificationBell, NotificationList,
+│   │                              #   NotificationItem, NotificationsClient, SendNotificationModal)
+│   ├── analytics/                 # 7 components (MetricCard, AttendanceChart, RevenueChart,
+│   │                              #   RetentionChart, DateRangeFilter, MemberAttendanceTable,
+│   │                              #   VoteVsActualCards)
+│   └── layout/                    # 3 components (Header, Navigation, BottomNav)
 ├── lib/
 │   ├── prisma.ts                  # Prisma 7 singleton (PrismaPg adapter)
 │   ├── auth.ts                    # NextAuth full config (server-only, uses Prisma)
@@ -131,7 +143,10 @@ wonder-woman-fitness/
 │   ├── voting-logic.ts            # Voting deadline calculation, eligibility
 │   ├── session-generation.ts      # generateSessionsForWeek() with carry-forward
 │   ├── notifications.ts           # dispatchNotification() email + in-app
-│   └── __tests__/                 # 8 business logic test files (168 tests)
+│   ├── env.ts                     # Centralized environment variable validation
+│   ├── email-verification.ts      # Email verification helpers, token generation
+│   ├── attendance-analytics.ts    # Shared attendance analytics computation
+│   └── __tests__/                 # 15 business logic test files (297 tests)
 ├── types/
 │   ├── index.ts                   # Shared TypeScript types + Zod schemas (strict, with length limits)
 │   └── __tests__/
@@ -141,7 +156,7 @@ wonder-woman-fitness/
 │   ├── useNotifications.ts        # Real-time notification polling
 │   └── usePaymentStatus.ts        # Payment status fetching & display
 ├── docs/
-│   └── plans/                     # 23 design/plan documents
+│   └── plans/                     # 33 design/plan documents
 ├── middleware.ts                   # Role-based routing + departed redirect
 ├── .env.local                     # Environment variables (gitignored)
 ├── next.config.ts                 # serverExternalPackages: prisma, pg, bcrypt
@@ -238,6 +253,33 @@ wonder-woman-fitness/
        │               │ emailSent (bool) │
        │               │ createdAt        │
        │               └──────────────────┘
+
+       │               ┌──────────────────────┐
+       │               │ PendingVerification  │
+       │               ├──────────────────────┤
+       │               │ id                   │
+       │               │ email (unique)       │
+       │               │ passwordHash         │
+       │               │ name                 │
+       │               │ phone?               │
+       │               │ token (unique)       │
+       │               │ expiresAt            │
+       │               │ resendCount          │
+       │               │ lastResentAt?        │
+       │               │ createdAt            │
+       │               └──────────────────────┘
+
+       │               ┌──────────────────────┐
+       │               │  AttendanceRecord    │
+       │               ├──────────────────────┤
+       │               │ id                   │
+       │               │ sessionId            │──→ Session
+       │               │ userId               │──→ User (member)
+       │               │ present (bool)       │
+       │               │ markedById           │──→ User (owner/trainer)
+       │               │ markedAt             │
+       │               │ createdAt            │
+       │               └──────────────────────┘
 ```
 
 ### Key Enums
@@ -249,7 +291,8 @@ SessionStatus: SCHEDULED | CANCELLED
 NotificationType: WORKOUT_POSTED | VOTING_OPENED | CLASS_CANCELLED |
                   MEMBER_MOVED | PAYMENT_REMINDER | LOCKOUT |
                   MEMBER_DEPARTED | REJOIN_REQUEST | TRIAL_EXPIRING |
-                  TRIAL_EXPIRED | SESSION_DELETED | MANUAL_REMINDER
+                  TRIAL_EXPIRED | SESSION_DELETED | MANUAL_REMINDER |
+                  BROADCAST
 ```
 
 ---
@@ -325,6 +368,7 @@ In-app notifications are fetched client-side by polling `GET /api/notifications?
 | `payment-reminders`      | Daily at 9:00 AM  | Check all active members. Send reminders on day 1, 7. Lock out on day 11. |
 | `trial-expiration`       | Daily at 6:00 AM  | Check trial members. Notify owner and member 2 days before payment deadline. |
 | `voting-deadline`        | Daily at midnight | Lock voting on sessions where deadline has passed.                     |
+| `cleanup-pending`        | Daily at 3:00 AM  | Delete expired PendingVerification records (token > 1 hour old).           |
 
 Cron routes are secured with a `CRON_SECRET` header that Vercel injects automatically.
 
@@ -563,8 +607,48 @@ The owner can be assigned as a trainer to sessions, appearing in all trainer sel
 
 ### 9.12 Test Suite
 
-1,373 automated tests across 35 files using Vitest (~16s):
-- **Business logic** (8 files, 168 tests): payment-logic (51), voting-logic (38), notification-helpers (26), session-generation (24), carry-forward (25), rate-limit (24), cron-auth (5), rate-limit-integration (4)
-- **API routes** (8 files, 285 tests): sessions (96), private-sessions (52), votes (37), payments (26), recurring-slots (24), session-members (19), members (16), session-trainers (15)
-- **UI components** (17 files, 854 tests): MemberSessionDetailClient (100), PrivateSessionsClient (88), PaymentsClient (82), SessionCard (79), DateTimePicker (73), DatePicker (64), DashboardClient (57), TrainerPaymentsClient (45), Button (40), ConfirmationModal (37), PaymentHistory (31), VotingPrompt (30), Modal (28), SessionDetailClient (27), PaymentBanner (17), CreateSessionModal (15), PaymentStatusBadge (12)
-- **Type validation** (2 files, 66 tests): strict-schemas (49), session-schemas (17)
+1,860 automated tests across 53 files using Vitest (~17s):
+- **Business logic & utilities** (15 files, 297 tests): payment-logic (51), voting-logic (38), attendance-analytics (35), notification-helpers (26), carry-forward (25), session-generation (24), rate-limit (24), resend-verification (14), register-verification (13), env (12), verify-email-page (11), email-verification (10), cron-auth (5), cleanup-pending (5), rate-limit-integration (4)
+- **API routes** (12 files, 399 tests): sessions (96), private-sessions (52), votes (44), attendance (38), broadcast-notifications (32), payments (26), analytics-attendance (25), recurring-slots (24), session-members (19), members (16), session-trainers (15), mark-all-read (12)
+- **UI components** (24 files, 1,078 tests): MemberSessionDetailClient (113), SessionCard (100), PrivateSessionsClient (88), PaymentsClient (82), SendNotificationModal (75), DateTimePicker (73), DashboardClient (68), DatePicker (64), TrainerPaymentsClient (45), Button (40), ConfirmationModal (37), CheckEmailPage (34), SessionDetailClient (33), PaymentHistory (31), VotingPrompt (30), Modal (28), AttendanceChecklist (27), AttendanceAnalytics (22), PaymentBanner (17), TrainerSessionDetailClient (17), CreateSessionModal (15), LoginPage (15), PaymentStatusBadge (12), NotificationsClient (12)
+- **Type validation** (2 files, 86 tests): strict-schemas (69), session-schemas (17)
+
+### 9.13 Email Verification
+
+New member registration uses a two-step verification flow:
+1. `POST /api/auth/register` creates a `PendingVerification` record (not a User) with a hashed password, a unique token, and a 1-hour expiry.
+2. Verification email sent via Resend with a link to `/verify-email?token=...`.
+3. `GET /api/auth/verify-email` validates the token, creates the User, deletes the PendingVerification record.
+4. Resend endpoint (`POST /api/auth/resend-verification`) with 60-second cooldown and max 5 resend attempts.
+5. Daily cron job (`/api/cron/cleanup-pending`) deletes expired records at 3 AM.
+
+### 9.14 Attendance Tracking
+
+Owner and trainers can mark members as present or absent after a session occurs:
+- `POST /api/sessions/[id]/attendance` — records or updates attendance for a member
+- `AttendanceRecord` model tracks: session, member, present/absent, who marked it, when
+- `AttendanceChecklist` component shows assigned members with toggles on the session detail page
+- Attendance data integrated into dashboard analytics via shared `lib/attendance-analytics.ts`
+
+### 9.15 Broadcast Notifications
+
+Owner can send custom notifications to targeted member groups:
+- `POST /api/notifications/broadcast` — sends notification to selected audience
+- `GET /api/notifications/broadcast/recipients` — previews recipient count for audience type
+- Audience types: ALL (active members), TRIAL, SESSION_SLOT (specific recurring slot), PAYMENT_STATUS, INDIVIDUAL
+- `SendNotificationModal` component with audience selector, live recipient count, and confirmation step
+
+### 9.16 Session Card Color States
+
+Session cards display color-coded backgrounds based on member state:
+- Yellow/amber: Session needs voting (votingEnabled but user hasn't voted)
+- Green: User is going (voted yes or assigned to session)
+- Grey/dimmed: Cancelled sessions (60% opacity)
+- Mobile: Colored left border for compact visual status
+
+### 9.17 Mobile UX Enhancements
+
+- `BottomNav` component for mobile members and trainers (replaces sidebar on small screens)
+- Haptic feedback on successful vote submission
+- Refresh button on member schedule page
+- Compact horizontal chips for who's-coming list on mobile

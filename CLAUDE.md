@@ -8,7 +8,7 @@
 
 Wonder Woman Fitness is a web-based boutique fitness studio management platform. It has three user roles (Owner, Trainer, Member) and handles scheduling, attendance voting, cash payment tracking, notifications, and analytics for a single gym.
 
-**Project status**: Feature-complete (February 18, 2026). All MVP features + post-MVP additions implemented and tested. 1,373 tests passing across 35 test files. Production build succeeds.
+**Project status**: Feature-complete (February 18, 2026). All MVP features + post-MVP additions implemented and tested. 1,860 tests passing across 53 test files. Production build succeeds.
 
 **Key documents** — read these first:
 - `PRD.md` — What was built and why (includes implementation status)
@@ -351,62 +351,81 @@ CRON_SECRET=              # Random 32+ char string for securing cron endpoints
 14. **Next.js 15 params are async.** Page props use `Promise<{ id: string }>` pattern — always `await` params.
 15. **`serverExternalPackages`** in `next.config.ts` includes `["@prisma/client", "@prisma/adapter-pg", "bcrypt"]`.
 16. **Sessions can be one-off (custom).** When `recurringSlotId` is null, the session uses `customDay` + `customStartHour`.
+17. **Email verification is required for registration.** New members go through PendingVerification → email link → User creation. The `PendingVerification` model holds temporary registration data until verified.
 
 ---
 
 ## 10. Test Suite
 
-1,373 tests across 35 files, all passing (~16s). Run with `npm test`.
+1,860 tests across 53 files, all passing (~17s). Run with `npm test`.
 
-### Business Logic (8 files, 168 tests)
+### Business Logic & Utilities (15 files, 297 tests)
 | File | Tests | What it covers |
 |---|---|---|
 | `payment-logic.test.ts` | 51 | Trial-as-grace-period, grace period, lockout, overrides, advance payments |
 | `voting-logic.test.ts` | 38 | Deadline calculation, eligibility, isFull, same-day constraints |
+| `attendance-analytics.test.ts` | 35 | Member attendance rates, vote-vs-actual reliability, analytics computation |
 | `notification-helpers.test.ts` | 26 | Notification dispatch helpers, formatting |
 | `session-generation-carry-forward.test.ts` | 25 | Assignment carryover, departed member exclusion |
 | `session-generation.test.ts` | 24 | Week generation from recurring slots |
 | `rate-limit.test.ts` | 24 | Sliding-window rate limiter, key isolation, cleanup |
+| `resend-verification.test.ts` | 14 | Resend verification email, cooldown, rate limiting |
+| `register-verification.test.ts` | 13 | Registration with email verification, pending records |
+| `env.test.ts` | 12 | Environment variable validation, lazy getters |
+| `verify-email-page.test.ts` | 11 | Email verification page, token validation |
+| `email-verification.test.ts` | 10 | Email verification helpers, token generation |
 | `cron-auth.test.ts` | 5 | Timing-safe cron secret verification |
+| `cleanup-pending.test.ts` | 5 | Expired pending verification cleanup cron |
 | `rate-limit-integration.test.ts` | 4 | Rate limit integration with API routes |
 
-### API Routes (8 files, 285 tests)
+### API Routes (12 files, 399 tests)
 | File | Tests | What it covers |
 |---|---|---|
 | `sessions.test.ts` | 96 | Recurring, one-off, voting, cancel, generate week, rate limiting |
 | `private-sessions.test.ts` | 52 | Full CRUD, payment status, audit trail |
-| `votes.test.ts` | 37 | Cast, update, deadline enforcement, full/same-day |
+| `votes.test.ts` | 44 | Cast, update, deadline enforcement, full/same-day |
+| `attendance.test.ts` | 38 | Mark present/absent, auth, session validation |
+| `broadcast-notifications.test.ts` | 32 | Targeted broadcast, audience types, auth, rate limiting |
 | `payments.test.ts` | 26 | Record, advance payments, edit, delete, validation |
+| `analytics-attendance.test.ts` | 25 | Attendance analytics API, CSV export, member rates |
 | `recurring-slots.test.ts` | 24 | Create, delete, cascade |
 | `session-members.test.ts` | 19 | Assign/remove members, capacity, vote cleanup |
 | `members.test.ts` | 16 | CRUD, status transitions |
 | `session-trainers.test.ts` | 15 | Assign/remove trainers, auth, owner-as-trainer |
+| `mark-all-read.test.ts` | 12 | Mark all notifications as read |
 
-### UI Components (17 files, 854 tests)
+### UI Components (24 files, 1,078 tests)
 | File | Tests | What it covers |
 |---|---|---|
-| `MemberSessionDetailClient.test.tsx` | 100 | Session detail, voting UI, full/same-day constraints |
+| `MemberSessionDetailClient.test.tsx` | 113 | Session detail, voting UI, full/same-day constraints, assigned members |
+| `SessionCard.test.tsx` | 100 | Display, voting, assignments, color states, role-based behavior |
 | `PrivateSessionsClient.test.tsx` | 88 | Private sessions CRUD, payment tracking, trainer visibility |
-| `SessionCard.test.tsx` | 79 | Display, voting, assignments, role-based behavior |
 | `PaymentsClient.test.tsx` | 82 | Payment list, filters, edit/delete, date range |
+| `SendNotificationModal.test.tsx` | 75 | Broadcast modal, audience targeting, recipient preview |
 | `DateTimePicker.test.tsx` | 73 | Calendar, time selection, dark theme, accessibility |
+| `DashboardClient.test.tsx` | 68 | Analytics metrics, date range filters, attendance data |
 | `DatePicker.test.tsx` | 64 | Calendar navigation, date selection, custom styling |
-| `DashboardClient.test.tsx` | 57 | Analytics charts, metrics, date range filters |
 | `TrainerPaymentsClient.test.tsx` | 45 | Trainer payment recording, member status view |
 | `Button.test.tsx` | 40 | Variants, sizes, states, accessibility |
 | `ConfirmationModal.test.tsx` | 37 | Confirm/cancel actions, keyboard nav, focus trap |
+| `CheckEmailPage.test.tsx` | 34 | Email verification check page, resend button |
+| `SessionDetailClient.test.tsx` | 33 | Owner session management, assignments, workouts, attendance |
 | `PaymentHistory.test.tsx` | 31 | Payment records display, filtering |
 | `VotingPrompt.test.tsx` | 30 | Inline voting modal, vote states, constraints |
 | `Modal.test.tsx` | 28 | Keyboard nav, accessibility, focus trap |
-| `SessionDetailClient.test.tsx` | 27 | Owner session management, assignments, workouts |
+| `AttendanceChecklist.test.tsx` | 27 | Attendance marking UI, present/absent toggles |
+| `AttendanceAnalytics.test.tsx` | 22 | Attendance analytics display, member rates |
 | `PaymentBanner.test.tsx` | 17 | Grace period banner, countdown display |
+| `TrainerSessionDetailClient.test.tsx` | 17 | Trainer session view, workout editor |
 | `CreateSessionModal.test.tsx` | 15 | One-off, new recurring, validation |
+| `LoginPage.test.tsx` | 15 | Sign-in form, verification hint |
 | `PaymentStatusBadge.test.tsx` | 12 | Status badge rendering, color coding |
+| `NotificationsClient.test.tsx` | 12 | Notification list, filters, send button |
 
-### Type Validation (2 files, 66 tests)
+### Type Validation (2 files, 86 tests)
 | File | Tests | What it covers |
 |---|---|---|
-| `strict-schemas.test.ts` | 49 | Strict Zod schemas with length limits, unknown field rejection |
+| `strict-schemas.test.ts` | 69 | Strict Zod schemas with length limits, unknown field rejection |
 | `session-schemas.test.ts` | 17 | Zod validation for session creation schemas |
 
 ### Known Lint Warnings (5, pre-existing)

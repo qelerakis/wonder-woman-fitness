@@ -603,7 +603,7 @@ This section outlines the primary screens to be designed and built.
 
 ---
 
-## 12. Implementation Status (as of February 18, 2026)
+## 12. Implementation Status (as of February 25, 2026)
 
 All MVP features defined in this PRD have been implemented and tested. The application is feature-complete and production-ready.
 
@@ -611,17 +611,20 @@ All MVP features defined in this PRD have been implemented and tested. The appli
 
 | Feature Area | Status | Notes |
 |---|---|---|
-| Authentication & Registration | Done | NextAuth v5, JWT strategy, credentials provider |
+| Authentication & Registration | Done | NextAuth v5, JWT strategy, credentials provider, email verification |
 | Schedule Management | Done | Recurring slots + one-off custom sessions |
 | Workout Posting | Done | Per-session workout editor for owner/trainer |
 | Attendance Voting | Done | 24h deadline, inline voting modal for members |
 | Payment Tracking | Done | Computed status (never stored), grace period, lockout, edit/delete |
 | Private Sessions | Done | Full CRUD, payment tracking, audit trail, trainer visibility |
-| Notifications | Done | 12 types, email + in-app, 3 automated cron jobs |
+| Notifications | Done | 12 types, email + in-app, 4 automated cron jobs, broadcast messaging |
 | Member Profile | Done | Edit name, phone, email, photo (Cloudinary) |
 | Member Departure | Done | Voluntary departure, motivational banner, rejoin flow |
 | Trial Period | Done | 14-day trial merged into grace period, auto-transition, owner notifications |
 | Analytics Dashboard | Done | Engagement, class performance, revenue, retention charts with date range filters |
+| Attendance Tracking | Done | Owner/trainer mark members present/absent post-session, analytics integration |
+| Email Verification | Done | PendingVerification flow, token-based email confirmation, resend with cooldown |
+| Broadcast Notifications | Done | Owner sends targeted messages to member groups (all, trial, by slot, by payment status, individual) |
 | Session Assignments | Done | Owner assigns trainers/members, carry-forward on week generation |
 | Delete Recurring Slot | Done | Cascade option to delete future sessions |
 | Security Hardening | Done | Rate limiting, CSP header, strict Zod schemas, timing-safe cron auth |
@@ -646,6 +649,13 @@ These features were added during development to address real workflow needs:
 14. **Trial-as-Grace-Period** — Trial period merged into the grace period flow. Trial members see "Payment due" from day 1 with a 14-day countdown (no separate TRIAL payment status).
 15. **Voter Cancellation Notifications** — Members notified when sessions with their votes are cancelled.
 16. **Owner as Trainer** — Owner appears in trainer selection lists and can be assigned as a trainer to sessions.
+17. **Email Verification** — New members register through a PendingVerification flow. A verification email with a token link is sent on registration. Token expires after 1 hour. Resend with cooldown (60s) and max attempts. Expired records cleaned up by daily cron job.
+18. **Attendance Tracking** — Owner and trainers can mark members as present/absent after sessions occur. AttendanceRecord model tracks who attended, who marked them, and when. Integrated into dashboard analytics with member attendance rates and vote-vs-actual reliability metrics.
+19. **Broadcast Notifications** — Owner can send custom notifications to targeted member groups: all active members, trial members, members from a specific session slot, members by payment status, or individually selected members. Includes live recipient count preview and confirmation step.
+20. **Session Card Color States** — Session cards display color-coded backgrounds: yellow/amber when voting is needed, green when the user is going (voted yes or assigned). Cancelled sessions are greyed out. Mobile view uses colored left borders for compact visual status.
+21. **Assigned Members Card** — For non-voting (assignment-based) sessions, assigned members see a "Members" card showing all other assigned members with avatar initials. Only visible to assigned members when voting is disabled.
+22. **Attendance Analytics Refinements** — Dashboard attendance analytics refined: VoteVsActual metric only counts voting sessions (sessions with at least 1 vote). Member "Expected" sessions include both assigned sessions and sessions they voted yes on. Removed chart-based visualizations in favor of focused metrics.
+23. **Mobile UX Enhancements** — Bottom navigation bar for mobile members and trainers. Haptic feedback on successful vote. Refresh button on member schedule page. Compact horizontal chips for who's-coming list on mobile.
 
 ### Tech Stack (Actual Versions)
 
@@ -668,11 +678,11 @@ These features were added during development to address real workflow needs:
 
 ### Test Coverage
 
-1,373 automated tests across 35 test files, all passing (~16s):
-- Business logic: 168 tests (payment, voting, session generation, carry-forward, rate limiting, cron auth, notification helpers)
-- API routes: 285 tests (sessions, private sessions, votes, payments, recurring slots, session members/trainers, members)
-- UI components: 854 tests (session detail, private sessions, schedule, payments, dashboard, date pickers, modals, buttons, badges, banners)
-- Type validation: 66 tests (Zod session schemas, strict schemas with length limits)
+1,860 automated tests across 53 test files, all passing (~17s):
+- Business logic & utilities: 297 tests (payment, voting, attendance analytics, session generation, rate limiting, email verification, env validation)
+- API routes: 399 tests (sessions, private sessions, votes, attendance, broadcast notifications, payments, analytics, recurring slots, session members/trainers, members, mark-all-read)
+- UI components: 1,078 tests (session detail, private sessions, schedule, payments, dashboard, notifications, date pickers, attendance, modals, buttons, badges, banners, login, check-email)
+- Type validation: 86 tests (Zod session schemas, strict schemas with length limits)
 
 ---
 
