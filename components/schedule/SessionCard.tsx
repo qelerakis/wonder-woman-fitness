@@ -9,6 +9,7 @@ interface SessionCardProps {
   basePath: string;
   showVotingIndicator?: boolean;
   currentUserId?: string;
+  isAssigned?: boolean;
 }
 
 function formatTime(hour: number): string {
@@ -22,6 +23,7 @@ export function SessionCard({
   basePath,
   showVotingIndicator = false,
   currentUserId,
+  isAssigned = false,
 }: SessionCardProps): React.ReactElement {
   const time = formatTime(session.recurringSlot?.startHour ?? session.customStartHour ?? 0);
   const comingCount = session.votes.filter((v) => v.attending).length;
@@ -41,6 +43,23 @@ export function SessionCard({
     ? session.votes.find((v) => v.userId === currentUserId)
     : null;
 
+  // Card background color based on member state
+  const needsVote = showVotingIndicator && currentUserId && session.votingEnabled && !isCancelled && !userVote;
+  const isGoing = (userVote?.attending === true) || isAssigned;
+
+  function getCardClasses(): string {
+    if (isCancelled) {
+      return "border-surface-700 bg-surface-800/50 opacity-60";
+    }
+    if (needsVote) {
+      return "border-warning-500/40 bg-warning-500/30 hover:border-warning-400/50 hover:bg-warning-500/40";
+    }
+    if (isGoing) {
+      return "border-success-600/40 bg-success-600/25 hover:border-success-500/50 hover:bg-success-600/35";
+    }
+    return "border-surface-700 bg-surface-800 hover:border-primary-600/50 hover:bg-surface-700";
+  }
+
   const showDeadline = showVotingIndicator && session.votingEnabled && !isCancelled && deadlineInFuture && !userVote;
 
   return (
@@ -49,11 +68,7 @@ export function SessionCard({
       className={`
         group block rounded-lg border p-3
         transition-all duration-150
-        ${
-          isCancelled
-            ? "border-surface-700 bg-surface-800/50 opacity-60"
-            : "border-surface-700 bg-surface-800 hover:border-primary-600/50 hover:bg-surface-700"
-        }
+        ${getCardClasses()}
       `}
     >
       {/* Time + Status */}

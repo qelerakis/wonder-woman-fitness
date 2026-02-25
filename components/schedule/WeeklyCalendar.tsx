@@ -144,6 +144,7 @@ export function WeeklyCalendar({
                   basePath={basePath}
                   showVotingIndicator={showVotingIndicator}
                   currentUserId={currentUserId}
+                  isAssigned={session.isAssigned}
                 />
               ))}
               {!grouped.has(dayNumber) && (
@@ -197,6 +198,7 @@ export function WeeklyCalendar({
                       basePath={basePath}
                       showVotingIndicator={showVotingIndicator}
                       currentUserId={currentUserId}
+                      isAssigned={session.isAssigned}
                     />
                   ))}
                 </div>
