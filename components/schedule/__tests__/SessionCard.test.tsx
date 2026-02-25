@@ -1267,6 +1267,161 @@ describe("SessionCard", () => {
     });
   });
 
+  // ─── Card Background Color States ────────────────────────────────
+
+  describe("card background color states", () => {
+    it("shows yellow background when voting enabled and user has not voted", () => {
+      const session = makeSession({
+        votingEnabled: true,
+        votes: [],
+      });
+      render(
+        <SessionCard
+          session={session}
+          basePath="/member/session"
+          showVotingIndicator
+          currentUserId="member-1"
+        />
+      );
+      const card = screen.getByRole("link");
+      expect(card.className).toContain("bg-warning-500/30");
+      expect(card.className).toContain("border-warning-500/40");
+    });
+
+    it("shows yellow background when voting enabled and other users voted but current user has not", () => {
+      const session = makeSession({
+        votingEnabled: true,
+        votes: [
+          { id: "vote-1", userId: "member-2", attending: true, votedAt: new Date("2026-02-09T10:00:00Z") },
+        ],
+      });
+      render(
+        <SessionCard
+          session={session}
+          basePath="/member/session"
+          showVotingIndicator
+          currentUserId="member-1"
+        />
+      );
+      const card = screen.getByRole("link");
+      expect(card.className).toContain("bg-warning-500/30");
+    });
+
+    it("does not show yellow background when showVotingIndicator is false", () => {
+      const session = makeSession({
+        votingEnabled: true,
+        votes: [],
+      });
+      render(
+        <SessionCard
+          session={session}
+          basePath="/member/session"
+          showVotingIndicator={false}
+          currentUserId="member-1"
+        />
+      );
+      const card = screen.getByRole("link");
+      expect(card.className).not.toContain("bg-warning-500/30");
+      expect(card.className).toContain("bg-surface-800");
+    });
+
+    it("does not show yellow background when no currentUserId provided", () => {
+      const session = makeSession({
+        votingEnabled: true,
+        votes: [],
+      });
+      render(
+        <SessionCard
+          session={session}
+          basePath="/member/session"
+          showVotingIndicator
+        />
+      );
+      const card = screen.getByRole("link");
+      expect(card.className).not.toContain("bg-warning-500/30");
+      expect(card.className).toContain("bg-surface-800");
+    });
+
+    it("shows green background when user voted Going", () => {
+      const session = makeSession({
+        votingEnabled: true,
+        votes: [
+          { id: "vote-1", userId: "member-1", attending: true, votedAt: new Date("2026-02-09T10:00:00Z") },
+        ],
+      });
+      render(
+        <SessionCard
+          session={session}
+          basePath="/member/session"
+          showVotingIndicator
+          currentUserId="member-1"
+        />
+      );
+      const card = screen.getByRole("link");
+      expect(card.className).toContain("bg-success-600/25");
+      expect(card.className).toContain("border-success-600/40");
+    });
+
+    it("shows green background when user is assigned (no voting)", () => {
+      const session = makeSession({
+        votingEnabled: false,
+        votes: [],
+      });
+      render(
+        <SessionCard
+          session={session}
+          basePath="/member/session"
+          showVotingIndicator
+          currentUserId="member-1"
+          isAssigned
+        />
+      );
+      const card = screen.getByRole("link");
+      expect(card.className).toContain("bg-success-600/25");
+      expect(card.className).toContain("border-success-600/40");
+    });
+
+    it("shows default background when user voted Not Going", () => {
+      const session = makeSession({
+        votingEnabled: true,
+        votes: [
+          { id: "vote-1", userId: "member-1", attending: false, votedAt: new Date("2026-02-09T10:00:00Z") },
+        ],
+      });
+      render(
+        <SessionCard
+          session={session}
+          basePath="/member/session"
+          showVotingIndicator
+          currentUserId="member-1"
+        />
+      );
+      const card = screen.getByRole("link");
+      expect(card.className).not.toContain("bg-warning-500/30");
+      expect(card.className).not.toContain("bg-success-600/25");
+      expect(card.className).toContain("bg-surface-800");
+    });
+
+    it("shows default background for cancelled sessions even if voting enabled", () => {
+      const session = makeSession({
+        status: "CANCELLED",
+        votingEnabled: true,
+        votes: [],
+      });
+      render(
+        <SessionCard
+          session={session}
+          basePath="/member/session"
+          showVotingIndicator
+          currentUserId="member-1"
+        />
+      );
+      const card = screen.getByRole("link");
+      expect(card.className).not.toContain("bg-warning-500/30");
+      expect(card.className).not.toContain("bg-success-600/25");
+    });
+  });
+
   // ─── Styling ─────────────────────────────────────────────────────
 
   describe("styling", () => {
