@@ -43,6 +43,7 @@ function makeSession(overrides: Record<string, unknown> = {}) {
     customStartHour: null,
     trainerNames: ["Coach"],
     comingMemberNames: ["Alice"],
+    assignedMemberNames: [],
     votesCount: { coming: 1 },
     ...overrides,
   };
@@ -64,6 +65,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-99"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -80,6 +82,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -96,6 +99,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-99"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -111,6 +115,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-99"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -126,6 +131,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -144,6 +150,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -161,6 +168,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-99"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -181,6 +189,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -201,6 +210,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-99"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -223,6 +233,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-99"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -238,6 +249,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={true}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -255,6 +267,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={true}
+        isAssigned={false}
       />
     );
 
@@ -275,6 +288,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={true}
+        isAssigned={false}
       />
     );
 
@@ -289,6 +303,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={true}
+        isAssigned={false}
       />
     );
 
@@ -311,6 +326,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-99"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -338,6 +354,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -359,6 +376,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -376,6 +394,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -395,6 +414,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -422,6 +442,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -445,6 +466,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={true}
+        isAssigned={false}
       />
     );
 
@@ -464,6 +486,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -479,6 +502,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -493,6 +517,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -508,6 +533,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -522,6 +548,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -539,6 +566,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -555,6 +583,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -574,6 +603,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -592,6 +622,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -606,6 +637,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -625,6 +657,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -653,6 +686,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -681,6 +715,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -699,6 +734,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -716,6 +752,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -737,6 +774,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -753,6 +791,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -769,6 +808,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -785,6 +825,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -800,6 +841,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -816,6 +858,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -832,6 +875,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -848,6 +892,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -863,6 +908,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -881,6 +927,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -899,6 +946,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -915,6 +963,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -936,6 +985,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -964,6 +1014,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -991,6 +1042,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -1008,6 +1060,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -1028,6 +1081,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={true}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -1056,6 +1110,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -1076,6 +1131,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -1090,6 +1146,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -1106,6 +1163,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -1123,6 +1181,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -1142,6 +1201,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -1159,6 +1219,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -1176,6 +1237,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -1196,6 +1258,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -1218,6 +1281,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -1239,6 +1303,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -1255,6 +1320,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -1269,6 +1335,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -1285,6 +1352,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -1299,6 +1367,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={true}
+        isAssigned={false}
       />
     );
 
@@ -1321,6 +1390,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -1347,6 +1417,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -1363,6 +1434,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -1381,6 +1453,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -1405,6 +1478,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -1423,6 +1497,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -1441,6 +1516,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -1458,6 +1534,7 @@ describe("MemberSessionDetailClient", () => {
         userId="member-1"
         isFull={false}
         hasComingVoteOnSameDay={false}
+        isAssigned={false}
       />
     );
 
@@ -1481,6 +1558,7 @@ describe("MemberSessionDetailClient", () => {
           userId="member-1"
           isFull={false}
           hasComingVoteOnSameDay={false}
+          isAssigned={false}
         />
       );
 
@@ -1504,6 +1582,7 @@ describe("MemberSessionDetailClient", () => {
           userId="member-1"
           isFull={false}
           hasComingVoteOnSameDay={false}
+          isAssigned={false}
         />
       );
 
@@ -1525,6 +1604,7 @@ describe("MemberSessionDetailClient", () => {
           userId="member-1"
           isFull={false}
           hasComingVoteOnSameDay={false}
+          isAssigned={false}
         />
       );
 
@@ -1544,6 +1624,7 @@ describe("MemberSessionDetailClient", () => {
           userId="member-1"
           isFull={false}
           hasComingVoteOnSameDay={false}
+          isAssigned={false}
         />
       );
 
@@ -1558,6 +1639,7 @@ describe("MemberSessionDetailClient", () => {
           userId="member-1"
           isFull={false}
           hasComingVoteOnSameDay={false}
+          isAssigned={false}
         />
       );
 
@@ -1577,6 +1659,7 @@ describe("MemberSessionDetailClient", () => {
           userId="member-1"
           isFull={false}
           hasComingVoteOnSameDay={false}
+          isAssigned={false}
         />
       );
 
@@ -1601,6 +1684,7 @@ describe("MemberSessionDetailClient", () => {
           userId="member-1"
           isFull={false}
           hasComingVoteOnSameDay={false}
+          isAssigned={false}
         />
       );
 
@@ -1630,6 +1714,7 @@ describe("MemberSessionDetailClient", () => {
           userId="member-1"
           isFull={false}
           hasComingVoteOnSameDay={false}
+          isAssigned={false}
         />
       );
 
@@ -1651,6 +1736,7 @@ describe("MemberSessionDetailClient", () => {
           userId="member-1"
           isFull={false}
           hasComingVoteOnSameDay={false}
+          isAssigned={false}
         />
       );
 
@@ -1673,6 +1759,7 @@ describe("MemberSessionDetailClient", () => {
           userId="member-1"
           isFull={false}
           hasComingVoteOnSameDay={false}
+          isAssigned={false}
         />
       );
 
@@ -1696,6 +1783,7 @@ describe("MemberSessionDetailClient", () => {
           userId="member-1"
           isFull={false}
           hasComingVoteOnSameDay={false}
+          isAssigned={false}
         />
       );
 
@@ -1719,6 +1807,7 @@ describe("MemberSessionDetailClient", () => {
           userId="member-1"
           isFull={false}
           hasComingVoteOnSameDay={false}
+          isAssigned={false}
         />
       );
 
@@ -1742,6 +1831,7 @@ describe("MemberSessionDetailClient", () => {
           userId="member-1"
           isFull={false}
           hasComingVoteOnSameDay={false}
+          isAssigned={false}
         />
       );
 
@@ -1777,6 +1867,7 @@ describe("MemberSessionDetailClient", () => {
           userId="member-1"
           isFull={false}
           hasComingVoteOnSameDay={false}
+          isAssigned={false}
         />
       );
 
@@ -1807,6 +1898,7 @@ describe("MemberSessionDetailClient", () => {
           userId="member-1"
           isFull={false}
           hasComingVoteOnSameDay={false}
+          isAssigned={false}
         />
       );
 
@@ -1840,6 +1932,7 @@ describe("MemberSessionDetailClient", () => {
           userId="member-1"
           isFull={false}
           hasComingVoteOnSameDay={false}
+          isAssigned={false}
         />
       );
 
@@ -1864,6 +1957,7 @@ describe("MemberSessionDetailClient", () => {
           userId="member-1"
           isFull={false}
           hasComingVoteOnSameDay={false}
+          isAssigned={false}
         />
       );
 
@@ -1886,6 +1980,7 @@ describe("MemberSessionDetailClient", () => {
           userId="member-1"
           isFull={false}
           hasComingVoteOnSameDay={false}
+          isAssigned={false}
         />
       );
 
@@ -1909,6 +2004,7 @@ describe("MemberSessionDetailClient", () => {
           userId="member-1"
           isFull={false}
           hasComingVoteOnSameDay={false}
+          isAssigned={false}
         />
       );
 
@@ -1933,6 +2029,7 @@ describe("MemberSessionDetailClient", () => {
           userId="member-1"
           isFull={false}
           hasComingVoteOnSameDay={false}
+          isAssigned={false}
         />
       );
 
@@ -1961,6 +2058,7 @@ describe("MemberSessionDetailClient", () => {
           userId="member-1"
           isFull={false}
           hasComingVoteOnSameDay={false}
+          isAssigned={false}
         />
       );
 
@@ -1992,6 +2090,7 @@ describe("MemberSessionDetailClient", () => {
           userId="member-1"
           isFull={true}
           hasComingVoteOnSameDay={false}
+          isAssigned={false}
         />
       );
 
@@ -2017,6 +2116,7 @@ describe("MemberSessionDetailClient", () => {
           userId="member-1"
           isFull={false}
           hasComingVoteOnSameDay={false}
+          isAssigned={false}
         />
       );
 
@@ -2042,6 +2142,7 @@ describe("MemberSessionDetailClient", () => {
           userId="member-1"
           isFull={false}
           hasComingVoteOnSameDay={false}
+          isAssigned={false}
         />
       );
 
@@ -2051,6 +2152,125 @@ describe("MemberSessionDetailClient", () => {
 
       clearIntervalSpy.mockRestore();
       vi.useRealTimers();
+    });
+  });
+
+  // ─── Assigned Members card (non-voting sessions) ──────────────────
+
+  describe("Assigned Members card", () => {
+    it("shows Members card with assigned member names for non-voting session when assigned", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingEnabled: false,
+            assignedMemberNames: ["Alice", "Bob", "Charlie"],
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.getByText("Members")).toBeTruthy();
+      expect(screen.getByText("3 assigned")).toBeTruthy();
+      expect(screen.getByText("Alice")).toBeTruthy();
+      expect(screen.getByText("Bob")).toBeTruthy();
+      expect(screen.getByText("Charlie")).toBeTruthy();
+    });
+
+    it("shows avatar initials for assigned members", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingEnabled: false,
+            assignedMemberNames: ["Diana Prince"],
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.getByText("D")).toBeTruthy();
+      expect(screen.getByText("Diana Prince")).toBeTruthy();
+    });
+
+    it("hides Members card when session has voting enabled", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingEnabled: true,
+            assignedMemberNames: ["Alice"],
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.queryByText(/assigned/)).toBeNull();
+    });
+
+    it("hides Members card when member is not assigned", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingEnabled: false,
+            assignedMemberNames: ["Alice", "Bob"],
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={false}
+        />
+      );
+
+      expect(screen.queryByText(/assigned/)).toBeNull();
+    });
+
+    it("hides Members card when not assigned even if assignedMemberNames is populated", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingEnabled: false,
+            assignedMemberNames: ["Alice", "Bob", "Charlie"],
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={false}
+        />
+      );
+
+      expect(screen.queryByText("3 assigned")).toBeNull();
+    });
+
+    it("shows empty state when assigned but no other members", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingEnabled: false,
+            assignedMemberNames: [],
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.getByText("Members")).toBeTruthy();
+      expect(screen.getByText("0 assigned")).toBeTruthy();
+      expect(screen.getByText("No members assigned yet")).toBeTruthy();
     });
   });
 });

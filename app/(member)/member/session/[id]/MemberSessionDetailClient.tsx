@@ -38,6 +38,7 @@ interface SessionData {
   customStartHour: number | null;
   trainerNames: string[];
   comingMemberNames: string[];
+  assignedMemberNames: string[];
   votesCount: {
     coming: number;
   };
@@ -49,12 +50,13 @@ interface MemberSessionDetailClientProps {
   userId: string;
   isFull: boolean;
   hasComingVoteOnSameDay: boolean;
+  isAssigned: boolean;
 }
 
 export function MemberSessionDetailClient(
   props: MemberSessionDetailClientProps
 ): React.ReactElement {
-  const { session, myVote, isFull, hasComingVoteOnSameDay } = props;
+  const { session, myVote, isFull, hasComingVoteOnSameDay, isAssigned } = props;
   const router = useRouter();
   const { addToast } = useToast();
   const [voting, setVoting] = useState(false);
@@ -289,6 +291,35 @@ export function MemberSessionDetailClient(
                         {name.charAt(0).toUpperCase()}
                       </div>
                       <p className="text-sm text-surface-200">{name}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          )}
+
+          {/* Assigned Members — shown for non-voting sessions when assigned */}
+          {!session.votingEnabled && isAssigned && (
+            <Card>
+              <CardHeader
+                title="Members"
+                description={`${session.assignedMemberNames.length} assigned`}
+              />
+              {session.assignedMemberNames.length === 0 ? (
+                <p className="mt-4 text-sm text-surface-500">
+                  No members assigned yet
+                </p>
+              ) : (
+                <div className="mt-4 space-y-1.5">
+                  {session.assignedMemberNames.map((name) => (
+                    <div
+                      key={name}
+                      className="flex items-center gap-2 rounded-md bg-surface-900/50 px-3 py-1.5"
+                    >
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary-700 text-xs font-bold text-white">
+                        {name.charAt(0).toUpperCase()}
+                      </div>
+                      <p className="text-sm text-surface-300">{name}</p>
                     </div>
                   ))}
                 </div>

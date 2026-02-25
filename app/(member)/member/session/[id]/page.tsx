@@ -36,6 +36,16 @@ export default async function MemberSessionDetailPage({
           },
         },
       },
+      members: {
+        select: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
       votes: {
         select: {
           id: true,
@@ -65,6 +75,14 @@ export default async function MemberSessionDetailPage({
   const comingVotes = session.votes.filter((v) => v.attending);
   const comingVoteCount = comingVotes.length;
   const comingMemberNames = comingVotes.map((v) => v.user.name);
+
+  // Check if this member is assigned to this session
+  const isAssigned = session.members.some(
+    (m) => m.user.id === authSession.user.id
+  );
+
+  // Get assigned member names for non-voting sessions
+  const assignedMemberNames = session.members.map((m) => m.user.name);
 
   // Check if this member already voted "Coming" on another session on the same day
   const sessionDay = session.recurringSlot?.dayOfWeek ?? session.customDay;
@@ -105,6 +123,7 @@ export default async function MemberSessionDetailPage({
         customStartHour: session.customStartHour,
         trainerNames: session.trainers.map((t) => t.user.name),
         comingMemberNames,
+        assignedMemberNames,
         votesCount: {
           coming: comingVoteCount,
         },
@@ -113,6 +132,7 @@ export default async function MemberSessionDetailPage({
       userId={authSession.user.id}
       isFull={comingVoteCount >= MAX_CLASS_SIZE}
       hasComingVoteOnSameDay={hasComingVoteOnSameDay}
+      isAssigned={isAssigned}
     />
   );
 }
