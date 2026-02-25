@@ -16,7 +16,7 @@ interface RevenueChartProps {
   totalRevenue: number;
 }
 
-const COLORS = ["#9333ea", "#7e22ce"];
+const COLORS = ["#9333ea", "#14b8a6"];
 
 function formatCurrency(amount: number): string {
   return `${amount.toLocaleString()} MKD`;
@@ -56,12 +56,12 @@ export function RevenueChart({
               data={data}
               cx="50%"
               cy="50%"
-              innerRadius={60}
-              outerRadius={90}
+              innerRadius={50}
+              outerRadius={75}
               paddingAngle={3}
               dataKey="value"
-              label={({ name, percent }: { name?: string; percent?: number }) =>
-                `${name ?? ""}: ${((percent ?? 0) * 100).toFixed(0)}%`
+              label={({ percent }: { percent?: number }) =>
+                `${((percent ?? 0) * 100).toFixed(0)}%`
               }
               labelLine={{ stroke: "#64748b" }}
             >
@@ -73,14 +73,22 @@ export function RevenueChart({
               ))}
             </Pie>
             <Tooltip
-              contentStyle={{
-                backgroundColor: "#1e293b",
-                border: "1px solid #334155",
-                borderRadius: "8px",
-                color: "#f1f5f9",
-                fontSize: "12px",
+              content={({ active, payload }: { active?: boolean; payload?: Array<{ name?: string; value?: number; payload?: { fill?: string } }> }) => {
+                if (!active || !payload || payload.length === 0) return null;
+                const entry = payload[0];
+                const color = entry?.payload?.fill ?? "#f1f5f9";
+                return (
+                  <div style={{
+                    backgroundColor: "#1e293b",
+                    border: "1px solid #334155",
+                    borderRadius: "8px",
+                    padding: "8px 12px",
+                    fontSize: "12px",
+                  }}>
+                    <span style={{ color }}>{entry?.name}: {formatCurrency(entry?.value ?? 0)}</span>
+                  </div>
+                );
               }}
-              formatter={(value: number | undefined) => [formatCurrency(value ?? 0), "Revenue"]}
             />
             <Legend
               wrapperStyle={{ fontSize: "12px", color: "#94a3b8" }}
