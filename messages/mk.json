@@ -22,6 +22,8 @@
     "networkError": "Грешка во мрежата",
     "unexpectedError": "Настана неочекувана грешка",
     "requestTimeout": "Барањето истече. Обидете се повторно.",
+    "requestTimeoutTitle": "Барањето истече",
+    "requestTimeoutMessage": "Серверот одговори предолго. Обидете се повторно.",
     "noResults": "Нема резултати"
   },
   "brand": {
@@ -97,7 +99,10 @@
     "newPasswordRequired": "Потребна е новата лозинка",
     "positiveAmount": "Износот мора да биде позитивен број",
     "periodStartRequired": "Почетокот на периодот е задолжителен",
-    "periodEndAfterStart": "Крајот на периодот мора да биде по почетокот"
+    "periodEndAfterStart": "Крајот на периодот мора да биде по почетокот",
+    "selectMember": "Изберете член",
+    "paymentDateRequired": "Датумот на плаќање е задолжителен",
+    "periodEndRequired": "Крајот на периодот е задолжителен"
   },
   "roles": {
     "owner": "Сопственик",
@@ -180,7 +185,11 @@
     "imComingButton": "Доаѓам",
     "notComingButton": "Не доаѓам",
     "trainersTitle": "Тренери",
-    "membersCardTitle": "Членови"
+    "membersCardTitle": "Членови",
+    "disableVoting": "Оневозможи гласање",
+    "enableVoting": "Овозможи гласање",
+    "votingResults": "Резултати од гласање",
+    "noTrainersAssigned": "Нема доделени тренери"
   },
   "createSession": {
     "oneOff": "Еднократна",
@@ -280,7 +289,11 @@
     "deleteConfirmation": "Дали сте сигурни дека сакате да го избришете ова плаќање од {amount} за {memberName}? Оваа акција не може да се поништи.",
     "failedToRecord": "Неуспешно забележување на плаќање. Обидете се повторно.",
     "failedToUpdate": "Неуспешно ажурирање на плаќање",
-    "failedToDelete": "Неуспешно бришење на плаќање"
+    "failedToDelete": "Неуспешно бришење на плаќање",
+    "paymentRecorded": "Плаќањето е забележано",
+    "failedToRecordPayment": "Неуспешно забележување на плаќање",
+    "failedToLoadPayments": "Неуспешно вчитување на плаќања",
+    "unexpectedResponseFormat": "Неочекуван формат на одговор"
   },
   "paymentStatus": {
     "paid": "Платено",
@@ -493,6 +506,20 @@
     "stopButton": "Прекини со тренирање",
     "accountDeactivated": "Вашата сметка е деактивирана",
     "failedToProcess": "Неуспешна обработка на барањето"
+  },
+  "months": {
+    "january": "Јануари",
+    "february": "Февруари",
+    "march": "Март",
+    "april": "Април",
+    "may": "Мај",
+    "june": "Јуни",
+    "july": "Јули",
+    "august": "Август",
+    "september": "Септември",
+    "october": "Октомври",
+    "november": "Ноември",
+    "december": "Декември"
   },
   "dateRange": {
     "thisWeek": "Оваа недела",

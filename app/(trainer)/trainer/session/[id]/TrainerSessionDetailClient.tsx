@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -58,6 +59,10 @@ export function TrainerSessionDetailClient({
 }: TrainerSessionDetailClientProps): React.ReactElement {
   const router = useRouter();
   const { addToast } = useToast();
+  const t = useTranslations("schedule");
+  const tCommon = useTranslations("common");
+  const tWorkout = useTranslations("workout");
+  const tDetail = useTranslations("sessionDetail");
   const [editingWorkout, setEditingWorkout] = useState(false);
   const [currentMemberIds, setCurrentMemberIds] = useState<string[]>(
     session.members.map((m) => m.userId)
@@ -89,14 +94,14 @@ export function TrainerSessionDetailClient({
       });
 
       if (res.ok) {
-        addToast({ type: "success", title: "Workout saved" });
+        addToast({ type: "success", title: tWorkout("saved") });
         setEditingWorkout(false);
         router.refresh();
       } else {
         const data = await res.json().catch(() => ({ error: "Unknown error" }));
         addToast({
           type: "error",
-          title: "Failed to save workout",
+          title: tWorkout("failedToSave"),
           message: data.error || `Server returned ${res.status}`,
         });
       }
@@ -104,11 +109,11 @@ export function TrainerSessionDetailClient({
       if (err instanceof DOMException && err.name === "AbortError") {
         addToast({
           type: "error",
-          title: "Request timed out",
-          message: "The server took too long to respond. Please try again.",
+          title: tCommon("requestTimeoutTitle"),
+          message: tCommon("requestTimeoutMessage"),
         });
       } else {
-        addToast({ type: "error", title: "Network error" });
+        addToast({ type: "error", title: tCommon("networkError") });
       }
     } finally {
       clearTimeout(timeoutId);
@@ -125,14 +130,14 @@ export function TrainerSessionDetailClient({
       if (res.ok) {
         addToast({
           type: "success",
-          title: session.votingEnabled ? "Voting disabled" : "Voting enabled",
+          title: session.votingEnabled ? t("votingDisabled") : t("votingEnabled"),
         });
         router.refresh();
       } else {
-        addToast({ type: "error", title: "Failed to update voting" });
+        addToast({ type: "error", title: t("failedToUpdateVoting") });
       }
     } catch {
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tCommon("networkError") });
     }
   }
 
@@ -147,14 +152,14 @@ export function TrainerSessionDetailClient({
       if (res.ok) {
         const data = await res.json();
         setCurrentMemberIds(data.data.map((m: { userId: string }) => m.userId));
-        addToast({ type: "success", title: currentlyAssigned ? "Member removed" : "Member assigned" });
+        addToast({ type: "success", title: currentlyAssigned ? tDetail("memberRemoved") : tDetail("memberAssigned") });
         router.refresh();
       } else {
         const err = await res.json();
-        addToast({ type: "error", title: err.error || "Failed to update" });
+        addToast({ type: "error", title: err.error || tDetail("failedToUpdateTrainer") });
       }
     } catch {
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tCommon("networkError") });
     }
   }
 
@@ -175,13 +180,13 @@ export function TrainerSessionDetailClient({
             </Badge>
             {session.votingEnabled && (
               <Badge variant="info" size="sm">
-                Voting Open
+                {t("votingOpen")}
               </Badge>
             )}
           </div>
         </div>
         <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          Back
+          {tCommon("back")}
         </Button>
       </div>
 
@@ -191,14 +196,14 @@ export function TrainerSessionDetailClient({
           {/* Workout */}
           <Card>
             <div className="flex items-center justify-between">
-              <CardHeader title="Workout" />
+              <CardHeader title={tWorkout("title")} />
               {!isCancelled && !editingWorkout && (
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setEditingWorkout(true)}
                 >
-                  Edit
+                  {tCommon("edit")}
                 </Button>
               )}
             </div>
@@ -223,7 +228,7 @@ export function TrainerSessionDetailClient({
           {/* Members — only shown when voting is disabled */}
           {!session.votingEnabled && (
             <AssignmentToggleList
-              title="Members"
+              title={t("membersCardTitle")}
               people={allMembers}
               assignedIds={currentMemberIds}
               onToggle={handleToggleMember}
@@ -236,7 +241,7 @@ export function TrainerSessionDetailClient({
           {/* Toggle voting */}
           {!isCancelled && (
             <Button variant="ghost" size="sm" onClick={handleToggleVoting}>
-              {session.votingEnabled ? "Disable Voting" : "Enable Voting"}
+              {session.votingEnabled ? t("disableVoting") : t("enableVoting")}
             </Button>
           )}
 
@@ -255,7 +260,7 @@ export function TrainerSessionDetailClient({
           {/* Voting Results — only shown when voting is enabled */}
           {session.votingEnabled && (
             <Card>
-              <CardHeader title="Voting Results" />
+              <CardHeader title={t("votingResults")} />
               <div className="mt-4">
                 <VoteSummary members={voteMembers} />
               </div>
@@ -264,10 +269,10 @@ export function TrainerSessionDetailClient({
 
           {/* Trainers */}
           <Card>
-            <CardHeader title="Trainers" />
+            <CardHeader title={t("trainersTitle")} />
             {session.trainers.length === 0 ? (
               <p className="mt-4 text-sm text-surface-500">
-                No trainers assigned
+                {t("noTrainersAssigned")}
               </p>
             ) : (
               <div className="mt-4 space-y-2">

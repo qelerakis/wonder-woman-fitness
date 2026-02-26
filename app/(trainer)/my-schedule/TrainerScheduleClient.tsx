@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { addDays } from "date-fns";
+import { useTranslations } from "next-intl";
 import { WeeklyCalendar } from "@/components/schedule/WeeklyCalendar";
 import { CreateSessionModal } from "@/components/schedule/CreateSessionModal";
 import { Button } from "@/components/ui/Button";
@@ -22,6 +23,8 @@ export function TrainerScheduleClient({
   const [loading, setLoading] = useState(true); // only for initial load
   const [showCreateModal, setShowCreateModal] = useState(false);
   const { addToast } = useToast();
+  const t = useTranslations("schedule");
+  const tCommon = useTranslations("common");
   const abortRef = useRef<AbortController | null>(null);
 
   const fetchSessions = useCallback(async (showLoader = false): Promise<void> => {
@@ -45,20 +48,20 @@ export function TrainerScheduleClient({
         // Show all sessions — isAssigned flag from server distinguishes assigned vs unassigned
         setSessions(data.data);
       } else {
-        addToast({ type: "error", title: "Failed to load sessions" });
+        addToast({ type: "error", title: t("failedToLoad") });
       }
     } catch (err: unknown) {
       // Don't show error toast for aborted requests
       if (err instanceof DOMException && err.name === "AbortError") {
         return;
       }
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tCommon("networkError") });
     } finally {
       if (!controller.signal.aborted) {
         setLoading(false);
       }
     }
-  }, [weekStart, addToast]);
+  }, [weekStart, addToast, t, tCommon]);
 
   useEffect(() => {
     void fetchSessions(true); // show loader on initial load and week change
@@ -77,9 +80,9 @@ export function TrainerScheduleClient({
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-surface-100">My Schedule</h1>
+          <h1 className="text-2xl font-bold text-surface-100">{t("trainerTitle")}</h1>
           <p className="mt-1 text-sm text-surface-400">
-            Sessions you are assigned to train
+            {t("trainerSubtitle")}
           </p>
         </div>
         <Button
@@ -87,13 +90,13 @@ export function TrainerScheduleClient({
           size="sm"
           onClick={() => setShowCreateModal(true)}
         >
-          Add Session
+          {t("addSession")}
         </Button>
       </div>
 
       {loading ? (
         <div className="flex h-64 items-center justify-center">
-          <div className="text-sm text-surface-500">Loading sessions...</div>
+          <div className="text-sm text-surface-500">{t("loadingSessions")}</div>
         </div>
       ) : (
         <WeeklyCalendar
