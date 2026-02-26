@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect, useId, useCallback, useMemo } from "react";
+import { useTranslations, useLocale } from "next-intl";
+import { getDateLocale } from "@/lib/date-locale";
 import {
   format,
   parse,
@@ -31,8 +33,6 @@ interface DateTimePickerProps {
   disabled?: boolean;
   placeholder?: string;
 }
-
-const WEEKDAY_LABELS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"] as const;
 
 const HOUR_OPTIONS: string[] = Array.from({ length: 24 }, (_, i) =>
   String(i).padStart(2, "0")
@@ -92,8 +92,21 @@ function DateTimePicker({
   min,
   max,
   disabled = false,
-  placeholder = "Select date and time",
+  placeholder,
 }: DateTimePickerProps): React.ReactElement {
+  const t = useTranslations("datePicker");
+  const locale = useLocale();
+  const dateLocale = useMemo(() => getDateLocale(locale), [locale]);
+  const resolvedPlaceholder = placeholder ?? t("selectDateTime");
+
+  const weekdayLabels = useMemo(() => {
+    const baseDate = new Date(2024, 0, 1); // A Monday
+    return Array.from({ length: 7 }, (_, i) => {
+      const day = addDays(baseDate, i);
+      return format(day, "EEEEEE", { locale: dateLocale });
+    });
+  }, [dateLocale]);
+
   const generatedId = useId();
   const triggerId = `datetimepicker-trigger-${generatedId}`;
   const errorId = `${triggerId}-error`;
@@ -291,8 +304,8 @@ function DateTimePicker({
   }, [viewDate]);
 
   const displayValue = selectedDate
-    ? format(selectedDate, "MMM d, yyyy") +
-      ` at ${parsed.hour}:${parsed.minute}`
+    ? format(selectedDate, "MMM d, yyyy", { locale: dateLocale }) +
+      ` ${parsed.hour}:${parsed.minute}`
     : "";
 
   const describedBy = error
@@ -355,7 +368,7 @@ function DateTimePicker({
               displayValue ? "text-surface-100" : "text-surface-500"
             }
           >
-            {displayValue || placeholder}
+            {displayValue || resolvedPlaceholder}
           </span>
           {/* Calendar + clock icon */}
           <svg
@@ -379,7 +392,7 @@ function DateTimePicker({
         {isOpen && (
           <div
             role="dialog"
-            aria-label="Choose date and time"
+            aria-label={t("chooseDateAndTime")}
             style={{ top: dropdownPos.top, left: dropdownPos.left }}
             className="fixed z-[100] w-[232px] rounded-xl border border-surface-600 bg-surface-800 shadow-xl shadow-black/30"
           >
@@ -389,7 +402,7 @@ function DateTimePicker({
                 type="button"
                 onClick={() => setViewDate((d) => subMonths(d, 1))}
                 className="rounded-lg p-1 text-surface-400 transition-colors duration-100 hover:bg-surface-700 hover:text-surface-100"
-                aria-label="Previous month"
+                aria-label={t("previousMonth")}
               >
                 <svg
                   className="h-4 w-4"
@@ -408,13 +421,13 @@ function DateTimePicker({
                 </svg>
               </button>
               <span className="text-sm font-semibold text-surface-100">
-                {format(viewDate, "MMMM yyyy")}
+                {format(viewDate, "MMMM yyyy", { locale: dateLocale })}
               </span>
               <button
                 type="button"
                 onClick={() => setViewDate((d) => addMonths(d, 1))}
                 className="rounded-lg p-1 text-surface-400 transition-colors duration-100 hover:bg-surface-700 hover:text-surface-100"
-                aria-label="Next month"
+                aria-label={t("nextMonth")}
               >
                 <svg
                   className="h-4 w-4"
@@ -436,9 +449,9 @@ function DateTimePicker({
 
             {/* Weekday headers */}
             <div className="grid grid-cols-7 px-1.5">
-              {WEEKDAY_LABELS.map((day) => (
+              {weekdayLabels.map((day, i) => (
                 <div
-                  key={day}
+                  key={i}
                   className="flex h-6 items-center justify-center text-xs font-medium text-surface-500"
                 >
                   {day}
@@ -498,7 +511,7 @@ function DateTimePicker({
                       type="button"
                       tabIndex={-1}
                       disabled={isDisabled}
-                      aria-label={format(day, "EEEE, MMMM d, yyyy")}
+                      aria-label={format(day, "EEEE, MMMM d, yyyy", { locale: dateLocale })}
                       aria-current={isTodayDate ? "date" : undefined}
                       onClick={() => {
                         if (!isCurrentMonth) {
@@ -520,7 +533,7 @@ function DateTimePicker({
             <div className="border-t border-surface-700 px-2 py-1.5">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-medium text-surface-400">
-                  Time
+                  {t("time")}
                 </span>
                 <select
                   value={selectedHour}
@@ -557,7 +570,7 @@ function DateTimePicker({
                   disabled={!pendingDate}
                   className="w-full rounded-md bg-primary-600 py-1 text-xs font-semibold text-white hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Done
+                  {t("done")}
                 </button>
               </div>
             </div>

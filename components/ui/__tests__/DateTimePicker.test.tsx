@@ -69,7 +69,7 @@ describe("DateTimePicker", () => {
         <DateTimePicker value="2026-02-17T14:30" onChange={onChange} />
       );
 
-      expect(screen.getByText("Feb 17, 2026 at 14:30")).toBeTruthy();
+      expect(screen.getByText("Feb 17, 2026 14:30")).toBeTruthy();
     });
 
     it("displays formatted date with different time", () => {
@@ -77,7 +77,7 @@ describe("DateTimePicker", () => {
         <DateTimePicker value="2026-03-05T09:15" onChange={onChange} />
       );
 
-      expect(screen.getByText("Mar 5, 2026 at 09:15")).toBeTruthy();
+      expect(screen.getByText("Mar 5, 2026 09:15")).toBeTruthy();
     });
   });
 

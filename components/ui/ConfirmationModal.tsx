@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Modal } from "./Modal";
 import { Button } from "./Button";
 
@@ -22,6 +23,7 @@ export function ConfirmationModal({
   confirmLabel,
   loading = false,
 }: ConfirmationModalProps): React.ReactElement | null {
+  const t = useTranslations("common");
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} size="sm">
       <div className="space-y-4">
@@ -41,7 +43,7 @@ export function ConfirmationModal({
             onClick={onClose}
             disabled={loading}
           >
-            Cancel
+            {t("cancel")}
           </Button>
         </div>
       </div>
