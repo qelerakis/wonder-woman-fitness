@@ -49,7 +49,7 @@ describe("VotingPrompt", () => {
 
   it("renders the question heading", () => {
     renderVotingPrompt();
-    expect(screen.getByText("Are you attending this session?")).toBeTruthy();
+    expect(screen.getByText("Will you attend this session?")).toBeTruthy();
   });
 
   // ─── Unselected state (no vote) ──────────────────────────────

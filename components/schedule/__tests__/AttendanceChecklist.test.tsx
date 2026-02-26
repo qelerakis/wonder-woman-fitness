@@ -249,7 +249,7 @@ describe("AttendanceChecklist", () => {
       // (Alice, Bob, Charlie are already in the attendance list so they shouldn't appear as add options)
     });
 
-    it("shows 'All members are already in the list' when no available members", async () => {
+    it("shows 'No people available.' when no available members", async () => {
       renderChecklist({
         allActiveMembers: [
           { id: "m-1", name: "Alice" },
@@ -264,7 +264,7 @@ describe("AttendanceChecklist", () => {
       });
 
       expect(
-        screen.getByText("All members are already in the list")
+        screen.getByText("No people available.")
       ).toBeDefined();
     });
   });

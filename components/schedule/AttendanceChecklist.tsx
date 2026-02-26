@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
 
@@ -21,6 +22,7 @@ export function AttendanceChecklist({
   members: initialMembers,
   allActiveMembers,
 }: AttendanceChecklistProps): React.ReactElement {
+  const t = useTranslations("attendance");
   const [members, setMembers] = useState<AttendanceMember[]>(initialMembers);
   const [showAddDropdown, setShowAddDropdown] = useState(false);
   const { addToast } = useToast();
@@ -59,7 +61,7 @@ export function AttendanceChecklist({
         );
         addToast({
           type: "error",
-          title: "Failed to update attendance",
+          title: t("failedToUpdate"),
         });
       }
     } catch {
@@ -92,7 +94,7 @@ export function AttendanceChecklist({
       if (!addRes.ok) {
         addToast({
           type: "error",
-          title: "Failed to add member to session",
+          title: t("failedToAddMember"),
         });
         return;
       }
@@ -110,7 +112,7 @@ export function AttendanceChecklist({
       if (!attendanceRes.ok) {
         addToast({
           type: "error",
-          title: "Failed to mark attendance",
+          title: t("failedToMark"),
         });
         return;
       }
@@ -121,12 +123,12 @@ export function AttendanceChecklist({
 
       addToast({
         type: "success",
-        title: `${name} added and marked present`,
+        title: t("memberAddedAndPresent", { name }),
       });
     } catch {
       addToast({
         type: "error",
-        title: "Failed to add member",
+        title: t("failedToAdd"),
       });
     }
   }
@@ -134,8 +136,8 @@ export function AttendanceChecklist({
   return (
     <Card padding="sm">
       <CardHeader
-        title="Attendance"
-        description={`${presentCount} / ${totalCount} present`}
+        title={t("title")}
+        description={t("presentCount", { presentCount, totalCount })}
       />
 
       <div className="mt-3 flex flex-col gap-1.5">
@@ -204,7 +206,7 @@ export function AttendanceChecklist({
           <div className="flex flex-col gap-1">
             {availableMembers.length === 0 ? (
               <p className="px-3 py-2 text-center text-sm text-surface-500">
-                All members are already in the list
+                {t("noPeopleAvailable")}
               </p>
             ) : (
               availableMembers.map((am) => (

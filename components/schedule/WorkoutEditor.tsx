@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
@@ -20,6 +21,8 @@ export function WorkoutEditor({
   onSave,
   onCancel,
 }: WorkoutEditorProps): React.ReactElement {
+  const t = useTranslations("workout");
+  const tc = useTranslations("common");
   const [title, setTitle] = useState(initialTitle);
   const [details, setDetails] = useState(initialDetails);
   const [saving, setSaving] = useState(false);
@@ -37,7 +40,7 @@ export function WorkoutEditor({
     try {
       await onSave(sessionId, title.trim(), details.trim());
     } catch {
-      setError("Failed to save workout. Please try again.");
+      setError(t("failedToSave"));
     } finally {
       setSaving(false);
     }
@@ -82,7 +85,7 @@ export function WorkoutEditor({
           </Button>
           {onCancel && (
             <Button variant="ghost" size="sm" onClick={onCancel}>
-              Cancel
+              {tc("cancel")}
             </Button>
           )}
         </div>

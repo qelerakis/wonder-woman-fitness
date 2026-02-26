@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { DAY_NAMES } from "@/lib/constants";
@@ -23,6 +24,8 @@ export function DeleteRecurringSlotModal({
   startHour,
   onDeleted,
 }: DeleteRecurringSlotModalProps): React.ReactElement | null {
+  const t = useTranslations("deleteSlot");
+  const tc = useTranslations("common");
   const [deleteFutureSessions, setDeleteFutureSessions] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,14 +65,14 @@ export function DeleteRecurringSlotModal({
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title="Delete Recurring Slot" size="sm">
+    <Modal isOpen={isOpen} onClose={handleClose} title={t("title")} size="sm">
       <div className="space-y-4">
         <p className="text-sm text-surface-300">
-          Permanently remove the <span className="font-semibold text-surface-100">{dayName} {time}</span> recurring slot.
+          {t("description", { day: dayName, time })}
         </p>
 
         <fieldset className="space-y-3">
-          <legend className="text-sm font-medium text-surface-200">What should happen?</legend>
+          <legend className="text-sm font-medium text-surface-200">{t("whatShouldHappen")}</legend>
 
           <label className="flex items-start gap-3 rounded-lg border border-surface-700 p-3 cursor-pointer hover:border-surface-500 transition-colors">
             <input
@@ -80,9 +83,9 @@ export function DeleteRecurringSlotModal({
               className="mt-0.5 accent-primary-500"
             />
             <div>
-              <p className="text-sm font-medium text-surface-100">Stop future generation only</p>
+              <p className="text-sm font-medium text-surface-100">{t("stopFutureOnly")}</p>
               <p className="text-xs text-surface-400 mt-0.5">
-                The slot template will be removed. Already scheduled sessions stay on the calendar.
+                {t("stopFutureDescription")}
               </p>
             </div>
           </label>
@@ -96,9 +99,9 @@ export function DeleteRecurringSlotModal({
               className="mt-0.5 accent-primary-500"
             />
             <div>
-              <p className="text-sm font-medium text-surface-100">Delete slot and all upcoming sessions</p>
+              <p className="text-sm font-medium text-surface-100">{t("deleteSlotAndSessions")}</p>
               <p className="text-xs text-surface-400 mt-0.5">
-                Removes the template and all sessions from this week onward. Past sessions are kept for records. Members will be notified.
+                {t("deleteSlotAndSessionsDescription")}
               </p>
             </div>
           </label>
@@ -110,10 +113,10 @@ export function DeleteRecurringSlotModal({
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="ghost" size="sm" onClick={handleClose} disabled={loading}>
-            Cancel
+            {tc("cancel")}
           </Button>
           <Button variant="danger" size="sm" onClick={handleDelete} loading={loading}>
-            Delete
+            {tc("delete")}
           </Button>
         </div>
       </div>

@@ -81,7 +81,7 @@ describe("CreateSessionModal", () => {
 
     render(<CreateSessionModal {...defaultProps} />);
 
-    const oneOffTab = screen.getByRole("tab", { name: "One-Off" });
+    const oneOffTab = screen.getByRole("tab", { name: "One-off" });
     expect(oneOffTab.getAttribute("aria-selected")).toBe("true");
   });
 
@@ -92,8 +92,8 @@ describe("CreateSessionModal", () => {
 
     render(<CreateSessionModal {...defaultProps} />);
 
-    expect(screen.getByRole("tab", { name: "One-Off" })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "New Recurring" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "One-off" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Recurring" })).toBeTruthy();
   });
 
   it("Create Session button is disabled when no day/time selected", async () => {

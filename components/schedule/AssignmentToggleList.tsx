@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
@@ -24,6 +25,7 @@ export function AssignmentToggleList({
   maxCapacity,
   currentCount,
 }: AssignmentToggleListProps): React.ReactElement {
+  const t = useTranslations("assignment");
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
   const atCapacity =
@@ -55,7 +57,7 @@ export function AssignmentToggleList({
       <div className="mt-3 flex flex-col gap-1.5">
         {people.length === 0 && (
           <p className="px-3 py-2 text-sm text-surface-500">
-            No people available.
+            {t("noPeopleAvailable")}
           </p>
         )}
 
@@ -93,7 +95,7 @@ export function AssignmentToggleList({
                   disabled={isRemoveDisabled}
                   onClick={() => handleToggle(person.id, true)}
                 >
-                  Assigned
+                  {t("assigned")}
                 </Button>
               ) : (
                 <Button
@@ -102,7 +104,7 @@ export function AssignmentToggleList({
                   disabled={isAddDisabled}
                   onClick={() => handleToggle(person.id, false)}
                 >
-                  Add
+                  {t("add")}
                 </Button>
               )}
             </div>

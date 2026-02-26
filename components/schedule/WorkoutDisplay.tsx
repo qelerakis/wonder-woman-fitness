@@ -1,3 +1,7 @@
+"use client";
+
+import { useTranslations } from "next-intl";
+
 interface WorkoutDisplayProps {
   title: string | null;
   details: string | null;
@@ -7,11 +11,13 @@ export function WorkoutDisplay({
   title,
   details,
 }: WorkoutDisplayProps): React.ReactElement {
+  const t = useTranslations("workout");
+
   if (!title && !details) {
     return (
       <div className="rounded-lg border border-dashed border-surface-700 p-4 text-center">
         <p className="text-sm text-surface-500">
-          No workout posted yet
+          {t("noWorkout")}
         </p>
       </div>
     );

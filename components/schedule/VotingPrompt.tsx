@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
 import { format } from "date-fns";
 
@@ -19,6 +20,7 @@ export function VotingPrompt({
   onVote,
   disabled = false,
 }: VotingPromptProps): React.ReactElement {
+  const t = useTranslations("schedule");
   const [loading, setLoading] = useState<"yes" | "no" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,7 +33,7 @@ export function VotingPrompt({
     try {
       await onVote(sessionId, attending);
     } catch {
-      setError("Failed to submit your vote. Please try again.");
+      setError(t("failedToSubmitVote"));
     } finally {
       setLoading(null);
     }
@@ -41,18 +43,15 @@ export function VotingPrompt({
     <div className="rounded-lg border border-surface-700 bg-surface-800 p-4">
       <div className="mb-3">
         <h4 className="text-sm font-medium text-surface-200">
-          Are you attending this session?
+          {t("willYouAttend")}
         </h4>
         <p className="mt-1 text-xs text-surface-400">
           {isPastDeadline ? (
-            <span className="text-warning-500">Voting has closed</span>
+            <span className="text-warning-500">{t("votingHasClosed")}</span>
           ) : (
-            <>
-              Vote by{" "}
-              <span className="font-medium text-surface-300">
-                {format(votingDeadline, "EEE, MMM d 'at' h:mm a")}
-              </span>
-            </>
+            <span className="font-medium text-surface-300">
+              {t("voteByDeadline", { deadline: format(votingDeadline, "EEE, MMM d 'at' h:mm a") })}
+            </span>
           )}
         </p>
       </div>
@@ -79,7 +78,7 @@ export function VotingPrompt({
               clipRule="evenodd"
             />
           </svg>
-          I&apos;m coming
+          {t("imComing")}
         </Button>
         <Button
           variant={currentVote === false ? "danger" : "secondary"}
@@ -96,7 +95,7 @@ export function VotingPrompt({
               clipRule="evenodd"
             />
           </svg>
-          I&apos;m not coming
+          {t("imNotComing")}
         </Button>
       </div>
     </div>

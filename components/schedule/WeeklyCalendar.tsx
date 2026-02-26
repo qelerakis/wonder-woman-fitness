@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { addDays, format } from "date-fns";
 import { SessionCard } from "./SessionCard";
 import { DAY_NAMES } from "@/lib/constants";
@@ -50,6 +51,7 @@ export function WeeklyCalendar({
   currentUserId,
   onWeekChange,
 }: WeeklyCalendarProps): React.ReactElement {
+  const t = useTranslations("schedule");
   const grouped = groupSessionsByDay(sessions);
 
   // Use state + effect for today's date to avoid hydration mismatch
@@ -84,7 +86,7 @@ export function WeeklyCalendar({
                   clipRule="evenodd"
                 />
               </svg>
-              Prev
+              {t("prev")}
             </span>
           </button>
           <h2 className="text-sm font-medium text-surface-200">
@@ -96,7 +98,7 @@ export function WeeklyCalendar({
             className="rounded-lg px-3 py-2 text-sm text-surface-400 hover:bg-surface-800 hover:text-surface-100 transition-colors"
           >
             <span className="flex items-center gap-1">
-              Next
+              {t("next")}
               <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                 <path
                   fillRule="evenodd"

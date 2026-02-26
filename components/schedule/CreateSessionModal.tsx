@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { addDays, format } from "date-fns";
 import { Modal } from "@/components/ui/Modal";
 import { Select } from "@/components/ui/Select";
@@ -37,6 +38,8 @@ export function CreateSessionModal({
   onCreated,
   weekStart,
 }: CreateSessionModalProps): React.ReactElement | null {
+  const t = useTranslations("createSession");
+  const tc = useTranslations("common");
   const [tab, setTab] = useState<TabMode>("oneoff");
   const [selectedDay, setSelectedDay] = useState("");
   const [selectedHour, setSelectedHour] = useState("");
@@ -85,17 +88,17 @@ export function CreateSessionModal({
         });
 
         if (res.status === 201) {
-          addToast({ type: "success", title: "One-off session created" });
+          addToast({ type: "success", title: t("oneOffCreated") });
           resetForm();
           onCreated();
         } else if (res.status === 409) {
           addToast({
             type: "error",
-            title: "Time conflict",
-            message: "A session already exists at this day and time.",
+            title: t("timeConflict"),
+            message: t("timeConflictMessage"),
           });
         } else {
-          addToast({ type: "error", title: "Failed to create session" });
+          addToast({ type: "error", title: t("failedToCreate") });
         }
       } else {
         // New recurring slot + session
@@ -112,14 +115,14 @@ export function CreateSessionModal({
         if (slotRes.status === 409) {
           addToast({
             type: "error",
-            title: "Slot already exists",
-            message: "A recurring slot already exists at this day and time.",
+            title: t("slotAlreadyExists"),
+            message: t("slotAlreadyExistsMessage"),
           });
           return;
         }
 
         if (!slotRes.ok) {
-          addToast({ type: "error", title: "Failed to create recurring slot" });
+          addToast({ type: "error", title: t("failedToCreateSlot") });
           return;
         }
 
@@ -138,29 +141,29 @@ export function CreateSessionModal({
         if (sessionRes.status === 201) {
           addToast({
             type: "success",
-            title: "Recurring slot & session created",
-            message: `New ${DAY_NAMES[day]} ${formatTime(hour)} slot created.`,
+            title: t("slotAndSessionCreated"),
+            message: t("slotCreatedMessage", { day: DAY_NAMES[day] as string, time: formatTime(hour) }),
           });
           resetForm();
           onCreated();
         } else {
           addToast({
             type: "error",
-            title: "Slot created but session failed",
-            message: "The recurring slot was created. Try generating the week to create the session.",
+            title: t("slotCreatedSessionFailed"),
+            message: t("slotCreatedSessionFailedMessage"),
           });
         }
       }
     } catch {
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tc("networkError") });
     } finally {
       setSubmitting(false);
     }
   }
 
   const TABS: Array<{ key: TabMode; label: string }> = [
-    { key: "oneoff", label: "One-Off" },
-    { key: "recurring", label: "New Recurring" },
+    { key: "oneoff", label: t("oneOff") },
+    { key: "recurring", label: t("recurring") },
   ];
 
   return (
@@ -256,7 +259,7 @@ export function CreateSessionModal({
             onClick={handleClose}
             disabled={submitting}
           >
-            Cancel
+            {tc("cancel")}
           </Button>
           <Button
             variant="primary"

@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/Badge";
 import { MAX_CLASS_SIZE, VOTING_URGENCY_HOURS } from "@/lib/constants";
@@ -25,6 +28,7 @@ export function SessionCard({
   currentUserId,
   isAssigned = false,
 }: SessionCardProps): React.ReactElement {
+  const t = useTranslations("schedule");
   const time = formatTime(session.recurringSlot?.startHour ?? session.customStartHour ?? 0);
   const comingCount = session.votes.filter((v) => v.attending).length;
   const memberCount = session.members.length;
@@ -76,12 +80,12 @@ export function SessionCard({
         <span className="text-sm font-semibold text-surface-100">{time}</span>
         {isCancelled && (
           <Badge variant="error" size="sm">
-            Cancelled
+            {t("cancelled")}
           </Badge>
         )}
         {!isCancelled && session.votingEnabled && showVotingIndicator && (
           <Badge variant="primary" size="sm">
-            Voting
+            {t("voting")}
           </Badge>
         )}
       </div>
@@ -104,19 +108,19 @@ export function SessionCard({
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs text-surface-500">
           {session.votingEnabled ? comingCount : memberCount}/{MAX_CLASS_SIZE}{" "}
-          {session.votingEnabled ? "coming" : "members"}
+          {session.votingEnabled ? t("coming") : t("membersCount")}
         </span>
         {showVotingIndicator && userVote !== undefined && userVote !== null && (
           <Badge
             variant={userVote.attending ? "success" : "error"}
             size="sm"
           >
-            {userVote.attending ? "Going" : "Not going"}
+            {userVote.attending ? t("going") : t("notGoing")}
           </Badge>
         )}
         {showDeadline && deadline && (
           <span className={`text-xs ${isUrgent ? "text-warning-400" : "text-surface-500"}`}>
-            by {format(deadline, "EEE h a")}
+            {t("byDeadline", { deadline: format(deadline, "EEE h a") })}
           </span>
         )}
       </div>
