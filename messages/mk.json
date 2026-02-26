@@ -548,7 +548,21 @@
     "atLeast8Chars": "Најмалку 8 карактери",
     "dangerZone": "Опасна зона",
     "irreversibleActions": "Неповратни акции",
-    "departDescription": "Ова ќе ја означи вашата сметка како заминат. Можете да побарате повторно приклучување подоцна."
+    "departDescription": "Ова ќе ја означи вашата сметка како заминат. Можете да побарате повторно приклучување подоцна.",
+    "paymentInformation": "Информации за плаќање",
+    "lastPayment": "Последно плаќање",
+    "paidThrough": "Платено до",
+    "nextPaymentDue": "Следно плаќање",
+    "noPaymentsYet": "Нема евидентирани плаќања",
+    "trialEndsOn": "Пробниот период завршува на {date}",
+    "paymentDueBy": "Плаќање до {date}",
+    "daysRemainingInTrial": "{count, plural, one {# ден} other {# дена}} преостануваат од пробниот период",
+    "daysRemainingToPay": "{count, plural, one {# ден} other {# дена}} преостануваат за плаќање",
+    "paymentOverdue": "Задоцнето плаќање — контактирајте го сопственикот",
+    "overrideActive": "Активно е прескокнување на плаќањето",
+    "showAllPayments": "Прикажи ги сите плаќања",
+    "showRecent": "Прикажи скорешни",
+    "recentPayments": "Скорешни плаќања"
   },
   "departed": {
     "greeting": "Ни недостигате, {userName}!",

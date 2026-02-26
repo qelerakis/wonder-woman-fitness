@@ -548,7 +548,21 @@
     "atLeast8Chars": "At least 8 characters",
     "dangerZone": "Danger Zone",
     "irreversibleActions": "Irreversible actions",
-    "departDescription": "This will mark your account as departed. You can request to rejoin later."
+    "departDescription": "This will mark your account as departed. You can request to rejoin later.",
+    "paymentInformation": "Payment Information",
+    "lastPayment": "Last payment",
+    "paidThrough": "Paid through",
+    "nextPaymentDue": "Next payment due",
+    "noPaymentsYet": "No payments recorded yet",
+    "trialEndsOn": "Trial ends on {date}",
+    "paymentDueBy": "Payment due by {date}",
+    "daysRemainingInTrial": "{count, plural, one {# day} other {# days}} remaining in trial",
+    "daysRemainingToPay": "{count, plural, one {# day} other {# days}} remaining to pay",
+    "paymentOverdue": "Payment overdue — contact the owner",
+    "overrideActive": "Payment override active",
+    "showAllPayments": "Show all payments",
+    "showRecent": "Show recent",
+    "recentPayments": "Recent Payments"
   },
   "departed": {
     "greeting": "We miss you, {userName}!",
