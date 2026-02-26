@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { LanguageToggle } from "@/components/layout/LanguageToggle";
+import { AuthBackground } from "@/components/layout/AuthBackground";
 
 export default async function AuthLayout({
   children,
@@ -9,13 +10,16 @@ export default async function AuthLayout({
   const tBrand = await getTranslations("brand");
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-surface-950 px-4">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-surface-950 px-4">
+      {/* Animated Background */}
+      <AuthBackground />
+
       {/* Language Toggle */}
       <div className="absolute top-4 right-4 z-10">
         <LanguageToggle />
       </div>
 
-      <div className="w-full max-w-md pt-14 sm:pt-0">
+      <div className="relative z-10 w-full max-w-md pt-14 sm:pt-0">
         {/* Brand Logo */}
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-primary-400">
