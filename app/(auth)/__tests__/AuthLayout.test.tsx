@@ -217,14 +217,17 @@ describe("AuthLayout", () => {
       const outerDiv = container.firstChild as HTMLElement;
       const children = Array.from(outerDiv.children);
 
-      // First child should contain the toggle
-      const toggleContainer = children[0] as HTMLElement;
+      // First child is the animated background (aria-hidden)
+      expect(children[0].getAttribute("aria-hidden")).toBe("true");
+
+      // Second child should contain the toggle
+      const toggleContainer = children[1] as HTMLElement;
       expect(
         toggleContainer.querySelector("[data-testid='language-toggle']")
       ).toBeTruthy();
 
-      // Second child should contain the brand and card
-      const contentContainer = children[1] as HTMLElement;
+      // Third child should contain the brand and card
+      const contentContainer = children[2] as HTMLElement;
       expect(contentContainer.querySelector("h1")).toBeTruthy();
     });
 
