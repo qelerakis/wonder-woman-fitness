@@ -35,7 +35,7 @@ function formatDate(iso: string): string {
 }
 
 function formatCurrency(amount: number): string {
-  return `${amount.toLocaleString()} MKD`;
+  return `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(amount)} MKD`;
 }
 
 export function PaymentInfoSection({

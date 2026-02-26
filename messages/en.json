@@ -555,7 +555,7 @@
     "nextPaymentDue": "Next payment due",
     "noPaymentsYet": "No payments recorded yet",
     "trialEndsOn": "Trial ends on {date}",
-    "paymentDueBy": "Payment due by {date}",
+
     "daysRemainingInTrial": "{count, plural, one {# day} other {# days}} remaining in trial",
     "daysRemainingToPay": "{count, plural, one {# day} other {# days}} remaining to pay",
     "paymentOverdue": "Payment overdue — contact the owner",

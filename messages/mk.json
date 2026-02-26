@@ -555,7 +555,7 @@
     "nextPaymentDue": "Следно плаќање",
     "noPaymentsYet": "Нема евидентирани плаќања",
     "trialEndsOn": "Пробниот период завршува на {date}",
-    "paymentDueBy": "Плаќање до {date}",
+
     "daysRemainingInTrial": "{count, plural, one {# ден} other {# дена}} преостануваат од пробниот период",
     "daysRemainingToPay": "{count, plural, one {# ден} other {# дена}} преостануваат за плаќање",
     "paymentOverdue": "Задоцнето плаќање — контактирајте го сопственикот",
