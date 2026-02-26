@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -59,6 +60,9 @@ export function MemberSessionDetailClient(
   const { session, myVote, isFull, hasComingVoteOnSameDay, isAssigned } = props;
   const router = useRouter();
   const { addToast } = useToast();
+  const t = useTranslations("schedule");
+  const tCommon = useTranslations("common");
+  const tWorkout = useTranslations("workout");
   const [voting, setVoting] = useState(false);
   const [currentVote, setCurrentVote] = useState<boolean | null>(myVote);
   const [now, setNow] = useState(() => new Date());
@@ -98,20 +102,20 @@ export function MemberSessionDetailClient(
         addToast({
           type: "success",
           title: attending
-            ? "You're marked as coming!"
-            : "You're marked as not coming",
+            ? t("youreComingBanner")
+            : t("youreNotComingBanner"),
         });
         router.refresh();
       } else {
         const data: { error: string } = await res.json();
         addToast({
           type: "error",
-          title: "Failed to vote",
+          title: t("failedToVote"),
           message: data.error,
         });
       }
     } catch {
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tCommon("networkError") });
     } finally {
       setVoting(false);
     }
@@ -135,24 +139,24 @@ export function MemberSessionDetailClient(
             {session.votingEnabled && !deadlinePassed && (
               <>
                 <Badge variant="info" size="sm">
-                  Voting Open
+                  {t("votingOpen")}
                 </Badge>
                 <span className={`text-xs ${isUrgent ? "text-warning-400" : "text-surface-400"}`}>
                   {isUrgent
-                    ? `Closes in ${timeUntil.hours}h ${timeUntil.minutes}m`
-                    : `Closes ${format(deadline, "EEE, MMM d 'at' h:mm a")}`}
+                    ? t("votingClosesIn", { hours: timeUntil.hours, minutes: timeUntil.minutes })
+                    : t("votingClosesAt", { deadline: format(deadline, "EEE, MMM d 'at' h:mm a") })}
                 </span>
               </>
             )}
             {deadlinePassed && session.votingEnabled && (
               <Badge variant="default" size="sm">
-                Voting Closed
+                {t("votingClosed")}
               </Badge>
             )}
           </div>
         </div>
         <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          Back
+          {tCommon("back")}
         </Button>
       </div>
 
@@ -161,7 +165,7 @@ export function MemberSessionDetailClient(
         <div className="space-y-6">
           {/* Workout */}
           <Card>
-            <CardHeader title="Workout" />
+            <CardHeader title={tWorkout("title")} />
             <div className="mt-4">
               <WorkoutDisplay
                 title={session.workoutTitle}
@@ -173,19 +177,19 @@ export function MemberSessionDetailClient(
           {/* Voting */}
           {!isCancelled && (
             <Card>
-              <CardHeader title="Your Attendance" />
+              <CardHeader title={t("yourAttendance")} />
               <div className="mt-4">
                 {isFull ? (
                   <div className="space-y-2">
-                    <Badge variant="warning" size="sm">Full</Badge>
+                    <Badge variant="warning" size="sm">{t("full")}</Badge>
                     <p className="text-sm text-surface-500">
-                      This session is full — voting is closed.
+                      {t("fullMessage")}
                     </p>
                   </div>
                 ) : canVote ? (
                   <div className="space-y-3">
                     <p className="text-sm text-surface-400">
-                      Will you attend this session?
+                      {t("willYouAttend")}
                     </p>
                     <div className="flex gap-3">
                       <Button
@@ -205,7 +209,7 @@ export function MemberSessionDetailClient(
                             clipRule="evenodd"
                           />
                         </svg>
-                        I&apos;m Coming
+                        {t("imComingButton")}
                       </Button>
                       <Button
                         variant={
@@ -223,18 +227,17 @@ export function MemberSessionDetailClient(
                             clipRule="evenodd"
                           />
                         </svg>
-                        Not Coming
+                        {t("notComingButton")}
                       </Button>
                     </div>
                     {hasComingVoteOnSameDay && currentVote !== true && (
                       <p className="text-xs text-warning-400">
-                        You&apos;re already coming to another session on this day.
+                        {t("alreadyComingToday")}
                       </p>
                     )}
                     {currentVote !== null && (
                       <p className="text-xs text-surface-500">
-                        You can change your vote until{" "}
-                        {format(deadline, "EEE, MMM d 'at' h:mm a")}.
+                        {t("changeVoteUntil", { deadline: format(deadline, "EEE, MMM d 'at' h:mm a") })}
                       </p>
                     )}
                   </div>
@@ -242,7 +245,7 @@ export function MemberSessionDetailClient(
                   <div>
                     {currentVote !== null ? (
                       <p className="text-sm text-surface-300">
-                        You voted:{" "}
+                        {t("youVoted")}{" "}
                         <span
                           className={`font-medium ${
                             currentVote
@@ -250,14 +253,14 @@ export function MemberSessionDetailClient(
                               : "text-error-400"
                           }`}
                         >
-                          {currentVote ? "Coming" : "Not coming"}
+                          {currentVote ? t("comingStatus") : t("notComingStatus")}
                         </span>
                       </p>
                     ) : (
                       <p className="text-sm text-surface-500">
                         {deadlinePassed
-                          ? "Voting deadline has passed."
-                          : "Voting is not open for this session."}
+                          ? t("votingDeadlinePassed")
+                          : t("votingNotOpen")}
                       </p>
                     )}
                   </div>
@@ -273,12 +276,12 @@ export function MemberSessionDetailClient(
           {votingActive && (
             <Card>
               <CardHeader
-                title="Who's Coming"
-                description={`${session.votesCount.coming} confirmed`}
+                title={t("whosComing")}
+                description={t("confirmed", { count: session.votesCount.coming })}
               />
               {session.comingMemberNames.length === 0 ? (
                 <p className="mt-4 text-sm text-surface-500">
-                  No one has confirmed yet
+                  {t("noOneConfirmed")}
                 </p>
               ) : (
                 <div className="mt-4 space-y-1.5">
@@ -302,12 +305,12 @@ export function MemberSessionDetailClient(
           {!session.votingEnabled && isAssigned && (
             <Card>
               <CardHeader
-                title="Members"
-                description={`${session.assignedMemberNames.length} assigned`}
+                title={t("membersCardTitle")}
+                description={t("membersAssigned", { count: session.assignedMemberNames.length })}
               />
               {session.assignedMemberNames.length === 0 ? (
                 <p className="mt-4 text-sm text-surface-500">
-                  No members assigned yet
+                  {t("noMembersAssigned")}
                 </p>
               ) : (
                 <div className="mt-4 space-y-1.5">
@@ -329,10 +332,10 @@ export function MemberSessionDetailClient(
 
           {/* Trainers */}
           <Card>
-            <CardHeader title="Trainers" />
+            <CardHeader title={t("trainersTitle")} />
             {session.trainerNames.length === 0 ? (
               <p className="mt-4 text-sm text-surface-500">
-                No trainer assigned
+                {t("noTrainerAssigned")}
               </p>
             ) : (
               <div className="mt-4 space-y-1.5">

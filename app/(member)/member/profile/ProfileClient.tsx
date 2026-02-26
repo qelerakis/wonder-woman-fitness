@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { format } from "date-fns";
+import { useTranslations } from "next-intl";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -31,6 +32,10 @@ export function ProfileClient({
 }: ProfileClientProps): React.ReactElement {
   const router = useRouter();
   const { addToast } = useToast();
+  const t = useTranslations("profile");
+  const tVal = useTranslations("validation");
+  const tCommon = useTranslations("common");
+  const tStop = useTranslations("stopTraining");
 
   // Profile form state
   const [name, setName] = useState(user.name);
@@ -52,10 +57,10 @@ export function ProfileClient({
     e.preventDefault();
     const errors: Record<string, string> = {};
 
-    if (!name.trim()) errors.name = "Name is required";
-    if (!email.trim()) errors.email = "Email is required";
+    if (!name.trim()) errors.name = tVal("nameRequired");
+    if (!email.trim()) errors.email = tVal("emailRequired");
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      errors.email = "Invalid email format";
+      errors.email = tVal("invalidEmailFormat");
     }
 
     if (Object.keys(errors).length > 0) {
@@ -76,18 +81,18 @@ export function ProfileClient({
       });
 
       if (res.ok) {
-        addToast({ type: "success", title: "Profile updated" });
+        addToast({ type: "success", title: t("profileUpdated") });
         router.refresh();
       } else {
         const data: { error: string } = await res.json();
         addToast({
           type: "error",
-          title: "Failed to update",
+          title: t("failedToUpdate"),
           message: data.error,
         });
       }
     } catch {
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tCommon("networkError") });
     } finally {
       setSaving(false);
     }
@@ -97,13 +102,13 @@ export function ProfileClient({
     e.preventDefault();
     const errors: Record<string, string> = {};
 
-    if (!currentPassword) errors.currentPassword = "Current password required";
-    if (!newPassword) errors.newPassword = "New password required";
+    if (!currentPassword) errors.currentPassword = tVal("currentPasswordRequired");
+    if (!newPassword) errors.newPassword = tVal("newPasswordRequired");
     if (newPassword.length < 8) {
-      errors.newPassword = "Password must be at least 8 characters";
+      errors.newPassword = tVal("passwordMinLength");
     }
     if (newPassword !== confirmPassword) {
-      errors.confirmPassword = "Passwords do not match";
+      errors.confirmPassword = tVal("passwordsDoNotMatch");
     }
 
     if (Object.keys(errors).length > 0) {
@@ -123,7 +128,7 @@ export function ProfileClient({
       });
 
       if (res.ok) {
-        addToast({ type: "success", title: "Password changed" });
+        addToast({ type: "success", title: t("passwordChanged") });
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
@@ -133,7 +138,7 @@ export function ProfileClient({
         setPasswordErrors({ form: data.error });
       }
     } catch {
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tCommon("networkError") });
     } finally {
       setChangingPassword(false);
     }
@@ -141,12 +146,12 @@ export function ProfileClient({
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-surface-100">My Profile</h1>
+      <h1 className="text-2xl font-bold text-surface-100">{t("title")}</h1>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Profile Info */}
         <Card>
-          <CardHeader title="Profile Information" />
+          <CardHeader title={t("profileInformation")} />
           <form onSubmit={handleSaveProfile} className="mt-4 space-y-4">
             {/* Avatar */}
             <div className="flex items-center gap-4">
@@ -165,8 +170,7 @@ export function ProfileClient({
               )}
               <div>
                 <p className="text-sm text-surface-300">
-                  Member since{" "}
-                  {format(new Date(user.joinDate), "MMMM yyyy")}
+                  {t("memberSince", { date: format(new Date(user.joinDate), "MMMM yyyy") })}
                 </p>
                 <Badge
                   variant={
@@ -178,20 +182,20 @@ export function ProfileClient({
                   }
                   size="sm"
                 >
-                  {user.status === "TRIAL" ? "New Member" : user.status}
+                  {user.status === "TRIAL" ? t("newMember") : user.status}
                 </Badge>
               </div>
             </div>
 
             <Input
-              label="Full Name"
+              label={t("fullName")}
               value={name}
               onChange={(e) => setName(e.target.value)}
               error={formErrors.name}
             />
 
             <Input
-              label="Email"
+              label={t("email")}
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -199,7 +203,7 @@ export function ProfileClient({
             />
 
             <Input
-              label="Phone (optional)"
+              label={t("phoneOptional")}
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+389..."
@@ -207,7 +211,7 @@ export function ProfileClient({
 
             <div className="pt-2">
               <Button type="submit" variant="primary" loading={saving}>
-                Save Changes
+                {t("saveChanges")}
               </Button>
             </div>
           </form>
@@ -216,13 +220,13 @@ export function ProfileClient({
         {/* Change Password */}
         <div className="space-y-6">
           <Card>
-            <CardHeader title="Change Password" />
+            <CardHeader title={t("changePassword")} />
             <form
               onSubmit={handleChangePassword}
               className="mt-4 space-y-4"
             >
               <Input
-                label="Current Password"
+                label={t("currentPassword")}
                 type="password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
@@ -230,16 +234,16 @@ export function ProfileClient({
               />
 
               <Input
-                label="New Password"
+                label={t("newPassword")}
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 error={passwordErrors.newPassword}
-                helpText="At least 8 characters"
+                helpText={t("atLeast8Chars")}
               />
 
               <Input
-                label="Confirm New Password"
+                label={t("confirmNewPassword")}
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
@@ -258,7 +262,7 @@ export function ProfileClient({
                   variant="secondary"
                   loading={changingPassword}
                 >
-                  Change Password
+                  {t("changePassword")}
                 </Button>
               </div>
             </form>
@@ -267,18 +271,17 @@ export function ProfileClient({
           {/* Danger Zone */}
           <Card>
             <CardHeader
-              title="Danger Zone"
-              description="Irreversible actions"
+              title={t("dangerZone")}
+              description={t("irreversibleActions")}
             />
             <div className="mt-4">
               <Link href="/member/stop-training">
                 <Button variant="danger" size="sm">
-                  Stop Training
+                  {tStop("title")}
                 </Button>
               </Link>
               <p className="mt-2 text-xs text-surface-500">
-                This will mark your account as departed. You can request to
-                rejoin later.
+                {t("departDescription")}
               </p>
             </div>
           </Card>

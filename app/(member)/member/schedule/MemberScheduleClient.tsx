@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { addDays } from "date-fns";
+import { useTranslations } from "next-intl";
 import { WeeklyCalendar } from "@/components/schedule/WeeklyCalendar";
 import { useToast } from "@/components/ui/Toast";
 import type { SessionWithDetails } from "@/lib/session-generation";
@@ -19,6 +20,8 @@ export function MemberScheduleClient({
   const [sessions, setSessions] = useState<SessionWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const { addToast } = useToast();
+  const t = useTranslations("schedule");
+  const tCommon = useTranslations("common");
 
   const fetchSessions = useCallback(async () => {
     setLoading(true);
@@ -29,14 +32,14 @@ export function MemberScheduleClient({
         const data: { data: SessionWithDetails[] } = await res.json();
         setSessions(data.data);
       } else {
-        addToast({ type: "error", title: "Failed to load schedule" });
+        addToast({ type: "error", title: t("failedToLoadSchedule") });
       }
     } catch {
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tCommon("networkError") });
     } finally {
       setLoading(false);
     }
-  }, [weekStart, addToast]);
+  }, [weekStart, addToast, t, tCommon]);
 
   useEffect(() => {
     void fetchSessions();
@@ -51,15 +54,15 @@ export function MemberScheduleClient({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-surface-100">My Schedule</h1>
+        <h1 className="text-2xl font-bold text-surface-100">{t("memberTitle")}</h1>
         <p className="mt-1 text-sm text-surface-400">
-          View your upcoming classes and vote on attendance
+          {t("memberSubtitle")}
         </p>
       </div>
 
       {loading ? (
         <div className="flex h-64 items-center justify-center">
-          <div className="text-sm text-surface-500">Loading schedule...</div>
+          <div className="text-sm text-surface-500">{t("loadingSchedule")}</div>
         </div>
       ) : (
         <WeeklyCalendar

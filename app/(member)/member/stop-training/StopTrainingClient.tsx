@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
@@ -19,6 +20,8 @@ export function StopTrainingClient({
 }: StopTrainingClientProps): React.ReactElement {
   const router = useRouter();
   const { addToast } = useToast();
+  const t = useTranslations("stopTraining");
+  const tCommon = useTranslations("common");
   const [reason, setReason] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -38,13 +41,13 @@ export function StopTrainingClient({
       });
 
       if (res.ok) {
-        addToast({ type: "success", title: "Your account has been deactivated" });
+        addToast({ type: "success", title: t("accountDeactivated") });
         router.push("/member/departed");
       } else {
-        addToast({ type: "error", title: "Failed to process request" });
+        addToast({ type: "error", title: t("failedToProcess") });
       }
     } catch {
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tCommon("networkError") });
     } finally {
       setLoading(false);
     }
@@ -54,47 +57,47 @@ export function StopTrainingClient({
     <div className="mx-auto max-w-lg space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-surface-100">
-          Stop Training
+          {t("title")}
         </h1>
         <p className="mt-1 text-sm text-surface-400">
-          We&apos;re sad to see you go, {userName}
+          {t("greeting", { userName })}
         </p>
       </div>
 
       <Card>
         <CardHeader
-          title="Are you sure?"
-          description="This will deactivate your account and remove you from all future sessions."
+          title={t("areYouSure")}
+          description={t("deactivateWarning")}
         />
 
         <div className="mt-4 space-y-4">
           <div className="rounded-lg border border-warning-700/30 bg-warning-700/10 px-4 py-3">
             <h3 className="text-sm font-medium text-warning-500">
-              What happens when you leave:
+              {t("whatHappens")}
             </h3>
             <ul className="mt-2 space-y-1 text-sm text-warning-400">
               <li>
-                &bull; You will be removed from all upcoming class sessions
+                &bull; {t("consequence1")}
               </li>
               <li>
-                &bull; You will lose access to the schedule and voting
+                &bull; {t("consequence2")}
               </li>
               <li>
-                &bull; Your payment and attendance history will be preserved
+                &bull; {t("consequence3")}
               </li>
               <li>
-                &bull; You can request to rejoin at any time
+                &bull; {t("consequence4")}
               </li>
             </ul>
           </div>
 
           <Textarea
-            label="Reason for leaving (optional)"
+            label={t("reasonLabel")}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Help us improve — why are you leaving?"
+            placeholder={t("reasonPlaceholder")}
             rows={3}
-            helpText={`${reason.length}/${MAX_DEPART_REASON_LENGTH} characters`}
+            helpText={t("reasonCharCount", { count: reason.length, max: MAX_DEPART_REASON_LENGTH })}
           />
 
           <div className="flex items-center gap-2">
@@ -109,7 +112,7 @@ export function StopTrainingClient({
               htmlFor="confirm-depart"
               className="text-sm text-surface-300"
             >
-              I understand this will deactivate my account
+              {t("confirmCheckbox")}
             </label>
           </div>
 
@@ -120,13 +123,13 @@ export function StopTrainingClient({
               loading={loading}
               disabled={!confirmed}
             >
-              Stop Training
+              {t("stopButton")}
             </Button>
             <Button
               variant="ghost"
               onClick={() => router.back()}
             >
-              Cancel
+              {tCommon("cancel")}
             </Button>
           </div>
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useToast } from "@/components/ui/Toast";
@@ -15,6 +16,8 @@ export function DepartedClient({
   userName,
 }: DepartedClientProps): React.ReactElement {
   const { addToast } = useToast();
+  const t = useTranslations("departed");
+  const tCommon = useTranslations("common");
   const [requesting, setRequesting] = useState(false);
   const [requested, setRequested] = useState(false);
 
@@ -29,14 +32,14 @@ export function DepartedClient({
         setRequested(true);
         addToast({
           type: "success",
-          title: "Rejoin request sent",
-          message: "The owner has been notified of your request.",
+          title: t("rejoinToastTitle"),
+          message: t("rejoinToastMessage"),
         });
       } else {
-        addToast({ type: "error", title: "Failed to send request" });
+        addToast({ type: "error", title: t("failedToSend") });
       }
     } catch {
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tCommon("networkError") });
     } finally {
       setRequesting(false);
     }
@@ -61,24 +64,21 @@ export function DepartedClient({
         </div>
 
         <h1 className="mb-2 text-2xl font-bold text-surface-100">
-          We miss you, {userName}!
+          {t("greeting", { userName })}
         </h1>
         <p className="mb-6 text-surface-400">
-          Your account is currently deactivated. Your training history and
-          records are safely preserved.
+          {t("message")}
         </p>
 
         <Card>
           <p className="text-sm text-surface-300 mb-4">
-            Ready to get back to training? Send a rejoin request and the gym
-            owner will reactivate your account.
+            {t("rejoinPrompt")}
           </p>
 
           {requested ? (
             <div className="rounded-lg bg-success-700/10 border border-success-700/30 px-4 py-3">
               <p className="text-sm text-success-400">
-                Your rejoin request has been sent! The owner will review it
-                and get back to you.
+                {t("rejoinSent")}
               </p>
             </div>
           ) : (
@@ -87,7 +87,7 @@ export function DepartedClient({
               onClick={handleRequestRejoin}
               loading={requesting}
             >
-              Request to Rejoin
+              {t("rejoinButton")}
             </Button>
           )}
         </Card>
