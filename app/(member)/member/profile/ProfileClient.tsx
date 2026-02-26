@@ -11,6 +11,9 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { useToast } from "@/components/ui/Toast";
+import { PaymentInfoSection } from "@/components/payment/PaymentInfoSection";
+import type { PaymentStatus } from "@/lib/constants";
+import type { MemberStatus } from "@/components/payment/PaymentInfoSection";
 
 interface UserData {
   id: string;
@@ -18,17 +21,35 @@ interface UserData {
   email: string;
   phone: string | null;
   photo: string | null;
-  status: string;
+  status: MemberStatus;
   joinDate: string;
   trialEndsAt: string | null;
 }
 
+interface PaymentInfoData {
+  status: PaymentStatus;
+  daysRemaining: number | null;
+  lastPaymentDate: string | null;
+  paidThroughDate: string | null;
+  nextPaymentDue: string | null;
+  recentPayments: Array<{
+    id: string;
+    amount: number;
+    paidAt: string;
+    periodStart: string;
+    periodEnd: string;
+  }>;
+  totalPaymentCount: number;
+}
+
 interface ProfileClientProps {
   user: UserData;
+  paymentInfo: PaymentInfoData;
 }
 
 export function ProfileClient({
   user,
+  paymentInfo,
 }: ProfileClientProps): React.ReactElement {
   const router = useRouter();
   const { addToast } = useToast();
@@ -287,6 +308,19 @@ export function ProfileClient({
           </Card>
         </div>
       </div>
+
+      {/* Payment Information */}
+      <PaymentInfoSection
+        status={paymentInfo.status}
+        daysRemaining={paymentInfo.daysRemaining}
+        lastPaymentDate={paymentInfo.lastPaymentDate}
+        paidThroughDate={paymentInfo.paidThroughDate}
+        nextPaymentDue={paymentInfo.nextPaymentDue}
+        recentPayments={paymentInfo.recentPayments}
+        totalPaymentCount={paymentInfo.totalPaymentCount}
+        userStatus={user.status}
+        trialEndsAt={user.trialEndsAt}
+      />
     </div>
   );
 }
