@@ -69,10 +69,10 @@ const defaultUser = {
   name: "Jane Doe",
   email: "jane@example.com",
   phone: "+38970123456",
-  photo: null,
-  status: "ACTIVE",
+  photo: null as string | null,
+  status: "ACTIVE" as const,
   joinDate: "2025-12-01T00:00:00.000Z",
-  trialEndsAt: null,
+  trialEndsAt: null as string | null,
 };
 
 const defaultPaymentInfo = {
@@ -167,7 +167,7 @@ describe("ProfileClient", () => {
     it("renders trial info for trial member with no payments", () => {
       const trialUser = {
         ...defaultUser,
-        status: "TRIAL",
+        status: "TRIAL" as const,
         trialEndsAt: "2026-03-15T00:00:00.000Z",
       };
 
@@ -260,7 +260,7 @@ describe("ProfileClient", () => {
     it("passes trial user status correctly for trial countdown", () => {
       const trialUser = {
         ...defaultUser,
-        status: "TRIAL",
+        status: "TRIAL" as const,
         trialEndsAt: "2026-03-10T00:00:00.000Z",
       };
 
