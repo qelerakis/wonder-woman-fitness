@@ -4,9 +4,12 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 export default function LoginPage() {
   const router = useRouter();
+  const t = useTranslations("auth");
+  const tCommon = useTranslations("common");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -27,7 +30,7 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
-        setError("Invalid email or password");
+        setError(t("invalidCredentials"));
         setShowVerificationHint(true);
         return;
       }
@@ -47,7 +50,7 @@ export default function LoginPage() {
         router.push("/member/schedule");
       }
     } catch {
-      setError("An unexpected error occurred");
+      setError(tCommon("unexpectedError"));
     } finally {
       setLoading(false);
     }
@@ -56,7 +59,7 @@ export default function LoginPage() {
   return (
     <>
       <h2 className="mb-6 text-center text-2xl font-semibold text-surface-100">
-        Sign In
+        {t("signIn")}
       </h2>
 
       {error && (
@@ -67,12 +70,12 @@ export default function LoginPage() {
 
       {showVerificationHint && (
         <div className="mb-4 rounded-lg bg-surface-800 p-3 text-sm text-surface-400">
-          Recently registered?{" "}
+          {t("recentlyRegistered")}{" "}
           <Link
             href={`/check-email?email=${encodeURIComponent(email)}`}
             className="text-primary-400 hover:text-primary-300"
           >
-            Resend verification email
+            {t("resendVerification")}
           </Link>
         </div>
       )}
@@ -83,7 +86,7 @@ export default function LoginPage() {
             htmlFor="email"
             className="mb-1 block text-sm font-medium text-surface-300"
           >
-            Email
+            {t("email")}
           </label>
           <input
             id="email"
@@ -96,7 +99,7 @@ export default function LoginPage() {
             required
             autoComplete="email"
             className="w-full rounded-lg border border-surface-600 bg-surface-800 px-4 py-2.5 text-surface-100 placeholder-surface-500 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-            placeholder="you@example.com"
+            placeholder={t("emailPlaceholder")}
           />
         </div>
 
@@ -105,7 +108,7 @@ export default function LoginPage() {
             htmlFor="password"
             className="mb-1 block text-sm font-medium text-surface-300"
           >
-            Password
+            {t("password")}
           </label>
           <input
             id="password"
@@ -118,7 +121,7 @@ export default function LoginPage() {
             required
             autoComplete="current-password"
             className="w-full rounded-lg border border-surface-600 bg-surface-800 px-4 py-2.5 text-surface-100 placeholder-surface-500 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-            placeholder="Enter your password"
+            placeholder={t("passwordPlaceholder")}
           />
         </div>
 
@@ -127,18 +130,18 @@ export default function LoginPage() {
           disabled={loading}
           className="w-full rounded-lg bg-primary-600 px-4 py-2.5 font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-surface-900 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {loading ? "Signing in..." : "Sign In"}
+          {loading ? t("signingIn") : t("signIn")}
         </button>
       </form>
 
       <div className="mt-6 space-y-2 text-center text-sm">
         <p className="text-surface-400">
-          Don&apos;t have an account?{" "}
+          {t("noAccount")}{" "}
           <Link
             href="/register"
             className="text-primary-400 hover:text-primary-300"
           >
-            Register
+            {t("register")}
           </Link>
         </p>
         <p>
@@ -146,7 +149,7 @@ export default function LoginPage() {
             href="/forgot-password"
             className="text-surface-400 hover:text-surface-300"
           >
-            Forgot your password?
+            {t("forgotPassword")}
           </Link>
         </p>
       </div>

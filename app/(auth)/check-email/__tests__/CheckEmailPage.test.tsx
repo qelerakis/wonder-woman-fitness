@@ -649,7 +649,8 @@ describe("CheckEmailPage (Suspense wrapper)", () => {
     const pageMod = await import("../page");
     const Page = pageMod.default;
 
-    render(<Page />);
+    const jsx = await Page();
+    render(jsx);
 
     // The page should render the same content as CheckEmailClient
     expect(screen.getByText("Check Your Email")).toBeTruthy();
@@ -660,7 +661,8 @@ describe("CheckEmailPage (Suspense wrapper)", () => {
     const pageMod = await import("../page");
     const Page = pageMod.default;
 
-    render(<Page />);
+    const jsx = await Page();
+    render(jsx);
 
     // Verify search params are accessible through Suspense boundary
     expect(screen.getByText("test@example.com")).toBeTruthy();

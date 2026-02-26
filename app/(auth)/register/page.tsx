@@ -3,11 +3,15 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 const PASSWORD_REGEX = /^(?=.*[0-9])(?=.*[!@#$%^&*])/;
 
 export default function RegisterPage() {
   const router = useRouter();
+  const t = useTranslations("auth");
+  const tValidation = useTranslations("validation");
+  const tCommon = useTranslations("common");
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -23,22 +27,21 @@ export default function RegisterPage() {
     const newErrors: Record<string, string> = {};
 
     if (formData.name.trim().length < 2) {
-      newErrors.name = "Name must be at least 2 characters";
+      newErrors.name = tValidation("nameMinLength");
     }
 
     if (!formData.email.includes("@")) {
-      newErrors.email = "Please enter a valid email";
+      newErrors.email = tValidation("invalidEmail");
     }
 
     if (formData.password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters";
+      newErrors.password = tValidation("passwordMinLength");
     } else if (!PASSWORD_REGEX.test(formData.password)) {
-      newErrors.password =
-        "Password must contain at least one number and one special character";
+      newErrors.password = tValidation("passwordComplexity");
     }
 
     if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
+      newErrors.confirmPassword = tValidation("passwordsDoNotMatch");
     }
 
     setErrors(newErrors);
@@ -68,7 +71,7 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setServerError(typeof data.error === 'string' ? data.error : "Registration failed");
+        setServerError(typeof data.error === 'string' ? data.error : t("registrationFailed"));
         setLoading(false);
         return;
       }
@@ -76,7 +79,7 @@ export default function RegisterPage() {
       // Redirect to check-email page
       router.push(`/check-email?email=${encodeURIComponent(formData.email.trim().toLowerCase())}`);
     } catch {
-      setServerError("An unexpected error occurred");
+      setServerError(tCommon("unexpectedError"));
       setLoading(false);
     }
   }
@@ -97,7 +100,7 @@ export default function RegisterPage() {
   return (
     <>
       <h2 className="mb-6 text-center text-2xl font-semibold text-surface-100">
-        Create Account
+        {t("createAccount")}
       </h2>
 
       {serverError && (
@@ -112,7 +115,7 @@ export default function RegisterPage() {
             htmlFor="name"
             className="mb-1 block text-sm font-medium text-surface-300"
           >
-            Full Name *
+            {t("fullName")} *
           </label>
           <input
             id="name"
@@ -123,7 +126,7 @@ export default function RegisterPage() {
             required
             autoComplete="name"
             className="w-full rounded-lg border border-surface-600 bg-surface-800 px-4 py-2.5 text-surface-100 placeholder-surface-500 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-            placeholder="Your full name"
+            placeholder={t("fullNamePlaceholder")}
           />
           {errors.name && (
             <p className="mt-1 text-sm text-error-500" role="alert">{errors.name}</p>
@@ -135,7 +138,7 @@ export default function RegisterPage() {
             htmlFor="phone"
             className="mb-1 block text-sm font-medium text-surface-300"
           >
-            Phone
+            {t("phone")}
           </label>
           <input
             id="phone"
@@ -145,7 +148,7 @@ export default function RegisterPage() {
             onChange={handleChange}
             autoComplete="tel"
             className="w-full rounded-lg border border-surface-600 bg-surface-800 px-4 py-2.5 text-surface-100 placeholder-surface-500 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-            placeholder="+389 70 123 456"
+            placeholder={t("phonePlaceholder")}
           />
         </div>
 
@@ -154,7 +157,7 @@ export default function RegisterPage() {
             htmlFor="email"
             className="mb-1 block text-sm font-medium text-surface-300"
           >
-            Email *
+            {t("email")} *
           </label>
           <input
             id="email"
@@ -165,7 +168,7 @@ export default function RegisterPage() {
             required
             autoComplete="email"
             className="w-full rounded-lg border border-surface-600 bg-surface-800 px-4 py-2.5 text-surface-100 placeholder-surface-500 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-            placeholder="you@example.com"
+            placeholder={t("emailPlaceholder")}
           />
           {errors.email && (
             <p className="mt-1 text-sm text-error-500" role="alert">{errors.email}</p>
@@ -177,7 +180,7 @@ export default function RegisterPage() {
             htmlFor="password"
             className="mb-1 block text-sm font-medium text-surface-300"
           >
-            Password *
+            {t("password")} *
           </label>
           <input
             id="password"
@@ -188,7 +191,7 @@ export default function RegisterPage() {
             required
             autoComplete="new-password"
             className="w-full rounded-lg border border-surface-600 bg-surface-800 px-4 py-2.5 text-surface-100 placeholder-surface-500 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-            placeholder="8+ characters, 1 number, 1 special"
+            placeholder={tValidation("passwordRequirements")}
           />
           {errors.password && (
             <p className="mt-1 text-sm text-error-500" role="alert">{errors.password}</p>
@@ -200,7 +203,7 @@ export default function RegisterPage() {
             htmlFor="confirmPassword"
             className="mb-1 block text-sm font-medium text-surface-300"
           >
-            Confirm Password *
+            {t("confirmPassword")} *
           </label>
           <input
             id="confirmPassword"
@@ -211,7 +214,7 @@ export default function RegisterPage() {
             required
             autoComplete="new-password"
             className="w-full rounded-lg border border-surface-600 bg-surface-800 px-4 py-2.5 text-surface-100 placeholder-surface-500 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-            placeholder="Confirm your password"
+            placeholder={t("confirmPasswordPlaceholder")}
           />
           {errors.confirmPassword && (
             <p className="mt-1 text-sm text-error-500" role="alert">
@@ -225,17 +228,17 @@ export default function RegisterPage() {
           disabled={loading}
           className="w-full rounded-lg bg-primary-600 px-4 py-2.5 font-medium text-white transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-surface-900 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {loading ? "Creating account..." : "Create Account"}
+          {loading ? t("creatingAccount") : t("createAccount")}
         </button>
       </form>
 
       <p className="mt-6 text-center text-sm text-surface-400">
-        Already have an account?{" "}
+        {t("alreadyHaveAccount")}{" "}
         <Link
           href="/login"
           className="text-primary-400 hover:text-primary-300"
         >
-          Sign in
+          {t("signIn")}
         </Link>
       </p>
     </>

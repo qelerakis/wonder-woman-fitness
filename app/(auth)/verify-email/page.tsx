@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { verifyEmailToken } from "./actions";
 
 interface VerifyEmailPageProps {
@@ -7,21 +8,22 @@ interface VerifyEmailPageProps {
 
 export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageProps) {
   const { token } = await searchParams;
+  const t = await getTranslations("auth");
 
   if (!token) {
     return (
       <div className="text-center">
         <h2 className="mb-4 text-xl font-semibold text-error-400">
-          Invalid Link
+          {t("verifyInvalidLink")}
         </h2>
         <p className="mb-6 text-surface-400">
-          No verification token provided.
+          {t("verifyNoToken")}
         </p>
         <Link
           href="/register"
           className="text-primary-400 hover:text-primary-300"
         >
-          Back to Register
+          {t("verifyBackToRegister")}
         </Link>
       </div>
     );
@@ -33,7 +35,7 @@ export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageP
     return (
       <div className="text-center">
         <h2 className="mb-4 text-xl font-semibold text-error-400">
-          Verification Failed
+          {t("verifyFailed")}
         </h2>
         <p className="mb-6 text-surface-400">
           {result.error}
@@ -42,7 +44,7 @@ export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageP
           href="/register"
           className="text-primary-400 hover:text-primary-300"
         >
-          Register Again
+          {t("verifyRegisterAgain")}
         </Link>
       </div>
     );
@@ -51,16 +53,16 @@ export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageP
   return (
     <div className="text-center">
       <h2 className="mb-4 text-xl font-semibold text-success-400">
-        Email Verified!
+        {t("verifySuccess")}
       </h2>
       <p className="mb-6 text-surface-400">
-        Your account has been created successfully. You can now sign in.
+        {t("verifySuccessMessage")}
       </p>
       <Link
         href="/login"
         className="inline-block rounded-lg bg-primary-600 px-6 py-2.5 font-medium text-white transition-colors hover:bg-primary-700"
       >
-        Sign In
+        {t("signIn")}
       </Link>
     </div>
   );

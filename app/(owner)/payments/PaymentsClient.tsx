@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { format, getDaysInMonth } from "date-fns";
+import { useTranslations } from "next-intl";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -52,20 +53,10 @@ interface PaymentsClientProps {
   initialYear: number;
 }
 
-const MONTH_OPTIONS = [
-  { value: "0", label: "January" },
-  { value: "1", label: "February" },
-  { value: "2", label: "March" },
-  { value: "3", label: "April" },
-  { value: "4", label: "May" },
-  { value: "5", label: "June" },
-  { value: "6", label: "July" },
-  { value: "7", label: "August" },
-  { value: "8", label: "September" },
-  { value: "9", label: "October" },
-  { value: "10", label: "November" },
-  { value: "11", label: "December" },
-];
+const MONTH_KEYS = [
+  "january", "february", "march", "april", "may", "june",
+  "july", "august", "september", "october", "november", "december",
+] as const;
 
 export function PaymentsClient(
   props: PaymentsClientProps
@@ -73,6 +64,15 @@ export function PaymentsClient(
   const { payments: initialPayments, members, summary, initialMonth, initialYear } = props;
   const router = useRouter();
   const { addToast } = useToast();
+  const t = useTranslations("payments");
+  const tCommon = useTranslations("common");
+  const tVal = useTranslations("validation");
+  const tMonths = useTranslations("months");
+
+  const MONTH_OPTIONS = useMemo(() =>
+    MONTH_KEYS.map((key, index) => ({ value: String(index), label: tMonths(key) })),
+    [tMonths]
+  );
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [editingPayment, setEditingPayment] = useState<PaymentItem | null>(null);
@@ -110,7 +110,7 @@ export function PaymentsClient(
       if (res.ok) {
         const json = await res.json();
         if (!json.data) {
-          addToast({ type: "error", title: "Unexpected response format" });
+          addToast({ type: "error", title: t("unexpectedResponseFormat") });
           return;
         }
         const data = json.data as Array<{
@@ -135,14 +135,14 @@ export function PaymentsClient(
           recordedBy: p.recordedBy?.name || null,
         })));
       } else {
-        addToast({ type: "error", title: "Failed to load payments" });
+        addToast({ type: "error", title: t("failedToLoadPayments") });
       }
     } catch {
-      addToast({ type: "error", title: "Failed to load payments" });
+      addToast({ type: "error", title: t("failedToLoadPayments") });
     } finally {
       setLoadingPayments(false);
     }
-  }, [addToast]);
+  }, [addToast, t]);
 
   function handleMonthChange(value: string): void {
     const month = value === "" ? null : Number(value);
@@ -216,16 +216,16 @@ export function PaymentsClient(
     e.preventDefault();
     const errors: Record<string, string> = {};
 
-    if (!selectedMember) errors.member = "Select a member";
+    if (!selectedMember) errors.member = tVal("selectMember");
     const parsedAmount = parseFloat(payAmount);
     if (!payAmount || isNaN(parsedAmount) || parsedAmount <= 0) {
-      errors.amount = "Amount must be a positive number";
+      errors.amount = tVal("positiveAmount");
     }
-    if (!payDate) errors.paidAt = "Payment date is required";
-    if (!payPeriodStart) errors.periodStart = "Period start is required";
-    if (!payPeriodEnd) errors.periodEnd = "Period end is required";
+    if (!payDate) errors.paidAt = tVal("paymentDateRequired");
+    if (!payPeriodStart) errors.periodStart = tVal("periodStartRequired");
+    if (!payPeriodEnd) errors.periodEnd = tVal("periodEndRequired");
     if (payPeriodStart && payPeriodEnd && payPeriodStart > payPeriodEnd) {
-      errors.periodEnd = "Period end must be after start";
+      errors.periodEnd = tVal("periodEndAfterStart");
     }
 
     if (Object.keys(errors).length > 0) {
@@ -264,7 +264,7 @@ export function PaymentsClient(
       });
 
       if (res.ok) {
-        addToast({ type: "success", title: isEditing ? "Payment updated" : "Payment recorded" });
+        addToast({ type: "success", title: isEditing ? t("paymentUpdated") : t("paymentRecorded") });
         setShowPaymentModal(false);
         setEditingPayment(null);
         resetForm();
@@ -274,12 +274,12 @@ export function PaymentsClient(
         const data: { error: string } = await res.json();
         addToast({
           type: "error",
-          title: isEditing ? "Failed to update payment" : "Failed to record payment",
+          title: isEditing ? t("failedToUpdate") : t("failedToRecordPayment"),
           message: data.error,
         });
       }
     } catch {
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tCommon("networkError") });
     } finally {
       setLoading(false);
     }
@@ -297,7 +297,7 @@ export function PaymentsClient(
         method: "DELETE",
       });
       if (res.ok) {
-        addToast({ type: "success", title: "Payment deleted" });
+        addToast({ type: "success", title: t("paymentDeleted") });
         setDeletingPayment(null);
         router.refresh();
         fetchPayments(filterMonth, filterYear);
@@ -305,12 +305,12 @@ export function PaymentsClient(
         const data: { error: string } = await res.json();
         addToast({
           type: "error",
-          title: "Failed to delete payment",
+          title: t("failedToDelete"),
           message: data.error,
         });
       }
     } catch {
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tCommon("networkError") });
     } finally {
       setDeleteLoading(false);
     }
@@ -321,9 +321,9 @@ export function PaymentsClient(
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-surface-100">Payments</h1>
+          <h1 className="text-2xl font-bold text-surface-100">{t("title")}</h1>
           <p className="mt-1 text-sm text-surface-400">
-            Track and record member payments
+            {t("subtitle")}
           </p>
         </div>
         <Button
@@ -331,7 +331,7 @@ export function PaymentsClient(
           size="sm"
           onClick={() => setShowPaymentModal(true)}
         >
-          Record Payment
+          {t("recordPayment")}
         </Button>
       </div>
 
@@ -343,31 +343,31 @@ export function PaymentsClient(
             value={filterMonth !== null ? String(filterMonth) : ""}
             onChange={(e) => handleMonthChange(e.target.value)}
             className="w-[130px] !py-1.5 text-sm"
-            aria-label="Filter by month"
+            aria-label={t("filterByMonth")}
           />
           <Select
             options={yearOptions}
             value={filterYear !== null ? String(filterYear) : ""}
             onChange={(e) => handleYearChange(e.target.value)}
             className="w-[90px] !py-1.5 text-sm"
-            aria-label="Filter by year"
+            aria-label={t("filterByYear")}
           />
         </div>
         <div className="ml-auto flex items-center gap-3">
           <input
             type="text"
-            placeholder="Search by name..."
+            placeholder={t("searchByName")}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-[180px] rounded-lg border border-surface-600 bg-surface-800 px-3 py-1.5 text-sm text-surface-100 placeholder:text-surface-500 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1 focus:ring-offset-surface-900 hover:border-surface-500"
-            aria-label="Search payments by member name"
+            aria-label={t("searchAriaLabel")}
           />
           {hasActiveFilter && (
             <button
               onClick={handleClearFilters}
               className="text-sm text-surface-500 transition-colors hover:text-primary-300"
             >
-              Clear
+              {tCommon("clear")}
             </button>
           )}
         </div>
@@ -377,7 +377,7 @@ export function PaymentsClient(
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Card>
           <p className="text-xs font-medium uppercase tracking-wide text-surface-500">
-            This Month
+            {t("thisMonth")}
           </p>
           <p className="mt-1 text-xl font-bold text-surface-100">
             {formatCurrency(summary.thisMonthRevenue)}
@@ -385,7 +385,7 @@ export function PaymentsClient(
         </Card>
         <Card>
           <p className="text-xs font-medium uppercase tracking-wide text-surface-500">
-            All Time
+            {t("allTime")}
           </p>
           <p className="mt-1 text-xl font-bold text-surface-100">
             {formatCurrency(summary.totalRevenue)}
@@ -393,7 +393,7 @@ export function PaymentsClient(
         </Card>
         <Card>
           <p className="text-xs font-medium uppercase tracking-wide text-surface-500">
-            Paid Members
+            {t("paidMembers")}
           </p>
           <p className="mt-1 text-xl font-bold text-success-400">
             {summary.paidCount}
@@ -405,7 +405,7 @@ export function PaymentsClient(
         </Card>
         <Card>
           <p className="text-xs font-medium uppercase tracking-wide text-surface-500">
-            Unpaid
+            {t("unpaid")}
           </p>
           <p
             className={`mt-1 text-xl font-bold ${
@@ -425,8 +425,8 @@ export function PaymentsClient(
       ) && (
         <Card>
           <CardHeader
-            title="Unpaid Members"
-            description="Members with outstanding payments"
+            title={t("unpaidMembers")}
+            description={t("unpaidMembersSubtitle")}
           />
           <div className="mt-3 space-y-2">
             {members
@@ -453,15 +453,15 @@ export function PaymentsClient(
       <Card padding="none">
         <div className="px-6 py-4">
           <CardHeader
-            title="Payment History"
-            description={`${visiblePayments.length} payments${filterMonth !== null ? ` in ${filterLabel}` : ""}`}
+            title={t("paymentHistory")}
+            description={`${t("paymentsCount", { count: visiblePayments.length })}${filterMonth !== null ? ` ${t("paymentsInPeriod", { filterLabel })}` : ""}`}
           />
         </div>
 
         {visiblePayments.length === 0 ? (
           <div className="py-12 text-center">
             <p className="text-sm text-surface-500">
-              No payments recorded yet
+              {t("noPayments")}
             </p>
           </div>
         ) : (
@@ -470,22 +470,22 @@ export function PaymentsClient(
               <thead>
                 <tr className="border-y border-surface-700 text-left">
                   <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-surface-500">
-                    Member
+                    {t("member")}
                   </th>
                   <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-surface-500">
-                    Amount
+                    {t("amount")}
                   </th>
                   <th className="hidden px-6 py-3 text-xs font-medium uppercase tracking-wide text-surface-500 sm:table-cell">
-                    Period
+                    {t("period")}
                   </th>
                   <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-surface-500">
-                    Paid
+                    {t("paid")}
                   </th>
                   <th className="hidden px-6 py-3 text-xs font-medium uppercase tracking-wide text-surface-500 md:table-cell">
-                    Recorded By
+                    {t("recordedBy")}
                   </th>
                   <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-surface-500">
-                    <span className="sr-only">Actions</span>
+                    <span className="sr-only">{tCommon("actions")}</span>
                   </th>
                 </tr>
               </thead>
@@ -520,7 +520,7 @@ export function PaymentsClient(
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
-                          aria-label={`Edit payment for ${payment.memberName}`}
+                          aria-label={t("editPaymentFor", { memberName: payment.memberName })}
                           onClick={() => handleEditPayment(payment)}
                           className="rounded p-1 text-surface-500 transition-colors hover:bg-surface-700 hover:text-surface-200"
                         >
@@ -530,7 +530,7 @@ export function PaymentsClient(
                         </button>
                         <button
                           type="button"
-                          aria-label={`Delete payment for ${payment.memberName}`}
+                          aria-label={t("deletePaymentFor", { memberName: payment.memberName })}
                           onClick={() => setDeletingPayment(payment)}
                           className="rounded p-1 text-surface-500 transition-colors hover:bg-error-900/50 hover:text-error-400"
                         >
@@ -556,13 +556,13 @@ export function PaymentsClient(
           setEditingPayment(null);
           resetForm();
         }}
-        title={editingPayment ? "Edit Payment" : "Record Payment"}
+        title={editingPayment ? t("editPayment") : t("recordPayment")}
       >
         <form onSubmit={handleRecordPayment} className="space-y-4">
           <Select
-            label="Member"
+            label={t("member")}
             options={[
-              { value: "", label: "Select a member..." },
+              { value: "", label: t("selectMember") },
               ...members.map((m) => ({ value: m.id, label: m.name })),
             ]}
             value={selectedMember}
@@ -572,18 +572,18 @@ export function PaymentsClient(
           />
 
           <Input
-            label="Amount (MKD)"
+            label={t("amountMKD")}
             type="number"
             step="1"
             min="1"
             value={payAmount}
             onChange={(e) => setPayAmount(e.target.value)}
-            placeholder="e.g., 1500"
+            placeholder={t("amountPlaceholder")}
             error={payErrors.amount}
           />
 
           <DateTimePicker
-            label="Paid At"
+            label={t("paidAt")}
             value={payDate}
             onChange={(v) => setPayDate(v)}
             error={payErrors.paidAt}
@@ -591,13 +591,13 @@ export function PaymentsClient(
 
           <div className="grid grid-cols-2 gap-3">
             <DatePicker
-              label="Period Start"
+              label={t("periodStart")}
               value={payPeriodStart}
               onChange={(v) => setPayPeriodStart(v)}
               error={payErrors.periodStart}
             />
             <DatePicker
-              label="Period End"
+              label={t("periodEnd")}
               value={payPeriodEnd}
               onChange={(v) => setPayPeriodEnd(v)}
               error={payErrors.periodEnd}
@@ -605,10 +605,10 @@ export function PaymentsClient(
           </div>
 
           <Textarea
-            label="Notes (optional)"
+            label={t("notes")}
             value={payNotes}
             onChange={(e) => setPayNotes(e.target.value)}
-            placeholder="Any additional notes..."
+            placeholder={t("notesPlaceholder")}
             rows={2}
           />
 
@@ -620,7 +620,7 @@ export function PaymentsClient(
 
           <div className="flex items-center gap-2 pt-2">
             <Button type="submit" variant="primary" loading={loading}>
-              {editingPayment ? "Update Payment" : "Record Payment"}
+              {editingPayment ? t("updatePayment") : t("recordPayment")}
             </Button>
             <Button
               type="button"
@@ -631,7 +631,7 @@ export function PaymentsClient(
                 resetForm();
               }}
             >
-              Cancel
+              {tCommon("cancel")}
             </Button>
           </div>
         </form>
@@ -641,27 +641,22 @@ export function PaymentsClient(
       <Modal
         isOpen={!!deletingPayment}
         onClose={() => setDeletingPayment(null)}
-        title="Delete Payment"
+        title={t("deletePayment")}
         size="sm"
       >
         <div className="space-y-4">
           <p className="text-sm text-surface-300">
-            Are you sure you want to delete this payment of{" "}
-            <span className="font-medium text-surface-100">
-              {deletingPayment ? formatCurrency(deletingPayment.amount) : ""}
-            </span>{" "}
-            for{" "}
-            <span className="font-medium text-surface-100">
-              {deletingPayment?.memberName}
-            </span>
-            ? This action cannot be undone.
+            {t("deleteConfirmation", {
+              amount: deletingPayment ? formatCurrency(deletingPayment.amount) : "",
+              memberName: deletingPayment?.memberName ?? "",
+            })}
           </p>
           <div className="flex items-center gap-2">
             <Button variant="danger" onClick={handleDeletePayment} loading={deleteLoading}>
-              Delete
+              {tCommon("delete")}
             </Button>
             <Button variant="ghost" onClick={() => setDeletingPayment(null)}>
-              Cancel
+              {tCommon("cancel")}
             </Button>
           </div>
         </div>

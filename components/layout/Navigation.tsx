@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 type UserRole = "OWNER" | "TRAINER" | "MEMBER";
 
 interface NavLink {
@@ -60,35 +61,37 @@ const icons = {
   ),
 };
 
-const navLinks: Record<UserRole, NavLink[]> = {
-  OWNER: [
-    { href: "/dashboard", label: "Dashboard", icon: icons.dashboard },
-    { href: "/owner/schedule", label: "Schedule", icon: icons.schedule },
-    { href: "/members", label: "Members", icon: icons.members },
-    { href: "/payments", label: "Payments", icon: icons.payments },
-    { href: "/private-sessions", label: "Private Sessions", icon: icons.privateSessions },
-    { href: "/trainers", label: "Trainers", icon: icons.trainers },
-    { href: "/owner/notifications", label: "Notifications", icon: icons.notifications },
-  ],
-  TRAINER: [
-    { href: "/my-schedule", label: "My Schedule", icon: icons.schedule },
-    { href: "/trainer/payments", label: "Payments", icon: icons.payments },
-    { href: "/trainer/private-sessions", label: "Private Sessions", icon: icons.privateSessions },
-    { href: "/trainer/notifications", label: "Notifications", icon: icons.notifications },
-  ],
-  MEMBER: [
-    { href: "/member/schedule", label: "Schedule", icon: icons.schedule },
-    { href: "/member/profile", label: "Profile", icon: icons.profile },
-    { href: "/member/notifications", label: "Notifications", icon: icons.notifications },
-  ],
-};
-
 export function Navigation({
   role,
   mobile = false,
   onNavigate,
 }: NavigationProps): React.ReactElement {
   const pathname = usePathname();
+  const t = useTranslations("navigation");
+
+  const navLinks: Record<UserRole, NavLink[]> = {
+    OWNER: [
+      { href: "/dashboard", label: t("dashboard"), icon: icons.dashboard },
+      { href: "/owner/schedule", label: t("schedule"), icon: icons.schedule },
+      { href: "/members", label: t("members"), icon: icons.members },
+      { href: "/payments", label: t("payments"), icon: icons.payments },
+      { href: "/private-sessions", label: t("privateSessions"), icon: icons.privateSessions },
+      { href: "/trainers", label: t("trainers"), icon: icons.trainers },
+      { href: "/owner/notifications", label: t("notifications"), icon: icons.notifications },
+    ],
+    TRAINER: [
+      { href: "/my-schedule", label: t("mySchedule"), icon: icons.schedule },
+      { href: "/trainer/payments", label: t("payments"), icon: icons.payments },
+      { href: "/trainer/private-sessions", label: t("privateSessions"), icon: icons.privateSessions },
+      { href: "/trainer/notifications", label: t("notifications"), icon: icons.notifications },
+    ],
+    MEMBER: [
+      { href: "/member/schedule", label: t("schedule"), icon: icons.schedule },
+      { href: "/member/profile", label: t("profile"), icon: icons.profile },
+      { href: "/member/notifications", label: t("notifications"), icon: icons.notifications },
+    ],
+  };
+
   const links = navLinks[role] || [];
 
   if (mobile) {

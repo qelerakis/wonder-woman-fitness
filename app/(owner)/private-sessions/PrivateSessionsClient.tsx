@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
+import { useTranslations } from "next-intl";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -51,6 +52,9 @@ export function PrivateSessionsClient({
 }: PrivateSessionsClientProps): React.ReactElement {
   const router = useRouter();
   const { addToast } = useToast();
+  const t = useTranslations("privateSessions");
+  const tCommon = useTranslations("common");
+  const tVal = useTranslations("validation");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -128,10 +132,10 @@ export function PrivateSessionsClient({
         setFilteredSessions(data);
         setFilteredSummary(computeSummary(data));
       } else {
-        addToast({ type: "error", title: "Failed to load sessions" });
+        addToast({ type: "error", title: t("failedToLoadSessions") });
       }
     } catch {
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tCommon("networkError") });
     } finally {
       setFilterLoading(false);
     }
@@ -176,11 +180,11 @@ export function PrivateSessionsClient({
     e.preventDefault();
     const errors: Record<string, string> = {};
 
-    if (!clientName.trim()) errors.clientName = "Client name is required";
-    if (!scheduledAt) errors.scheduledAt = "Date/time is required";
+    if (!clientName.trim()) errors.clientName = t("clientNameRequired");
+    if (!scheduledAt) errors.scheduledAt = t("dateTimeRequired");
     const parsedAmount = parseFloat(amount);
     if (!amount || isNaN(parsedAmount) || parsedAmount <= 0) {
-      errors.amount = "Amount must be a positive number";
+      errors.amount = tVal("positiveAmount");
     }
 
     if (Object.keys(errors).length > 0) {
@@ -205,7 +209,7 @@ export function PrivateSessionsClient({
       });
 
       if (res.ok) {
-        addToast({ type: "success", title: "Private session created" });
+        addToast({ type: "success", title: t("privateSessionCreated") });
         setShowCreateModal(false);
         resetForm();
         router.refresh();
@@ -213,12 +217,12 @@ export function PrivateSessionsClient({
         const data: { error: string } = await res.json();
         addToast({
           type: "error",
-          title: "Failed to create session",
+          title: t("failedToCreateSession"),
           message: data.error,
         });
       }
     } catch {
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tCommon("networkError") });
     } finally {
       setLoading(false);
     }
@@ -235,14 +239,14 @@ export function PrivateSessionsClient({
       if (res.ok) {
         addToast({
           type: "success",
-          title: currentPaid ? "Marked as unpaid" : "Marked as paid",
+          title: currentPaid ? t("markedAsUnpaid") : t("markedAsPaid"),
         });
         router.refresh();
       } else {
-        addToast({ type: "error", title: "Failed to update" });
+        addToast({ type: "error", title: t("failedToUpdateSession") });
       }
     } catch {
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tCommon("networkError") });
     }
   }
 
@@ -256,7 +260,7 @@ export function PrivateSessionsClient({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-surface-100">
-            Private Sessions
+            {t("title")}
           </h1>
           <div className="mt-1 flex items-center gap-2">
             {viewMode === "month" ? (
@@ -265,7 +269,7 @@ export function PrivateSessionsClient({
                   onClick={handlePrevMonth}
                   disabled={filterLoading}
                   className="rounded p-0.5 text-surface-400 transition-colors hover:text-surface-100 disabled:opacity-30 disabled:cursor-not-allowed"
-                  aria-label="Previous month"
+                  aria-label={t("previousMonth")}
                 >
                   <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -278,7 +282,7 @@ export function PrivateSessionsClient({
                   onClick={handleNextMonth}
                   disabled={filterLoading || (viewMonth === new Date().getMonth() && viewYear === new Date().getFullYear())}
                   className="rounded p-0.5 text-surface-400 transition-colors hover:text-surface-100 disabled:opacity-30 disabled:cursor-not-allowed"
-                  aria-label="Next month"
+                  aria-label={t("nextMonth")}
                 >
                   <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
@@ -286,7 +290,7 @@ export function PrivateSessionsClient({
                 </button>
               </div>
             ) : (
-              <p className="text-sm text-surface-400">All sessions</p>
+              <p className="text-sm text-surface-400">{t("allSessions")}</p>
             )}
             <div className="flex gap-1">
               <button
@@ -297,7 +301,7 @@ export function PrivateSessionsClient({
                     : "text-surface-500 hover:text-surface-300"
                 }`}
               >
-                All
+                {tCommon("all")}
               </button>
               <button
                 onClick={handleShowMonth}
@@ -307,7 +311,7 @@ export function PrivateSessionsClient({
                     : "text-surface-500 hover:text-surface-300"
                 }`}
               >
-                Monthly
+                {t("monthly")}
               </button>
             </div>
           </div>
@@ -317,7 +321,7 @@ export function PrivateSessionsClient({
           size="sm"
           onClick={() => setShowCreateModal(true)}
         >
-          New Session
+          {t("newSession")}
         </Button>
       </div>
 
@@ -325,7 +329,7 @@ export function PrivateSessionsClient({
       <div className={`grid grid-cols-2 gap-4 lg:grid-cols-4 transition-opacity ${filterLoading ? "opacity-50" : ""}`}>
         <Card>
           <p className="text-xs font-medium uppercase tracking-wide text-surface-500">
-            This Month
+            {t("thisMonth")}
           </p>
           <p className="mt-1 text-xl font-bold text-surface-100">
             {formatCurrency(filteredSummary.thisMonthRevenue)}
@@ -333,7 +337,7 @@ export function PrivateSessionsClient({
         </Card>
         <Card>
           <p className="text-xs font-medium uppercase tracking-wide text-surface-500">
-            All Time
+            {t("allTime")}
           </p>
           <p className="mt-1 text-xl font-bold text-surface-100">
             {formatCurrency(filteredSummary.totalRevenue)}
@@ -341,7 +345,7 @@ export function PrivateSessionsClient({
         </Card>
         <Card>
           <p className="text-xs font-medium uppercase tracking-wide text-surface-500">
-            Total Sessions
+            {t("totalSessions")}
           </p>
           <p className="mt-1 text-xl font-bold text-surface-100">
             {filteredSummary.totalSessions}
@@ -349,7 +353,7 @@ export function PrivateSessionsClient({
         </Card>
         <Card>
           <p className="text-xs font-medium uppercase tracking-wide text-surface-500">
-            Unpaid
+            {t("unpaid")}
           </p>
           <p
             className={`mt-1 text-xl font-bold ${
@@ -365,15 +369,15 @@ export function PrivateSessionsClient({
       <Card padding="none">
         <div className="px-6 py-4">
           <CardHeader
-            title="Sessions"
-            description={`${filteredSessions.length} sessions`}
+            title={t("sessionsLabel")}
+            description={t("sessionsCount", { count: filteredSessions.length })}
           />
         </div>
 
         {filteredSessions.length === 0 ? (
           <div className="py-12 text-center">
             <p className="text-sm text-surface-500">
-              No private sessions recorded yet
+              {t("noSessions")}
             </p>
           </div>
         ) : (
@@ -382,22 +386,22 @@ export function PrivateSessionsClient({
               <thead>
                 <tr className="border-y border-surface-700 text-left">
                   <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-surface-500">
-                    Client
+                    {t("client")}
                   </th>
                   <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-surface-500">
-                    Trainer
+                    {t("trainer")}
                   </th>
                   <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-surface-500">
-                    Date
+                    {t("date")}
                   </th>
                   <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-surface-500">
-                    Amount
+                    {t("amount")}
                   </th>
                   <th className="hidden px-6 py-3 text-xs font-medium uppercase tracking-wide text-surface-500 md:table-cell">
-                    Details
+                    {t("details")}
                   </th>
                   <th className="px-6 py-3 text-xs font-medium uppercase tracking-wide text-surface-500">
-                    Status
+                    {t("status")}
                   </th>
                 </tr>
               </thead>
@@ -429,7 +433,7 @@ export function PrivateSessionsClient({
                     <td className="px-6 py-3">
                       {!ps.paid && ps.amount === 0 ? (
                         <Badge variant="warning" size="sm">
-                          Unpaid
+                          {t("unpaid")}
                         </Badge>
                       ) : (
                         <button
@@ -440,7 +444,7 @@ export function PrivateSessionsClient({
                             variant={ps.paid ? "success" : "warning"}
                             size="sm"
                           >
-                            {ps.paid ? "Paid" : "Unpaid"}
+                            {ps.paid ? t("paid") : t("unpaid")}
                           </Badge>
                         </button>
                       )}
@@ -460,38 +464,38 @@ export function PrivateSessionsClient({
           setShowCreateModal(false);
           resetForm();
         }}
-        title="New Private Session"
+        title={t("newTitle")}
       >
         <form onSubmit={handleCreate} className="space-y-4">
           <Input
-            label="Client Name"
+            label={t("clientName")}
             value={clientName}
             onChange={(e) => setClientName(e.target.value)}
-            placeholder="Client's full name"
+            placeholder={t("clientNamePlaceholder")}
             error={formErrors.clientName}
           />
 
           <DateTimePicker
-            label="Scheduled At"
+            label={t("scheduledAt")}
             value={scheduledAt}
             onChange={(v) => setScheduledAt(v)}
             error={formErrors.scheduledAt}
           />
 
           <Input
-            label="Amount (MKD)"
+            label={t("amountMKD")}
             type="number"
             step="1"
             min="1"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            placeholder="e.g., 500"
+            placeholder={t("amountPlaceholder")}
             error={formErrors.amount}
           />
 
           {trainers && trainers.length > 0 && (
             <Select
-              label="Trainer"
+              label={t("trainerSelect")}
               value={trainerId}
               onChange={(e) => setTrainerId(e.target.value)}
               options={trainers.map((t) => ({ value: t.id, label: t.name }))}
@@ -510,29 +514,29 @@ export function PrivateSessionsClient({
               htmlFor="paid-checkbox"
               className="text-sm text-surface-300"
             >
-              Already paid
+              {t("alreadyPaid")}
             </label>
           </div>
 
           <Textarea
-            label="Exercise Details (optional)"
+            label={t("exerciseDetails")}
             value={exerciseDetails}
             onChange={(e) => setExerciseDetails(e.target.value)}
-            placeholder="Describe the exercises planned..."
+            placeholder={t("exerciseDetailsPlaceholder")}
             rows={3}
           />
 
           <Textarea
-            label="Notes (optional)"
+            label={t("notes")}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Any additional notes..."
+            placeholder={t("notesPlaceholder")}
             rows={2}
           />
 
           <div className="flex items-center gap-2 pt-2">
             <Button type="submit" variant="primary" loading={loading}>
-              Create Session
+              {t("createSession")}
             </Button>
             <Button
               type="button"
@@ -542,7 +546,7 @@ export function PrivateSessionsClient({
                 resetForm();
               }}
             >
-              Cancel
+              {tCommon("cancel")}
             </Button>
           </div>
         </form>

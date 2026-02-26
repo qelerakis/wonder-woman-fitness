@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { addDays } from "date-fns";
+import { useTranslations } from "next-intl";
 import { WeeklyCalendar } from "@/components/schedule/WeeklyCalendar";
 import { CreateSessionModal } from "@/components/schedule/CreateSessionModal";
 import { Button } from "@/components/ui/Button";
@@ -39,6 +40,8 @@ export function ScheduleClient({
   const [generating, setGenerating] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const { addToast } = useToast();
+  const t = useTranslations("schedule");
+  const tCommon = useTranslations("common");
   const abortRef = useRef<AbortController | null>(null);
 
   const fetchSessions = useCallback(async (showLoader = false): Promise<void> => {
@@ -63,7 +66,7 @@ export function ScheduleClient({
       } else {
         addToast({
           type: "error",
-          title: "Failed to load sessions",
+          title: t("failedToLoad"),
         });
       }
     } catch (err: unknown) {
@@ -73,14 +76,14 @@ export function ScheduleClient({
       }
       addToast({
         type: "error",
-        title: "Network error loading sessions",
+        title: tCommon("networkError"),
       });
     } finally {
       if (!controller.signal.aborted) {
         setLoading(false);
       }
     }
-  }, [weekStart, addToast]);
+  }, [weekStart, addToast, t, tCommon]);
 
   useEffect(() => {
     void fetchSessions(true); // show loader on initial load and week change
@@ -108,22 +111,22 @@ export function ScheduleClient({
       if (res.ok) {
         addToast({
           type: "success",
-          title: "Sessions generated",
-          message: "Weekly sessions have been created from recurring slots.",
+          title: t("sessionsGenerated"),
+          message: t("sessionsGeneratedMessage"),
         });
         await fetchSessions(false); // silent refresh — don't hide the calendar
       } else {
         const errorData: { error: string } = await res.json();
         addToast({
           type: "error",
-          title: "Failed to generate sessions",
+          title: t("failedToGenerate"),
           message: errorData.error,
         });
       }
     } catch {
       addToast({
         type: "error",
-        title: "Network error generating sessions",
+        title: tCommon("networkError"),
       });
     } finally {
       setGenerating(false);
@@ -135,9 +138,9 @@ export function ScheduleClient({
       {/* Page header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-surface-100">Schedule</h1>
+          <h1 className="text-2xl font-bold text-surface-100">{t("title")}</h1>
           <p className="mt-1 text-sm text-surface-400">
-            Manage weekly class schedule
+            {t("subtitle")}
           </p>
         </div>
         <div className="flex gap-2">
@@ -147,14 +150,14 @@ export function ScheduleClient({
             onClick={handleGenerateWeek}
             loading={generating}
           >
-            Generate Week
+            {t("generateWeek")}
           </Button>
           <Button
             variant="primary"
             size="sm"
             onClick={() => setShowCreateModal(true)}
           >
-            Add Session
+            {t("addSession")}
           </Button>
         </div>
       </div>
@@ -165,26 +168,26 @@ export function ScheduleClient({
           <span className="font-medium text-surface-200">
             {sessions.length}
           </span>{" "}
-          sessions
+          {t("sessions")}
         </span>
         <span className="text-surface-400">
           <span className="font-medium text-surface-200">
             {sessions.filter((s) => s.status === "CANCELLED").length}
           </span>{" "}
-          cancelled
+          {t("cancelledCount")}
         </span>
         <span className="text-surface-400">
           <span className="font-medium text-surface-200">
             {recurringSlots.length}
           </span>{" "}
-          recurring slots
+          {t("recurringSlots")}
         </span>
       </div>
 
       {/* Calendar */}
       {loading ? (
         <div className="flex h-64 items-center justify-center">
-          <div className="text-sm text-surface-500">Loading sessions...</div>
+          <div className="text-sm text-surface-500">{t("loadingSessions")}</div>
         </div>
       ) : (
         <WeeklyCalendar

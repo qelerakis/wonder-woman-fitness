@@ -1,18 +1,22 @@
-export default function AuthLayout({
+import { getTranslations } from "next-intl/server";
+
+export default async function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const tBrand = await getTranslations("brand");
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface-950 px-4">
       <div className="w-full max-w-md">
         {/* Brand Logo */}
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold text-primary-400">
-            Wonder Woman Fitness
+            {tBrand("name")}
           </h1>
           <p className="mt-2 text-sm text-surface-400">
-            Studio Management Platform
+            {tBrand("tagline")}
           </p>
         </div>
 

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
+import { useTranslations } from "next-intl";
 import { Navigation } from "./Navigation";
 import { LanguageToggle } from "./LanguageToggle";
 
@@ -21,13 +22,17 @@ export function Header({
 }: HeaderProps): React.ReactElement {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const tNav = useTranslations("navigation");
+  const tRoles = useTranslations("roles");
+  const tBrand = useTranslations("brand");
+  const tAuth = useTranslations("auth");
 
   const roleLabel =
     userRole === "OWNER"
-      ? "Owner"
+      ? tRoles("owner")
       : userRole === "TRAINER"
-        ? "Trainer"
-        : "Member";
+        ? tRoles("trainer")
+        : tRoles("member");
 
   // Close user dropdown on Escape key
   const handleEscapeKey = useCallback((e: KeyboardEvent) => {
@@ -58,7 +63,7 @@ export function Header({
               <span className="text-sm font-bold text-white">WW</span>
             </div>
             <span className="hidden sm:block text-lg font-bold text-surface-100">
-              Wonder Woman
+              {tBrand("short")}
             </span>
           </Link>
 
@@ -130,7 +135,7 @@ export function Header({
                         <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                           <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd" />
                         </svg>
-                        Profile
+                        {tNav("profile")}
                       </Link>
                     )}
                     <button
@@ -141,7 +146,7 @@ export function Header({
                       <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V4a1 1 0 00-1-1H3zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
                       </svg>
-                      Sign out
+                      {tAuth("signOut")}
                     </button>
                   </div>
                 </>
@@ -152,7 +157,7 @@ export function Header({
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="rounded-lg p-2 text-surface-400 hover:bg-surface-800 hover:text-surface-100 md:hidden transition-colors"
-              aria-label="Toggle menu"
+              aria-label={tNav("toggleMenu")}
               aria-expanded={mobileMenuOpen}
             >
               {mobileMenuOpen ? (
@@ -200,7 +205,7 @@ export function Header({
                   <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd" />
                   </svg>
-                  Profile
+                  {tNav("profile")}
                 </Link>
               )}
               <button
@@ -210,7 +215,7 @@ export function Header({
                 <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V4a1 1 0 00-1-1H3zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
                 </svg>
-                Sign out
+                {tAuth("signOut")}
               </button>
             </div>
           </div>

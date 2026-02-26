@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -63,6 +64,10 @@ export function SessionDetailClient({
 }: SessionDetailClientProps): React.ReactElement {
   const router = useRouter();
   const { addToast } = useToast();
+  const t = useTranslations("schedule");
+  const tCommon = useTranslations("common");
+  const tWorkout = useTranslations("workout");
+  const tDetail = useTranslations("sessionDetail");
   const [editingWorkout, setEditingWorkout] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -98,15 +103,15 @@ export function SessionDetailClient({
         signal: controller.signal,
       });
       if (res.ok) {
-        addToast({ type: "success", title: "Workout updated" });
+        addToast({ type: "success", title: tWorkout("updated") });
         setEditingWorkout(false);
         router.refresh();
       } else {
-        throw new Error("Failed to save workout");
+        throw new Error(tWorkout("failedToSave"));
       }
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
-        throw new Error("Request timed out. Please try again.");
+        throw new Error(tCommon("requestTimeout"));
       }
       throw err;
     } finally {
@@ -124,13 +129,13 @@ export function SessionDetailClient({
       });
       if (res.ok) {
         setShowCancelModal(false);
-        addToast({ type: "success", title: "Session cancelled" });
+        addToast({ type: "success", title: tDetail("sessionCancelled") });
         router.refresh();
       } else {
-        addToast({ type: "error", title: "Failed to cancel session" });
+        addToast({ type: "error", title: tDetail("failedToCancel") });
       }
     } catch {
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tCommon("networkError") });
     } finally {
       setCancelling(false);
     }
@@ -144,13 +149,13 @@ export function SessionDetailClient({
       });
       if (res.ok) {
         setShowDeleteModal(false);
-        addToast({ type: "success", title: "Session deleted" });
+        addToast({ type: "success", title: tDetail("sessionDeleted") });
         router.push("/owner/schedule");
       } else {
-        addToast({ type: "error", title: "Failed to delete session" });
+        addToast({ type: "error", title: tDetail("failedToDelete") });
       }
     } catch {
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tCommon("networkError") });
     } finally {
       setDeleting(false);
     }
@@ -158,7 +163,7 @@ export function SessionDetailClient({
 
   function handleSlotDeleted(): void {
     setShowDeleteSlotModal(false);
-    addToast({ type: "success", title: "Recurring slot deleted" });
+    addToast({ type: "success", title: tDetail("slotDeleted") });
     router.push("/owner/schedule");
   }
 
@@ -172,14 +177,14 @@ export function SessionDetailClient({
       if (res.ok) {
         addToast({
           type: "success",
-          title: session.votingEnabled ? "Voting disabled" : "Voting enabled",
+          title: session.votingEnabled ? t("votingDisabled") : t("votingEnabled"),
         });
         router.refresh();
       } else {
-        addToast({ type: "error", title: "Failed to update voting" });
+        addToast({ type: "error", title: t("failedToUpdateVoting") });
       }
     } catch {
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tCommon("networkError") });
     }
   }
 
@@ -194,14 +199,14 @@ export function SessionDetailClient({
       if (res.ok) {
         const data = await res.json();
         setCurrentTrainerIds(data.data.map((t: { userId: string }) => t.userId));
-        addToast({ type: "success", title: currentlyAssigned ? "Trainer removed" : "Trainer assigned" });
+        addToast({ type: "success", title: currentlyAssigned ? tDetail("trainerRemoved") : tDetail("trainerAssigned") });
         router.refresh();
       } else {
         const err = await res.json();
-        addToast({ type: "error", title: err.error || "Failed to update" });
+        addToast({ type: "error", title: err.error || tDetail("failedToUpdateTrainer") });
       }
     } catch {
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tCommon("networkError") });
     }
   }
 
@@ -216,14 +221,14 @@ export function SessionDetailClient({
       if (res.ok) {
         const data = await res.json();
         setCurrentMemberIds(data.data.map((m: { userId: string }) => m.userId));
-        addToast({ type: "success", title: currentlyAssigned ? "Member removed" : "Member assigned" });
+        addToast({ type: "success", title: currentlyAssigned ? tDetail("memberRemoved") : tDetail("memberAssigned") });
         router.refresh();
       } else {
         const err = await res.json();
-        addToast({ type: "error", title: err.error || "Failed to update" });
+        addToast({ type: "error", title: err.error || tDetail("failedToUpdateTrainer") });
       }
     } catch {
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tCommon("networkError") });
     }
   }
 
@@ -236,13 +241,13 @@ export function SessionDetailClient({
             <h1 className="text-2xl font-bold text-surface-100">
               {dayName} {time}
             </h1>
-            {isCancelled && <Badge variant="error">Cancelled</Badge>}
+            {isCancelled && <Badge variant="error">{t("cancelled")}</Badge>}
             {session.votingEnabled && !isCancelled && (
-              <Badge variant="primary">Voting Open</Badge>
+              <Badge variant="primary">{t("votingOpen")}</Badge>
             )}
           </div>
           <p className="mt-1 text-sm text-surface-400">
-            Session for week of{" "}
+            {tDetail("sessionForWeekOf")}{" "}
             {new Date(session.weekDate).toLocaleDateString("en-US", {
               month: "long",
               day: "numeric",
@@ -252,7 +257,7 @@ export function SessionDetailClient({
         </div>
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" onClick={() => router.back()}>
-            Back
+            {tCommon("back")}
           </Button>
           {!isCancelled && (
             <Button
@@ -260,7 +265,7 @@ export function SessionDetailClient({
               size="sm"
               onClick={() => setShowCancelModal(true)}
             >
-              Cancel Session
+              {tDetail("cancelSession")}
             </Button>
           )}
           <Button
@@ -268,7 +273,7 @@ export function SessionDetailClient({
             size="sm"
             onClick={() => setShowDeleteModal(true)}
           >
-            Delete Session
+            {tDetail("deleteSession")}
           </Button>
           {session.recurringSlotId && session.recurringSlot && (
             <Button
@@ -276,7 +281,7 @@ export function SessionDetailClient({
               size="sm"
               onClick={() => setShowDeleteSlotModal(true)}
             >
-              Delete Recurring Slot
+              {tDetail("deleteRecurringSlot")}
             </Button>
           )}
         </div>
@@ -288,7 +293,7 @@ export function SessionDetailClient({
           {/* Workout */}
           <Card>
             <CardHeader
-              title="Workout"
+              title={tWorkout("title")}
               action={
                 !isCancelled && !editingWorkout ? (
                   <Button
@@ -296,7 +301,7 @@ export function SessionDetailClient({
                     size="sm"
                     onClick={() => setEditingWorkout(true)}
                   >
-                    Edit
+                    {tCommon("edit")}
                   </Button>
                 ) : undefined
               }
@@ -329,7 +334,7 @@ export function SessionDetailClient({
           {/* Toggle voting */}
           {!isCancelled && (
             <Button variant="ghost" size="sm" onClick={handleToggleVoting}>
-              {session.votingEnabled ? "Disable Voting" : "Enable Voting"}
+              {session.votingEnabled ? t("disableVoting") : t("enableVoting")}
             </Button>
           )}
 
@@ -346,7 +351,7 @@ export function SessionDetailClient({
         {/* Right column */}
         <div className="space-y-6">
           <AssignmentToggleList
-            title="Trainers"
+            title={t("trainersTitle")}
             people={allTrainers}
             assignedIds={currentTrainerIds}
             onToggle={handleToggleTrainer}
@@ -355,7 +360,7 @@ export function SessionDetailClient({
 
           {!session.votingEnabled && (
             <AssignmentToggleList
-              title="Members"
+              title={t("membersCardTitle")}
               people={allMembers}
               assignedIds={currentMemberIds}
               onToggle={handleToggleMember}
@@ -371,9 +376,9 @@ export function SessionDetailClient({
         isOpen={showCancelModal}
         onClose={() => setShowCancelModal(false)}
         onConfirm={handleCancelConfirmed}
-        title="Cancel Session"
-        message="Cancel this session? All assigned members will be notified."
-        confirmLabel="Cancel Session"
+        title={tDetail("cancelSession")}
+        message={tDetail("cancelSessionConfirm")}
+        confirmLabel={tDetail("cancelSession")}
         loading={cancelling}
       />
 
@@ -381,9 +386,9 @@ export function SessionDetailClient({
         isOpen={showDeleteModal}
         onClose={() => setShowDeleteModal(false)}
         onConfirm={handleDeleteConfirmed}
-        title="Delete Session"
-        message="Permanently delete this session? This cannot be undone."
-        confirmLabel="Delete"
+        title={tDetail("deleteSession")}
+        message={tDetail("deleteSessionConfirm")}
+        confirmLabel={tCommon("delete")}
         loading={deleting}
       />
 

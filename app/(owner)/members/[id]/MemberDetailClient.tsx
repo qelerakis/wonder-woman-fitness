@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { format } from "date-fns";
+import { useTranslations } from "next-intl";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -55,6 +56,10 @@ export function MemberDetailClient(
   const { member, payments } = props;
   const router = useRouter();
   const { addToast } = useToast();
+  const t = useTranslations("members");
+  const tCommon = useTranslations("common");
+  const tVal = useTranslations("validation");
+  const tPayments = useTranslations("payments");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showDepartModal, setShowDepartModal] = useState(false);
   const [showOverrideConfirm, setShowOverrideConfirm] = useState(false);
@@ -85,13 +90,13 @@ export function MemberDetailClient(
 
     const parsedAmount = parseFloat(payAmount);
     if (!payAmount || isNaN(parsedAmount) || parsedAmount <= 0) {
-      errors.amount = "Amount must be a positive number";
+      errors.amount = tVal("positiveAmount");
     }
-    if (!payDate) errors.paidAt = "Payment date is required";
-    if (!payPeriodStart) errors.periodStart = "Period start is required";
-    if (!payPeriodEnd) errors.periodEnd = "Period end is required";
+    if (!payDate) errors.paidAt = tVal("paymentDateRequired");
+    if (!payPeriodStart) errors.periodStart = tVal("periodStartRequired");
+    if (!payPeriodEnd) errors.periodEnd = tVal("periodEndRequired");
     if (payPeriodStart && payPeriodEnd && payPeriodStart > payPeriodEnd) {
-      errors.periodEnd = "Period end must be after start";
+      errors.periodEnd = tVal("periodEndAfterStart");
     }
 
     if (Object.keys(errors).length > 0) {
@@ -115,7 +120,7 @@ export function MemberDetailClient(
       });
 
       if (res.ok) {
-        addToast({ type: "success", title: "Payment recorded" });
+        addToast({ type: "success", title: t("paymentRecorded") });
         setShowPaymentModal(false);
         resetPaymentForm();
         router.refresh();
@@ -123,12 +128,12 @@ export function MemberDetailClient(
         const data: { error: string } = await res.json();
         addToast({
           type: "error",
-          title: "Failed to record payment",
+          title: t("failedToRecordPayment"),
           message: data.error,
         });
       }
     } catch {
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tCommon("networkError") });
     } finally {
       setLoading(false);
     }
@@ -156,14 +161,14 @@ export function MemberDetailClient(
       });
 
       if (res.ok) {
-        addToast({ type: "success", title: "Member marked as departed" });
+        addToast({ type: "success", title: t("memberDeparted") });
         setShowDepartModal(false);
         router.refresh();
       } else {
-        addToast({ type: "error", title: "Failed to update member" });
+        addToast({ type: "error", title: t("failedToUpdate") });
       }
     } catch {
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tCommon("networkError") });
     } finally {
       setLoading(false);
     }
@@ -183,13 +188,13 @@ export function MemberDetailClient(
       });
 
       if (res.ok) {
-        addToast({ type: "success", title: "Member reactivated" });
+        addToast({ type: "success", title: t("memberReactivated") });
         router.refresh();
       } else {
-        addToast({ type: "error", title: "Failed to reactivate member" });
+        addToast({ type: "error", title: t("failedToReactivate") });
       }
     } catch {
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tCommon("networkError") });
     } finally {
       setLoading(false);
     }
@@ -208,16 +213,16 @@ export function MemberDetailClient(
         addToast({
           type: "success",
           title: member.overrideActive
-            ? "Override removed"
-            : "Override activated",
+            ? t("overrideRemoved")
+            : t("overrideActivated"),
         });
         setShowOverrideConfirm(false);
         router.refresh();
       } else {
-        addToast({ type: "error", title: "Failed to update override" });
+        addToast({ type: "error", title: t("failedToUpdateOverride") });
       }
     } catch {
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tCommon("networkError") });
     } finally {
       setLoading(false);
     }
@@ -231,12 +236,12 @@ export function MemberDetailClient(
       });
 
       if (res.ok) {
-        addToast({ type: "success", title: "Payment reminder sent" });
+        addToast({ type: "success", title: t("reminderSent") });
       } else {
-        addToast({ type: "error", title: "Failed to send reminder" });
+        addToast({ type: "error", title: t("failedToSendReminder") });
       }
     } catch {
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tCommon("networkError") });
     } finally {
       setLoading(false);
     }
@@ -270,14 +275,14 @@ export function MemberDetailClient(
               <PaymentStatusBadge status={member.paymentStatus} />
               {member.overrideActive && (
                 <Badge variant="primary" size="sm">
-                  Override Active
+                  {t("overrideActive")}
                 </Badge>
               )}
             </div>
           </div>
         </div>
         <Button variant="ghost" size="sm" onClick={() => router.back()}>
-          Back
+          {tCommon("back")}
         </Button>
       </div>
 
@@ -286,31 +291,31 @@ export function MemberDetailClient(
         <div className="space-y-6">
           {/* Profile Info */}
           <Card>
-            <CardHeader title="Profile Information" />
+            <CardHeader title={t("profileInformation")} />
             <dl className="mt-4 space-y-3">
               <div className="flex justify-between">
-                <dt className="text-sm text-surface-400">Email</dt>
+                <dt className="text-sm text-surface-400">{t("email")}</dt>
                 <dd className="text-sm text-surface-200">{member.email}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-sm text-surface-400">Phone</dt>
+                <dt className="text-sm text-surface-400">{t("phone")}</dt>
                 <dd className="text-sm text-surface-200">
-                  {member.phone || "Not provided"}
+                  {member.phone || t("notProvided")}
                 </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-sm text-surface-400">Joined</dt>
+                <dt className="text-sm text-surface-400">{t("joined")}</dt>
                 <dd className="text-sm text-surface-200">
                   {format(new Date(member.joinDate), "MMMM d, yyyy")}
                 </dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-sm text-surface-400">Status</dt>
+                <dt className="text-sm text-surface-400">{t("status")}</dt>
                 <dd className="text-sm text-surface-200">{member.status}</dd>
               </div>
               {member.monthlyRate !== null && (
                 <div className="flex justify-between">
-                  <dt className="text-sm text-surface-400">Monthly Rate</dt>
+                  <dt className="text-sm text-surface-400">{t("monthlyRate")}</dt>
                   <dd className="text-sm text-surface-200">
                     {member.monthlyRate.toLocaleString()} MKD
                   </dd>
@@ -318,7 +323,7 @@ export function MemberDetailClient(
               )}
               {member.trialEndsAt && (
                 <div className="flex justify-between">
-                  <dt className="text-sm text-surface-400">Payment Deadline</dt>
+                  <dt className="text-sm text-surface-400">{t("paymentDeadline")}</dt>
                   <dd className="text-sm text-surface-200">
                     {format(new Date(member.trialEndsAt), "MMMM d, yyyy")}
                   </dd>
@@ -326,7 +331,7 @@ export function MemberDetailClient(
               )}
               {member.departedAt && (
                 <div className="flex justify-between">
-                  <dt className="text-sm text-surface-400">Departed</dt>
+                  <dt className="text-sm text-surface-400">{t("departed")}</dt>
                   <dd className="text-sm text-surface-200">
                     {format(new Date(member.departedAt), "MMMM d, yyyy")}
                   </dd>
@@ -335,7 +340,7 @@ export function MemberDetailClient(
               {member.departReason && (
                 <div>
                   <dt className="text-sm text-surface-400 mb-1">
-                    Departure Reason
+                    {t("departureReason")}
                   </dt>
                   <dd className="text-sm text-surface-300 rounded-lg bg-surface-900/50 px-3 py-2">
                     {member.departReason}
@@ -347,7 +352,7 @@ export function MemberDetailClient(
 
           {/* Actions */}
           <Card>
-            <CardHeader title="Actions" />
+            <CardHeader title={tCommon("actions")} />
             <div className="mt-4 flex flex-wrap gap-2">
               {!isDeparted && (
                 <>
@@ -356,7 +361,7 @@ export function MemberDetailClient(
                     size="sm"
                     onClick={() => setShowPaymentModal(true)}
                   >
-                    Record Payment
+                    {t("recordPayment")}
                   </Button>
                   {(member.paymentStatus === "GRACE_PERIOD" ||
                     member.paymentStatus === "LOCKED") && (
@@ -366,7 +371,7 @@ export function MemberDetailClient(
                       onClick={handleSendReminder}
                       loading={loading}
                     >
-                      Send Reminder
+                      {t("sendReminder")}
                     </Button>
                   )}
                   <Button
@@ -375,15 +380,15 @@ export function MemberDetailClient(
                     onClick={() => setShowOverrideConfirm(true)}
                   >
                     {member.overrideActive
-                      ? "Remove Override"
-                      : "Override Lockout"}
+                      ? t("removeOverride")
+                      : t("overrideLockout")}
                   </Button>
                   <Button
                     variant="danger"
                     size="sm"
                     onClick={() => setShowDepartModal(true)}
                   >
-                    Mark as Departed
+                    {t("markAsDeparted")}
                   </Button>
                 </>
               )}
@@ -394,7 +399,7 @@ export function MemberDetailClient(
                   onClick={handleReactivate}
                   loading={loading}
                 >
-                  Reactivate Member
+                  {t("reactivateMember")}
                 </Button>
               )}
             </div>
@@ -423,12 +428,12 @@ export function MemberDetailClient(
           setShowPaymentModal(false);
           resetPaymentForm();
         }}
-        title="Record Payment"
+        title={t("recordPayment")}
       >
         <form onSubmit={handleRecordPayment} className="space-y-4">
           <div className="rounded-lg bg-surface-900/50 px-3 py-2">
             <p className="text-sm text-surface-400">
-              Recording payment for{" "}
+              {t("recordingPaymentFor")}{" "}
               <span className="font-medium text-surface-200">
                 {member.name}
               </span>
@@ -436,18 +441,18 @@ export function MemberDetailClient(
           </div>
 
           <Input
-            label="Amount (MKD)"
+            label={tPayments("amountMKD")}
             type="number"
             step="1"
             min="1"
             value={payAmount}
             onChange={(e) => setPayAmount(e.target.value)}
-            placeholder="e.g., 1500"
+            placeholder={tPayments("amountPlaceholder")}
             error={payErrors.amount}
           />
 
           <DateTimePicker
-            label="Paid At"
+            label={tPayments("paidAt")}
             value={payDate}
             onChange={(v) => setPayDate(v)}
             error={payErrors.paidAt}
@@ -455,13 +460,13 @@ export function MemberDetailClient(
 
           <div className="grid grid-cols-2 gap-3">
             <DatePicker
-              label="Period Start"
+              label={tPayments("periodStart")}
               value={payPeriodStart}
               onChange={(v) => setPayPeriodStart(v)}
               error={payErrors.periodStart}
             />
             <DatePicker
-              label="Period End"
+              label={tPayments("periodEnd")}
               value={payPeriodEnd}
               onChange={(v) => setPayPeriodEnd(v)}
               error={payErrors.periodEnd}
@@ -469,16 +474,16 @@ export function MemberDetailClient(
           </div>
 
           <Textarea
-            label="Notes (optional)"
+            label={tPayments("notes")}
             value={payNotes}
             onChange={(e) => setPayNotes(e.target.value)}
-            placeholder="Any additional notes..."
+            placeholder={tPayments("notesPlaceholder")}
             rows={2}
           />
 
           <div className="flex items-center gap-2 pt-2">
             <Button type="submit" variant="primary" loading={loading}>
-              Record Payment
+              {t("recordPayment")}
             </Button>
             <Button
               type="button"
@@ -488,7 +493,7 @@ export function MemberDetailClient(
                 resetPaymentForm();
               }}
             >
-              Cancel
+              {tCommon("cancel")}
             </Button>
           </div>
         </form>
@@ -498,21 +503,18 @@ export function MemberDetailClient(
       <Modal
         isOpen={showDepartModal}
         onClose={() => setShowDepartModal(false)}
-        title="Mark Member as Departed"
+        title={t("markDepartedTitle")}
       >
         <div className="space-y-4">
           <p className="text-sm text-surface-300">
-            This will mark{" "}
-            <span className="font-medium text-surface-100">{member.name}</span>{" "}
-            as departed. They will lose access to the schedule and sessions.
-            Their historical data will be preserved.
+            {t("departedDescription", { name: member.name })}
           </p>
 
           <Textarea
-            label="Reason (optional)"
+            label={t("departReasonLabel")}
             value={departReason}
             onChange={(e) => setDepartReason(e.target.value)}
-            placeholder="Why is this member leaving?"
+            placeholder={t("departReasonPlaceholder")}
             rows={3}
           />
 
@@ -522,13 +524,13 @@ export function MemberDetailClient(
               onClick={handleDepart}
               loading={loading}
             >
-              Mark as Departed
+              {t("markAsDeparted")}
             </Button>
             <Button
               variant="ghost"
               onClick={() => setShowDepartModal(false)}
             >
-              Cancel
+              {tCommon("cancel")}
             </Button>
           </div>
         </div>
@@ -540,15 +542,15 @@ export function MemberDetailClient(
         onClose={() => setShowOverrideConfirm(false)}
         title={
           member.overrideActive
-            ? "Remove Payment Override"
-            : "Activate Payment Override"
+            ? t("removePaymentOverride")
+            : t("activatePaymentOverride")
         }
       >
         <div className="space-y-4">
           <p className="text-sm text-surface-300">
             {member.overrideActive
-              ? `This will remove the payment override for ${member.name}. Their payment status will be computed normally, and they may be locked out if they have outstanding payments.`
-              : `This will activate a payment override for ${member.name}. They will have full access regardless of their payment status.`}
+              ? t("removeOverrideDescription", { name: member.name })
+              : t("activateOverrideDescription", { name: member.name })}
           </p>
 
           <div className="flex items-center gap-2 pt-2">
@@ -558,14 +560,14 @@ export function MemberDetailClient(
               loading={loading}
             >
               {member.overrideActive
-                ? "Remove Override"
-                : "Activate Override"}
+                ? t("removeOverride")
+                : t("activateOverride")}
             </Button>
             <Button
               variant="ghost"
               onClick={() => setShowOverrideConfirm(false)}
             >
-              Cancel
+              {tCommon("cancel")}
             </Button>
           </div>
         </div>
