@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { Navigation } from "./Navigation";
+import { LanguageToggle } from "./LanguageToggle";
 
 type UserRole = "OWNER" | "TRAINER" | "MEMBER";
 
@@ -66,6 +67,7 @@ export function Header({
 
           {/* Right side: notification bell + user menu */}
           <div className="flex items-center gap-2">
+            <LanguageToggle />
             {/* Notification Bell */}
             <Link
               href={userRole === "OWNER" ? "/owner/notifications" : userRole === "TRAINER" ? "/trainer/notifications" : "/member/notifications"}
@@ -177,14 +179,17 @@ export function Header({
               onNavigate={() => setMobileMenuOpen(false)}
             />
             <div className="border-t border-surface-700 mt-2 pt-2">
-              <div className="flex items-center gap-3 px-3 py-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-700 text-sm font-bold text-white">
-                  {userName.charAt(0).toUpperCase()}
+              <div className="flex items-center justify-between px-3 py-2">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-700 text-sm font-bold text-white">
+                    {userName.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-surface-100">{userName}</p>
+                    <p className="text-xs text-surface-400">{roleLabel}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-surface-100">{userName}</p>
-                  <p className="text-xs text-surface-400">{roleLabel}</p>
-                </div>
+                <LanguageToggle />
               </div>
               {userRole !== "OWNER" && (
                 <Link
