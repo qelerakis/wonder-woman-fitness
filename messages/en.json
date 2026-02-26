@@ -562,7 +562,8 @@
     "overrideActive": "Payment override active",
     "showAllPayments": "Show all payments",
     "showRecent": "Show recent",
-    "recentPayments": "Recent Payments"
+    "recentPayments": "Recent Payments",
+    "failedToLoadPayments": "Failed to load payments"
   },
   "departed": {
     "greeting": "We miss you, {userName}!",

@@ -12,3 +12,6 @@ export type { PaymentFormProps, PaymentFormData } from "./PaymentForm";
 
 export { PaymentHistory } from "./PaymentHistory";
 export type { PaymentHistoryProps, PaymentRecord } from "./PaymentHistory";
+
+export { PaymentInfoSection } from "./PaymentInfoSection";
+export type { PaymentInfoSectionProps, PaymentInfoRecord, MemberStatus } from "./PaymentInfoSection";
