@@ -92,12 +92,12 @@ describe("TrainerSessionDetailClient — basic rendering", () => {
 
   it("shows CANCELLED badge when session is cancelled", () => {
     renderTrainerDetail({ status: "CANCELLED" });
-    expect(screen.getByText("CANCELLED")).toBeDefined();
+    expect(screen.getByText("Cancelled")).toBeDefined();
   });
 
   it("shows SCHEDULED badge when session is scheduled", () => {
     renderTrainerDetail({ status: "SCHEDULED" });
-    expect(screen.getByText("SCHEDULED")).toBeDefined();
+    expect(screen.getByText("Scheduled")).toBeDefined();
   });
 
   it("renders workout title and details", () => {

@@ -3,12 +3,14 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useTranslations, useLocale } from "next-intl";
 import { PaymentStatusBadge } from "@/components/payment/PaymentStatusBadge";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Card } from "@/components/ui/Card";
 import type { PaymentStatus } from "@/lib/constants";
 import { format } from "date-fns";
+import { getDateLocale } from "@/lib/date-locale";
 
 interface MemberTableData {
   id: string;
@@ -27,21 +29,25 @@ interface MemberTableProps {
   basePath?: string;
 }
 
-const statusFilterOptions = [
-  { value: "all", label: "All Statuses" },
-  { value: "PAID", label: "Paid" },
-  { value: "GRACE_PERIOD", label: "Grace Period" },
-  { value: "LOCKED", label: "Locked" },
-  { value: "OVERRIDE", label: "Override" },
-  { value: "DEPARTED", label: "Departed" },
-];
-
 export function MemberTable({
   members,
   basePath = "/members",
 }: MemberTableProps): React.ReactElement {
+  const t = useTranslations("memberTable");
+  const tStatus = useTranslations("paymentStatus");
+  const locale = useLocale();
+  const dateLocale = getDateLocale(locale);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+
+  const statusFilterOptions = [
+    { value: "all", label: t("allStatuses") },
+    { value: "PAID", label: tStatus("paid") },
+    { value: "GRACE_PERIOD", label: tStatus("gracePeriod") },
+    { value: "LOCKED", label: tStatus("locked") },
+    { value: "OVERRIDE", label: tStatus("override") },
+    { value: "DEPARTED", label: tStatus("departed") },
+  ];
 
   const filtered = useMemo(() => {
     return members.filter((m) => {
@@ -61,7 +67,7 @@ export function MemberTable({
       <div className="flex flex-col gap-3 border-b border-surface-700 px-4 py-3 sm:flex-row sm:items-end">
         <div className="flex-1">
           <Input
-            placeholder="Search by name or email..."
+            placeholder={t("searchPlaceholder")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -81,16 +87,16 @@ export function MemberTable({
           <thead>
             <tr className="border-b border-surface-700 text-left">
               <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-surface-500">
-                Member
+                {t("memberColumn")}
               </th>
               <th className="hidden px-4 py-3 text-xs font-medium uppercase tracking-wide text-surface-500 sm:table-cell">
-                Email
+                {t("emailColumn")}
               </th>
               <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-surface-500">
-                Status
+                {t("statusColumn")}
               </th>
               <th className="hidden px-4 py-3 text-xs font-medium uppercase tracking-wide text-surface-500 md:table-cell">
-                Joined
+                {t("joinedColumn")}
               </th>
             </tr>
           </thead>
@@ -132,7 +138,7 @@ export function MemberTable({
                   </div>
                 </td>
                 <td className="hidden px-4 py-3 text-sm text-surface-500 md:table-cell">
-                  {format(new Date(member.joinDate), "MMM d, yyyy")}
+                  {format(new Date(member.joinDate), "MMM d, yyyy", { locale: dateLocale })}
                 </td>
               </tr>
             ))}
@@ -145,8 +151,8 @@ export function MemberTable({
         <div className="py-12 text-center">
           <p className="text-sm text-surface-500">
             {members.length === 0
-              ? "No members yet"
-              : "No members match your filters"}
+              ? t("noMembersYet")
+              : t("noMembersMatch")}
           </p>
         </div>
       )}
@@ -154,7 +160,7 @@ export function MemberTable({
       {/* Count */}
       <div className="border-t border-surface-700 px-4 py-2">
         <p className="text-xs text-surface-500">
-          Showing {filtered.length} of {members.length} member{members.length === 1 ? "" : "s"}
+          {t("showingCount", { filtered: filtered.length, total: members.length })}
         </p>
       </div>
     </Card>

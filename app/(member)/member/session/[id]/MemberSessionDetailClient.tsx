@@ -2,14 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { WorkoutDisplay } from "@/components/schedule/WorkoutDisplay";
 import { useToast } from "@/components/ui/Toast";
 import { format } from "date-fns";
-import { DAY_NAMES, VOTING_URGENCY_HOURS } from "@/lib/constants";
+import { VOTING_URGENCY_HOURS } from "@/lib/constants";
+import { getDateLocale } from "@/lib/date-locale";
 import { formatTime } from "@/components/schedule/SessionCard";
 
 // Mirrors getTimeUntilDeadline from lib/voting-logic.ts.
@@ -63,6 +64,10 @@ export function MemberSessionDetailClient(
   const t = useTranslations("schedule");
   const tCommon = useTranslations("common");
   const tWorkout = useTranslations("workout");
+  const locale = useLocale();
+  const dateLocale = getDateLocale(locale);
+
+  const dayKeys: Record<number, string> = { 1: "dayMonday", 2: "dayTuesday", 3: "dayWednesday", 4: "dayThursday", 5: "dayFriday", 6: "daySaturday", 7: "daySunday" };
   const [voting, setVoting] = useState(false);
   const [currentVote, setCurrentVote] = useState<boolean | null>(myVote);
   const [now, setNow] = useState(() => new Date());
@@ -74,7 +79,7 @@ export function MemberSessionDetailClient(
 
   const dayOfWeek = session.recurringSlot?.dayOfWeek ?? session.customDay ?? 1;
   const startHour = session.recurringSlot?.startHour ?? session.customStartHour ?? 0;
-  const dayName = DAY_NAMES[dayOfWeek] || "Unknown";
+  const dayName = t(dayKeys[dayOfWeek] || "dayMonday");
   const time = formatTime(startHour);
   const isCancelled = session.status === "CANCELLED";
   const deadline = new Date(session.votingDeadline);
@@ -134,7 +139,7 @@ export function MemberSessionDetailClient(
               variant={isCancelled ? "error" : "success"}
               size="sm"
             >
-              {session.status}
+              {isCancelled ? t("statusCancelled") : t("statusScheduled")}
             </Badge>
             {session.votingEnabled && !deadlinePassed && (
               <>
@@ -144,7 +149,7 @@ export function MemberSessionDetailClient(
                 <span className={`text-xs ${isUrgent ? "text-warning-400" : "text-surface-400"}`}>
                   {isUrgent
                     ? t("votingClosesIn", { hours: timeUntil.hours, minutes: timeUntil.minutes })
-                    : t("votingClosesAt", { deadline: format(deadline, "EEE, MMM d 'at' h:mm a") })}
+                    : t("votingClosesAt", { deadline: format(deadline, "EEE, MMM d, h:mm a", { locale: dateLocale }) })}
                 </span>
               </>
             )}
@@ -237,7 +242,7 @@ export function MemberSessionDetailClient(
                     )}
                     {currentVote !== null && (
                       <p className="text-xs text-surface-500">
-                        {t("changeVoteUntil", { deadline: format(deadline, "EEE, MMM d 'at' h:mm a") })}
+                        {t("changeVoteUntil", { deadline: format(deadline, "EEE, MMM d, h:mm a", { locale: dateLocale }) })}
                       </p>
                     )}
                   </div>

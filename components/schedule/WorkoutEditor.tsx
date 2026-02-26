@@ -32,7 +32,7 @@ export function WorkoutEditor({
 
   async function handleSave(): Promise<void> {
     if (!title.trim()) {
-      setError("Workout title is required");
+      setError(t("titleRequired"));
       return;
     }
     setError(null);
@@ -49,23 +49,23 @@ export function WorkoutEditor({
   return (
     <div className="rounded-lg border border-surface-700 bg-surface-800 p-4">
       <h4 className="text-sm font-semibold text-surface-200 mb-3">
-        Edit Workout
+        {t("editWorkout")}
       </h4>
 
       <div className="space-y-3">
         <Input
-          label="Workout Title"
+          label={t("workoutTitle")}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="e.g., HIIT Strength Circuit"
+          placeholder={t("workoutTitlePlaceholder")}
           error={error && !title.trim() ? error : undefined}
         />
 
         <Textarea
-          label="Workout Details"
+          label={t("workoutDetails")}
           value={details}
           onChange={(e) => setDetails(e.target.value)}
-          placeholder="Describe the workout exercises, sets, reps, etc."
+          placeholder={t("workoutDetailsPlaceholder")}
           rows={5}
         />
 
@@ -81,7 +81,7 @@ export function WorkoutEditor({
             loading={saving}
             disabled={!hasChanges}
           >
-            Save Workout
+            {t("saveWorkout")}
           </Button>
           {onCancel && (
             <Button variant="ghost" size="sm" onClick={onCancel}>

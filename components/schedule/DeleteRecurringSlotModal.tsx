@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
-import { DAY_NAMES } from "@/lib/constants";
 import { formatTime } from "@/components/schedule/SessionCard";
 
 interface DeleteRecurringSlotModalProps {
@@ -26,11 +25,13 @@ export function DeleteRecurringSlotModal({
 }: DeleteRecurringSlotModalProps): React.ReactElement | null {
   const t = useTranslations("deleteSlot");
   const tc = useTranslations("common");
+  const ts = useTranslations("schedule");
   const [deleteFutureSessions, setDeleteFutureSessions] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const dayName = DAY_NAMES[dayOfWeek] || "Unknown";
+  const dayKeys: Record<number, string> = { 1: "dayMonday", 2: "dayTuesday", 3: "dayWednesday", 4: "dayThursday", 5: "dayFriday", 6: "daySaturday", 7: "daySunday" };
+  const dayName = ts(dayKeys[dayOfWeek] || "dayMonday");
   const time = formatTime(startHour);
 
   async function handleDelete(): Promise<void> {
@@ -47,10 +48,10 @@ export function DeleteRecurringSlotModal({
         onDeleted();
       } else {
         const data = await res.json();
-        setError(data.error || "Failed to delete recurring slot");
+        setError(data.error || t("failedToDelete"));
       }
     } catch {
-      setError("Network error. Please try again.");
+      setError(t("networkError"));
     } finally {
       setLoading(false);
     }

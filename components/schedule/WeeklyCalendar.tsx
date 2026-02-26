@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { addDays, format } from "date-fns";
+import { useLocale } from "next-intl";
 import { SessionCard } from "./SessionCard";
-import { DAY_NAMES } from "@/lib/constants";
+import { getDateLocale } from "@/lib/date-locale";
 import type { SessionWithDetails } from "@/lib/session-generation";
 
 interface WeeklyCalendarProps {
@@ -52,7 +53,19 @@ export function WeeklyCalendar({
   onWeekChange,
 }: WeeklyCalendarProps): React.ReactElement {
   const t = useTranslations("schedule");
+  const locale = useLocale();
+  const dateLocale = getDateLocale(locale);
   const grouped = groupSessionsByDay(sessions);
+
+  const dayNames: Record<number, string> = {
+    1: t("dayMonday"),
+    2: t("dayTuesday"),
+    3: t("dayWednesday"),
+    4: t("dayThursday"),
+    5: t("dayFriday"),
+    6: t("daySaturday"),
+    7: t("daySunday"),
+  };
 
   // Use state + effect for today's date to avoid hydration mismatch
   // (new Date() differs between server render and client hydrate)
@@ -90,8 +103,8 @@ export function WeeklyCalendar({
             </span>
           </button>
           <h2 className="text-sm font-medium text-surface-200">
-            {format(weekStart, "MMM d")} –{" "}
-            {format(addDays(weekStart, 6), "MMM d, yyyy")}
+            {format(weekStart, "MMM d", { locale: dateLocale })} –{" "}
+            {format(addDays(weekStart, 6), "MMM d, yyyy", { locale: dateLocale })}
           </h2>
           <button
             onClick={() => onWeekChange("next")}
@@ -127,7 +140,7 @@ export function WeeklyCalendar({
                   isToday ? "text-primary-300" : "text-surface-400"
                 }`}
               >
-                {DAY_NAMES[dayNumber]}
+                {dayNames[dayNumber]}
               </p>
               <p
                 className={`text-sm font-semibold ${
@@ -151,7 +164,7 @@ export function WeeklyCalendar({
               ))}
               {!grouped.has(dayNumber) && (
                 <div className="rounded-lg border border-dashed border-surface-700 py-6 text-center">
-                  <p className="text-xs text-surface-500">No sessions</p>
+                  <p className="text-xs text-surface-500">{t("noSessions")}</p>
                 </div>
               )}
             </div>
@@ -176,18 +189,18 @@ export function WeeklyCalendar({
                     isToday ? "text-primary-300" : "text-surface-300"
                   }`}
                 >
-                  {DAY_NAMES[dayNumber]}
+                  {dayNames[dayNumber]}
                 </span>
                 <span
                   className={`text-sm ${
                     isToday ? "text-primary-400" : "text-surface-500"
                   }`}
                 >
-                  {format(date, "MMM d")}
+                  {format(date, "MMM d", { locale: dateLocale })}
                 </span>
                 {isToday && (
                   <span className="ml-auto text-xs font-medium text-primary-400">
-                    Today
+                    {t("today")}
                   </span>
                 )}
               </div>
@@ -206,7 +219,7 @@ export function WeeklyCalendar({
                 </div>
               ) : (
                 <div className="rounded-lg border border-dashed border-surface-700 bg-surface-900/50 p-3 text-center text-sm text-surface-500">
-                  No sessions
+                  {t("noSessions")}
                 </div>
               )}
             </div>

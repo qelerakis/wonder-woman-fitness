@@ -73,7 +73,7 @@ export function AttendanceChecklist({
       );
       addToast({
         type: "error",
-        title: "Failed to update attendance",
+        title: t("failedToUpdate"),
       });
     }
   }
@@ -200,7 +200,7 @@ export function AttendanceChecklist({
             onClick={() => setShowAddDropdown(true)}
             className="flex w-full items-center justify-center gap-1 rounded-lg px-3 py-2 text-sm text-primary-400 transition-colors hover:bg-surface-700"
           >
-            + Add Member
+            {t("addMember")}
           </button>
         ) : (
           <div className="flex flex-col gap-1">
@@ -223,7 +223,7 @@ export function AttendanceChecklist({
               onClick={() => setShowAddDropdown(false)}
               className="mt-1 flex w-full items-center justify-center rounded-lg px-3 py-2 text-sm text-surface-400 transition-colors hover:bg-surface-700"
             >
-              Cancel
+              {t("cancelAdd")}
             </button>
           </div>
         )}

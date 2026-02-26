@@ -12,7 +12,7 @@ import { VoteSummary } from "@/components/schedule/VoteSummary";
 import { useToast } from "@/components/ui/Toast";
 import { AssignmentToggleList } from "@/components/schedule/AssignmentToggleList";
 import { AttendanceChecklist } from "@/components/schedule/AttendanceChecklist";
-import { DAY_NAMES, MAX_CLASS_SIZE } from "@/lib/constants";
+import { MAX_CLASS_SIZE } from "@/lib/constants";
 import { formatTime } from "@/components/schedule/SessionCard";
 import type { VoteMember } from "@/components/schedule/VoteSummary";
 
@@ -63,6 +63,8 @@ export function TrainerSessionDetailClient({
   const tCommon = useTranslations("common");
   const tWorkout = useTranslations("workout");
   const tDetail = useTranslations("sessionDetail");
+
+  const dayKeys: Record<number, string> = { 1: "dayMonday", 2: "dayTuesday", 3: "dayWednesday", 4: "dayThursday", 5: "dayFriday", 6: "daySaturday", 7: "daySunday" };
   const [editingWorkout, setEditingWorkout] = useState(false);
   const [currentMemberIds, setCurrentMemberIds] = useState<string[]>(
     session.members.map((m) => m.userId)
@@ -70,7 +72,7 @@ export function TrainerSessionDetailClient({
 
   const dayOfWeek = session.recurringSlot?.dayOfWeek ?? session.customDay ?? 1;
   const startHour = session.recurringSlot?.startHour ?? session.customStartHour ?? 0;
-  const dayName = DAY_NAMES[dayOfWeek] || "Unknown";
+  const dayName = t(dayKeys[dayOfWeek] || "dayMonday");
   const time = formatTime(startHour);
   const isCancelled = session.status === "CANCELLED";
 
@@ -176,7 +178,7 @@ export function TrainerSessionDetailClient({
               variant={isCancelled ? "error" : "success"}
               size="sm"
             >
-              {session.status}
+              {isCancelled ? t("statusCancelled") : t("statusScheduled")}
             </Badge>
             {session.votingEnabled && (
               <Badge variant="info" size="sm">

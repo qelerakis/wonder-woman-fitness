@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { useToast } from "@/components/ui/Toast";
 import { useRouter } from "next/navigation";
-import { MAX_BROADCAST_TITLE_LENGTH, MAX_BROADCAST_BODY_LENGTH, DAY_NAMES } from "@/lib/constants";
+import { MAX_BROADCAST_TITLE_LENGTH, MAX_BROADCAST_BODY_LENGTH } from "@/lib/constants";
 
 type AudienceType = "ALL" | "TRIAL" | "SESSION_SLOT" | "PAYMENT_STATUS" | "INDIVIDUAL";
 
@@ -36,6 +36,7 @@ export function SendNotificationModal({
   const router = useRouter();
   const { addToast } = useToast();
   const t = useTranslations("notifications");
+  const ts = useTranslations("schedule");
   const tCommon = useTranslations("common");
   const tPayment = useTranslations("paymentStatus");
 
@@ -154,7 +155,8 @@ export function SendNotificationModal({
   );
 
   function formatSlotLabel(slot: RecurringSlotOption): string {
-    const day = DAY_NAMES[slot.dayOfWeek] || "Unknown";
+    const dayKeys: Record<number, string> = { 1: "dayMonday", 2: "dayTuesday", 3: "dayWednesday", 4: "dayThursday", 5: "dayFriday", 6: "daySaturday", 7: "daySunday" };
+    const day = ts(dayKeys[slot.dayOfWeek] || "dayMonday");
     const hour = slot.startHour.toString().padStart(2, "0") + ":00";
     return `${day} ${hour}`;
   }

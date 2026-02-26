@@ -738,7 +738,7 @@ describe("MemberSessionDetailClient", () => {
       />
     );
 
-    expect(screen.getByText("CANCELLED")).toBeTruthy();
+    expect(screen.getByText("Cancelled")).toBeTruthy();
     expect(screen.queryByText("Your Attendance")).toBeNull();
   });
 
@@ -1135,7 +1135,7 @@ describe("MemberSessionDetailClient", () => {
       />
     );
 
-    expect(screen.getByText("SCHEDULED")).toBeTruthy();
+    expect(screen.getByText("Scheduled")).toBeTruthy();
   });
 
   it("shows CANCELLED status badge", () => {
@@ -1150,7 +1150,7 @@ describe("MemberSessionDetailClient", () => {
       />
     );
 
-    expect(screen.getByText("CANCELLED")).toBeTruthy();
+    expect(screen.getByText("Cancelled")).toBeTruthy();
   });
 
   // ─── Voting Open/Closed badges edge cases ──────────────────────
@@ -1811,8 +1811,8 @@ describe("MemberSessionDetailClient", () => {
         />
       );
 
-      // Verify the format pattern: "Closes <Day>, <Mon> <d> at <h>:<mm> <AM/PM>"
-      const closesEl = screen.getByText(/Closes \w{3}, \w{3} \d{1,2} at \d{1,2}:\d{2} [AP]M/);
+      // Verify the format pattern: "Closes <Day>, <Mon> <d>, <h>:<mm> <AM/PM>"
+      const closesEl = screen.getByText(/Closes \w{3}, \w{3} \d{1,2}, \d{1,2}:\d{2} [AP]M/);
       expect(closesEl).toBeTruthy();
 
       vi.useRealTimers();
@@ -1939,7 +1939,7 @@ describe("MemberSessionDetailClient", () => {
       // Should contain an actual formatted date, not generic "the deadline"
       expect(screen.queryByText("You can change your vote until the deadline.")).toBeNull();
       // Verify it has the format pattern with day name, month, date, and time
-      expect(screen.getByText(/You can change your vote until \w{3}, \w{3} \d{1,2} at \d{1,2}:\d{2} [AP]M/)).toBeTruthy();
+      expect(screen.getByText(/You can change your vote until \w{3}, \w{3} \d{1,2}, \d{1,2}:\d{2} [AP]M/)).toBeTruthy();
 
       vi.useRealTimers();
     });
@@ -1962,7 +1962,7 @@ describe("MemberSessionDetailClient", () => {
       );
 
       // Verify actual date is shown in hint, not generic "the deadline"
-      expect(screen.getByText(/You can change your vote until \w{3}, \w{3} \d{1,2} at \d{1,2}:\d{2} [AP]M/)).toBeTruthy();
+      expect(screen.getByText(/You can change your vote until \w{3}, \w{3} \d{1,2}, \d{1,2}:\d{2} [AP]M/)).toBeTruthy();
 
       vi.useRealTimers();
     });

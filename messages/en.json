@@ -189,7 +189,18 @@
     "disableVoting": "Disable Voting",
     "enableVoting": "Enable Voting",
     "votingResults": "Voting Results",
-    "noTrainersAssigned": "No trainers assigned"
+    "noTrainersAssigned": "No trainers assigned",
+    "noSessions": "No sessions",
+    "today": "Today",
+    "statusScheduled": "Scheduled",
+    "statusCancelled": "Cancelled",
+    "dayMonday": "Monday",
+    "dayTuesday": "Tuesday",
+    "dayWednesday": "Wednesday",
+    "dayThursday": "Thursday",
+    "dayFriday": "Friday",
+    "daySaturday": "Saturday",
+    "daySunday": "Sunday"
   },
   "createSession": {
     "oneOff": "One-off",
@@ -213,7 +224,9 @@
     "stopFutureOnly": "Stop future generation only",
     "stopFutureDescription": "The slot template will be removed. Already scheduled sessions stay on the calendar.",
     "deleteSlotAndSessions": "Delete slot and all upcoming sessions",
-    "deleteSlotAndSessionsDescription": "Removes the template and all sessions from this week onward. Past sessions are kept for records. Members will be notified."
+    "deleteSlotAndSessionsDescription": "Removes the template and all sessions from this week onward. Past sessions are kept for records. Members will be notified.",
+    "failedToDelete": "Failed to delete recurring slot",
+    "networkError": "Network error. Please try again."
   },
   "attendance": {
     "title": "Attendance",
@@ -223,14 +236,23 @@
     "failedToAddMember": "Failed to add member to session",
     "failedToMark": "Failed to mark attendance",
     "memberAddedAndPresent": "{name} added and marked present",
-    "failedToAdd": "Failed to add member"
+    "failedToAdd": "Failed to add member",
+    "addMember": "+ Add Member",
+    "cancelAdd": "Cancel"
   },
   "workout": {
     "title": "Workout",
     "noWorkout": "No workout posted yet",
     "saved": "Workout saved",
     "updated": "Workout updated",
-    "failedToSave": "Failed to save workout"
+    "failedToSave": "Failed to save workout",
+    "editWorkout": "Edit Workout",
+    "workoutTitle": "Workout Title",
+    "workoutTitlePlaceholder": "e.g., HIIT Strength Circuit",
+    "workoutDetails": "Workout Details",
+    "workoutDetailsPlaceholder": "Describe the workout exercises, sets, reps, etc.",
+    "saveWorkout": "Save Workout",
+    "titleRequired": "Workout title is required"
   },
   "sessionDetail": {
     "sessionCancelled": "Session cancelled",
@@ -622,5 +644,16 @@
     "membership": "Membership",
     "privateSessions": "Private Sessions",
     "total": "Total: {amount}"
+  },
+  "memberTable": {
+    "searchPlaceholder": "Search by name or email...",
+    "allStatuses": "All Statuses",
+    "memberColumn": "Member",
+    "emailColumn": "Email",
+    "statusColumn": "Status",
+    "joinedColumn": "Joined",
+    "noMembersYet": "No members yet",
+    "noMembersMatch": "No members match your filters",
+    "showingCount": "Showing {filtered} of {total} {total, plural, one {member} other {members}}"
   }
 }

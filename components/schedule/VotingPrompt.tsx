@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Button } from "@/components/ui/Button";
 import { format } from "date-fns";
+import { getDateLocale } from "@/lib/date-locale";
 
 interface VotingPromptProps {
   sessionId: string;
@@ -21,6 +22,8 @@ export function VotingPrompt({
   disabled = false,
 }: VotingPromptProps): React.ReactElement {
   const t = useTranslations("schedule");
+  const locale = useLocale();
+  const dateLocale = getDateLocale(locale);
   const [loading, setLoading] = useState<"yes" | "no" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,7 +53,7 @@ export function VotingPrompt({
             <span className="text-warning-500">{t("votingHasClosed")}</span>
           ) : (
             <span className="font-medium text-surface-300">
-              {t("voteByDeadline", { deadline: format(votingDeadline, "EEE, MMM d 'at' h:mm a") })}
+              {t("voteByDeadline", { deadline: format(votingDeadline, "EEE, MMM d, h:mm a", { locale: dateLocale }) })}
             </span>
           )}
         </p>

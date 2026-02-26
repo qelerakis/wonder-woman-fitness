@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { format } from "date-fns";
+import { getDateLocale } from "@/lib/date-locale";
 import { Badge } from "@/components/ui/Badge";
 import { MAX_CLASS_SIZE, VOTING_URGENCY_HOURS } from "@/lib/constants";
 import type { SessionWithDetails } from "@/lib/session-generation";
@@ -29,6 +30,8 @@ export function SessionCard({
   isAssigned = false,
 }: SessionCardProps): React.ReactElement {
   const t = useTranslations("schedule");
+  const locale = useLocale();
+  const dateLocale = getDateLocale(locale);
   const time = formatTime(session.recurringSlot?.startHour ?? session.customStartHour ?? 0);
   const comingCount = session.votes.filter((v) => v.attending).length;
   const memberCount = session.members.length;
@@ -120,7 +123,7 @@ export function SessionCard({
         )}
         {showDeadline && deadline && (
           <span className={`text-xs ${isUrgent ? "text-warning-400" : "text-surface-500"}`}>
-            {t("byDeadline", { deadline: format(deadline, "EEE h a") })}
+            {t("byDeadline", { deadline: format(deadline, "EEE h a", { locale: dateLocale }) })}
           </span>
         )}
       </div>

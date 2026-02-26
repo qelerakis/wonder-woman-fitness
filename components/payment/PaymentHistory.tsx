@@ -117,7 +117,7 @@ export function PaymentHistory({
       });
 
       if (res.ok) {
-        addToast({ type: "success", title: "Payment updated" });
+        addToast({ type: "success", title: t("paymentUpdated") });
         closeEdit();
         onPaymentChange?.();
       } else {
@@ -143,7 +143,7 @@ export function PaymentHistory({
         method: "DELETE",
       });
       if (res.ok) {
-        addToast({ type: "success", title: "Payment deleted" });
+        addToast({ type: "success", title: t("paymentDeleted") });
         setDeletingPayment(null);
         onPaymentChange?.();
       } else {

@@ -189,7 +189,18 @@
     "disableVoting": "Оневозможи гласање",
     "enableVoting": "Овозможи гласање",
     "votingResults": "Резултати од гласање",
-    "noTrainersAssigned": "Нема доделени тренери"
+    "noTrainersAssigned": "Нема доделени тренери",
+    "noSessions": "Нема сесии",
+    "today": "Денес",
+    "statusScheduled": "Закажана",
+    "statusCancelled": "Откажана",
+    "dayMonday": "Понеделник",
+    "dayTuesday": "Вторник",
+    "dayWednesday": "Среда",
+    "dayThursday": "Четврток",
+    "dayFriday": "Петок",
+    "daySaturday": "Сабота",
+    "daySunday": "Недела"
   },
   "createSession": {
     "oneOff": "Еднократна",
@@ -213,7 +224,9 @@
     "stopFutureOnly": "Запри само идно генерирање",
     "stopFutureDescription": "Шаблонот за терминот ќе биде отстранет. Веќе закажаните сесии остануваат во календарот.",
     "deleteSlotAndSessions": "Избриши го терминот и сите претстојни сесии",
-    "deleteSlotAndSessionsDescription": "Го отстранува шаблонот и сите сесии од оваа недела натаму. Минатите сесии се зачувани. Членовите ќе бидат известени."
+    "deleteSlotAndSessionsDescription": "Го отстранува шаблонот и сите сесии од оваа недела натаму. Минатите сесии се зачувани. Членовите ќе бидат известени.",
+    "failedToDelete": "Неуспешно бришење на редовен термин",
+    "networkError": "Грешка во мрежата. Обидете се повторно."
   },
   "attendance": {
     "title": "Присуство",
@@ -223,14 +236,23 @@
     "failedToAddMember": "Неуспешно додавање на член во сесијата",
     "failedToMark": "Неуспешно означување на присуство",
     "memberAddedAndPresent": "{name} е додаден/а и означен/а како присутен/на",
-    "failedToAdd": "Неуспешно додавање на член"
+    "failedToAdd": "Неуспешно додавање на член",
+    "addMember": "+ Додај член",
+    "cancelAdd": "Откажи"
   },
   "workout": {
     "title": "Тренинг",
     "noWorkout": "Сè уште нема објавен тренинг",
     "saved": "Тренингот е зачуван",
     "updated": "Тренингот е ажуриран",
-    "failedToSave": "Неуспешно зачувување на тренингот"
+    "failedToSave": "Неуспешно зачувување на тренингот",
+    "editWorkout": "Уреди тренинг",
+    "workoutTitle": "Наслов на тренинг",
+    "workoutTitlePlaceholder": "пр. HIIT Силов Круг",
+    "workoutDetails": "Детали за тренингот",
+    "workoutDetailsPlaceholder": "Опишете ги вежбите, серии, повторувања, итн.",
+    "saveWorkout": "Зачувај тренинг",
+    "titleRequired": "Насловот на тренингот е задолжителен"
   },
   "sessionDetail": {
     "sessionCancelled": "Сесијата е откажана",
@@ -622,5 +644,16 @@
     "membership": "Членарина",
     "privateSessions": "Приватни сесии",
     "total": "Вкупно: {amount}"
+  },
+  "memberTable": {
+    "searchPlaceholder": "Пребарувај по име или е-пошта...",
+    "allStatuses": "Сите статуси",
+    "memberColumn": "Член",
+    "emailColumn": "Е-пошта",
+    "statusColumn": "Статус",
+    "joinedColumn": "Датум",
+    "noMembersYet": "Нема членови",
+    "noMembersMatch": "Нема членови што одговараат на филтрите",
+    "showingCount": "Прикажани {filtered} од {total} {total, plural, one {член} other {членови}}"
   }
 }
