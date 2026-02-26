@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/Input";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { DateTimePicker } from "@/components/ui/DateTimePicker";
@@ -32,6 +33,9 @@ export function PaymentForm({
   onCancel,
   initialData,
 }: PaymentFormProps): React.ReactElement {
+  const t = useTranslations("payments");
+  const tv = useTranslations("validation");
+  const tc = useTranslations("common");
   const today = format(new Date(), "yyyy-MM-dd");
   const todayDatetime = format(new Date(), "yyyy-MM-dd'T'HH:mm");
 
@@ -48,19 +52,19 @@ export function PaymentForm({
 
     const parsedAmount = parseFloat(amount);
     if (!amount || isNaN(parsedAmount) || parsedAmount <= 0) {
-      newErrors.amount = "Amount must be a positive number";
+      newErrors.amount = tv("positiveAmount");
     }
     if (!paidAt) {
-      newErrors.paidAt = "Payment date is required";
+      newErrors.paidAt = tv("required");
     }
     if (!periodStart) {
-      newErrors.periodStart = "Period start is required";
+      newErrors.periodStart = tv("periodStartRequired");
     }
     if (!periodEnd) {
-      newErrors.periodEnd = "Period end is required";
+      newErrors.periodEnd = tv("required");
     }
     if (periodStart && periodEnd && periodStart > periodEnd) {
-      newErrors.periodEnd = "Period end must be after start";
+      newErrors.periodEnd = tv("periodEndAfterStart");
     }
 
     setErrors(newErrors);
@@ -82,7 +86,7 @@ export function PaymentForm({
         notes: notes.trim() || undefined,
       });
     } catch {
-      setErrors({ form: "Failed to record payment. Please try again." });
+      setErrors({ form: t("failedToRecord") });
     } finally {
       setSaving(false);
     }
@@ -98,18 +102,18 @@ export function PaymentForm({
       </div>
 
       <Input
-        label="Amount (MKD)"
+        label={t("amountMKD")}
         type="number"
         step="1"
         min="1"
         value={amount}
         onChange={(e) => setAmount(e.target.value)}
-        placeholder="e.g., 1500"
+        placeholder={t("amountPlaceholder")}
         error={errors.amount}
       />
 
       <DateTimePicker
-        label="Paid At"
+        label={t("paidAt")}
         value={paidAt}
         onChange={(v) => setPaidAt(v)}
         error={errors.paidAt}
@@ -117,13 +121,13 @@ export function PaymentForm({
 
       <div className="grid grid-cols-2 gap-3">
         <DatePicker
-          label="Period Start"
+          label={t("periodStart")}
           value={periodStart}
           onChange={(v) => setPeriodStart(v)}
           error={errors.periodStart}
         />
         <DatePicker
-          label="Period End"
+          label={t("periodEnd")}
           value={periodEnd}
           onChange={(v) => setPeriodEnd(v)}
           error={errors.periodEnd}
@@ -131,10 +135,10 @@ export function PaymentForm({
       </div>
 
       <Textarea
-        label="Notes (optional)"
+        label={t("notes")}
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
-        placeholder="Any additional notes about this payment..."
+        placeholder={t("notesPlaceholder")}
         rows={2}
       />
 
@@ -146,11 +150,11 @@ export function PaymentForm({
 
       <div className="flex items-center gap-2 pt-2">
         <Button type="submit" variant="primary" loading={saving}>
-          Record Payment
+          {initialData ? t("updatePayment") : t("recordPayment")}
         </Button>
         {onCancel && (
           <Button type="button" variant="ghost" onClick={onCancel}>
-            Cancel
+            {tc("cancel")}
           </Button>
         )}
       </div>

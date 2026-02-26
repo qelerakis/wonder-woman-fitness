@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { PaymentStatus } from "@/lib/constants";
 import { GRACE_PERIOD_DAYS } from "@/lib/constants";
 
@@ -19,6 +20,7 @@ export function PaymentBanner({
     return null;
   }
 
+  const t = useTranslations("paymentBanner");
   const daysRemaining = Math.max(0, totalGraceDays - daysIntoGracePeriod);
 
   if (status === "GRACE_PERIOD") {
@@ -37,10 +39,10 @@ export function PaymentBanner({
             />
           </svg>
           <p className="text-sm text-warning-500">
-            <span className="font-semibold">Payment due.</span>{" "}
+            <span className="font-semibold">{t("paymentDue")}</span>{" "}
             {daysRemaining > 0
-              ? `You have ${daysRemaining} day${daysRemaining === 1 ? "" : "s"} remaining before your account is locked. Please pay your trainer or the gym owner.`
-              : "Your account will be locked tomorrow. Please pay your trainer or the gym owner."}
+              ? t("daysRemaining", { count: daysRemaining })
+              : t("lockedTomorrow")}
           </p>
         </div>
       </div>
@@ -63,8 +65,8 @@ export function PaymentBanner({
           />
         </svg>
         <p className="text-sm text-error-500">
-          <span className="font-semibold">Account locked.</span>{" "}
-          Your access is restricted until payment is received. Please contact the gym owner.
+          <span className="font-semibold">{t("accountLocked")}</span>{" "}
+          {t("lockedMessage")}
         </p>
       </div>
     </div>

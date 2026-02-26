@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/Badge";
 import type { PaymentStatus } from "@/lib/constants";
 import type { BadgeVariant } from "@/components/ui/Badge";
@@ -7,23 +10,31 @@ interface PaymentStatusBadgeProps {
   size?: "sm" | "md";
 }
 
-const statusConfig: Record<PaymentStatus, { label: string; variant: BadgeVariant }> = {
-  PAID: { label: "Paid", variant: "success" },
-  GRACE_PERIOD: { label: "Grace Period", variant: "warning" },
-  LOCKED: { label: "Locked", variant: "error" },
-  OVERRIDE: { label: "Override", variant: "primary" },
-  DEPARTED: { label: "Departed", variant: "default" },
+const statusVariant: Record<PaymentStatus, BadgeVariant> = {
+  PAID: "success",
+  GRACE_PERIOD: "warning",
+  LOCKED: "error",
+  OVERRIDE: "primary",
+  DEPARTED: "default",
+};
+
+const statusKey: Record<PaymentStatus, string> = {
+  PAID: "paid",
+  GRACE_PERIOD: "gracePeriod",
+  LOCKED: "locked",
+  OVERRIDE: "override",
+  DEPARTED: "departed",
 };
 
 export function PaymentStatusBadge({
   status,
   size = "sm",
 }: PaymentStatusBadgeProps): React.ReactElement {
-  const config = statusConfig[status];
+  const t = useTranslations("paymentStatus");
 
   return (
-    <Badge variant={config.variant} size={size}>
-      {config.label}
+    <Badge variant={statusVariant[status]} size={size}>
+      {t(statusKey[status])}
     </Badge>
   );
 }

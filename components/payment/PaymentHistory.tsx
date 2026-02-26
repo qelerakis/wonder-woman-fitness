@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { format } from "date-fns";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
@@ -46,6 +47,9 @@ export function PaymentHistory({
   memberName,
   onPaymentChange,
 }: PaymentHistoryProps): React.ReactElement {
+  const t = useTranslations("payments");
+  const tv = useTranslations("validation");
+  const tc = useTranslations("common");
   const { addToast } = useToast();
 
   // Edit state
@@ -84,13 +88,13 @@ export function PaymentHistory({
     const errors: Record<string, string> = {};
     const parsedAmount = parseFloat(editAmount);
     if (!editAmount || isNaN(parsedAmount) || parsedAmount <= 0) {
-      errors.amount = "Amount must be a positive number";
+      errors.amount = tv("positiveAmount");
     }
-    if (!editPaidAt) errors.paidAt = "Payment date is required";
-    if (!editPeriodStart) errors.periodStart = "Period start is required";
-    if (!editPeriodEnd) errors.periodEnd = "Period end is required";
+    if (!editPaidAt) errors.paidAt = tv("required");
+    if (!editPeriodStart) errors.periodStart = tv("periodStartRequired");
+    if (!editPeriodEnd) errors.periodEnd = tv("required");
     if (editPeriodStart && editPeriodEnd && editPeriodStart > editPeriodEnd) {
-      errors.periodEnd = "Period end must be after start";
+      errors.periodEnd = tv("periodEndAfterStart");
     }
 
     if (Object.keys(errors).length > 0) {
@@ -120,12 +124,12 @@ export function PaymentHistory({
         const data: { error: string } = await res.json();
         addToast({
           type: "error",
-          title: "Failed to update payment",
+          title: t("failedToUpdate"),
           message: data.error,
         });
       }
     } catch {
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tc("networkError") });
     } finally {
       setEditLoading(false);
     }
@@ -146,12 +150,12 @@ export function PaymentHistory({
         const data: { error: string } = await res.json();
         addToast({
           type: "error",
-          title: "Failed to delete payment",
+          title: t("failedToDelete"),
           message: data.error,
         });
       }
     } catch {
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tc("networkError") });
     } finally {
       setDeleteLoading(false);
     }
@@ -172,7 +176,7 @@ export function PaymentHistory({
               clipRule="evenodd"
             />
           </svg>
-          <p className="text-sm text-surface-500">No payments recorded yet</p>
+          <p className="text-sm text-surface-500">{t("noPayments")}</p>
         </div>
       </Card>
     );
@@ -182,7 +186,7 @@ export function PaymentHistory({
     <>
       <Card padding="none">
         <div className="px-6 py-4">
-          <CardHeader title="Payment History" />
+          <CardHeader title={t("paymentHistory")} />
         </div>
         <div className="divide-y divide-surface-700">
           {payments.map((payment) => (
@@ -219,7 +223,7 @@ export function PaymentHistory({
                     <button
                       onClick={() => handleEdit(payment)}
                       className="rounded p-1 text-surface-500 transition-colors hover:bg-surface-700 hover:text-surface-200"
-                      aria-label={`Edit payment of ${formatCurrency(payment.amount)}`}
+                      aria-label={t("editPaymentFor", { memberName: formatCurrency(payment.amount) })}
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                         <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
@@ -228,7 +232,7 @@ export function PaymentHistory({
                     <button
                       onClick={() => setDeletingPayment(payment)}
                       className="rounded p-1 text-surface-500 transition-colors hover:bg-error-900/50 hover:text-error-400"
-                      aria-label={`Delete payment of ${formatCurrency(payment.amount)}`}
+                      aria-label={t("deletePaymentFor", { memberName: formatCurrency(payment.amount) })}
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -246,11 +250,11 @@ export function PaymentHistory({
       <Modal
         isOpen={!!editingPayment}
         onClose={closeEdit}
-        title="Edit Payment"
+        title={t("editPayment")}
       >
         <form onSubmit={handleEditSubmit} className="space-y-4">
           <Input
-            label="Amount (MKD)"
+            label={t("amountMKD")}
             type="number"
             step="1"
             min="1"
@@ -259,37 +263,37 @@ export function PaymentHistory({
             error={editErrors.amount}
           />
           <DateTimePicker
-            label="Paid At"
+            label={t("paidAt")}
             value={editPaidAt}
             onChange={(v) => setEditPaidAt(v)}
             error={editErrors.paidAt}
           />
           <div className="grid grid-cols-2 gap-3">
             <DatePicker
-              label="Period Start"
+              label={t("periodStart")}
               value={editPeriodStart}
               onChange={(v) => setEditPeriodStart(v)}
               error={editErrors.periodStart}
             />
             <DatePicker
-              label="Period End"
+              label={t("periodEnd")}
               value={editPeriodEnd}
               onChange={(v) => setEditPeriodEnd(v)}
               error={editErrors.periodEnd}
             />
           </div>
           <Textarea
-            label="Notes (optional)"
+            label={t("notes")}
             value={editNotes}
             onChange={(e) => setEditNotes(e.target.value)}
             rows={2}
           />
           <div className="flex items-center gap-2 pt-2">
             <Button type="submit" variant="primary" loading={editLoading}>
-              Update Payment
+              {t("updatePayment")}
             </Button>
             <Button type="button" variant="ghost" onClick={closeEdit}>
-              Cancel
+              {tc("cancel")}
             </Button>
           </div>
         </form>
@@ -299,24 +303,15 @@ export function PaymentHistory({
       <Modal
         isOpen={!!deletingPayment}
         onClose={() => setDeletingPayment(null)}
-        title="Delete Payment"
+        title={t("deletePayment")}
         size="sm"
       >
         <div className="space-y-4">
           <p className="text-sm text-surface-300">
-            Are you sure you want to delete this payment of{" "}
-            <span className="font-medium text-surface-100">
-              {deletingPayment ? formatCurrency(deletingPayment.amount) : ""}
-            </span>
-            {memberName && (
-              <>
-                {" "}for{" "}
-                <span className="font-medium text-surface-100">
-                  {memberName}
-                </span>
-              </>
-            )}
-            ? This action cannot be undone.
+            {t("deleteConfirmation", {
+              amount: deletingPayment ? formatCurrency(deletingPayment.amount) : "",
+              memberName: memberName || "",
+            })}
           </p>
           <div className="flex items-center gap-2">
             <Button
@@ -324,13 +319,13 @@ export function PaymentHistory({
               onClick={handleDeleteConfirm}
               loading={deleteLoading}
             >
-              Delete
+              {tc("delete")}
             </Button>
             <Button
               variant="ghost"
               onClick={() => setDeletingPayment(null)}
             >
-              Cancel
+              {tc("cancel")}
             </Button>
           </div>
         </div>

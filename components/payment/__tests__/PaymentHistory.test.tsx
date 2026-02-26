@@ -130,20 +130,20 @@ describe("PaymentHistory", () => {
       const { PaymentHistory } = await import("../PaymentHistory");
       render(<PaymentHistory payments={samplePayments} editable={false} />);
       expect(
-        screen.queryByLabelText(`Edit payment of ${label1500}`)
+        screen.queryByLabelText(`Edit payment for ${label1500}`)
       ).toBeNull();
       expect(
-        screen.queryByLabelText(`Delete payment of ${label1500}`)
+        screen.queryByLabelText(`Delete payment for ${label1500}`)
       ).toBeNull();
     });
 
     it("renders action buttons when editable is true", async () => {
       const { PaymentHistory } = await import("../PaymentHistory");
       render(<PaymentHistory payments={samplePayments} editable={true} />);
-      screen.getByLabelText(`Edit payment of ${label1500}`);
-      screen.getByLabelText(`Delete payment of ${label1500}`);
-      screen.getByLabelText(`Edit payment of ${label2000}`);
-      screen.getByLabelText(`Delete payment of ${label2000}`);
+      screen.getByLabelText(`Edit payment for ${label1500}`);
+      screen.getByLabelText(`Delete payment for ${label1500}`);
+      screen.getByLabelText(`Edit payment for ${label2000}`);
+      screen.getByLabelText(`Delete payment for ${label2000}`);
     });
 
     it("does not render recordedBy when showRecordedBy is false", async () => {
@@ -181,7 +181,7 @@ describe("PaymentHistory", () => {
       const { PaymentHistory } = await import("../PaymentHistory");
       render(<PaymentHistory payments={samplePayments} editable={true} />);
 
-      fireEvent.click(screen.getByLabelText(`Edit payment of ${label1500}`));
+      fireEvent.click(screen.getByLabelText(`Edit payment for ${label1500}`));
 
       // Modal title
       screen.getByText("Edit Payment");
@@ -208,7 +208,7 @@ describe("PaymentHistory", () => {
         />
       );
 
-      fireEvent.click(screen.getByLabelText(`Edit payment of ${label1500}`));
+      fireEvent.click(screen.getByLabelText(`Edit payment for ${label1500}`));
 
       // Submit the form
       fireEvent.click(screen.getByText("Update Payment"));
@@ -229,7 +229,7 @@ describe("PaymentHistory", () => {
       const { PaymentHistory } = await import("../PaymentHistory");
       render(<PaymentHistory payments={samplePayments} editable={true} />);
 
-      fireEvent.click(screen.getByLabelText(`Edit payment of ${label1500}`));
+      fireEvent.click(screen.getByLabelText(`Edit payment for ${label1500}`));
 
       // Clear the amount field
       const amountInput = screen.getByLabelText("Amount (MKD)") as HTMLInputElement;
@@ -247,7 +247,7 @@ describe("PaymentHistory", () => {
       const { PaymentHistory } = await import("../PaymentHistory");
       render(<PaymentHistory payments={samplePayments} editable={true} />);
 
-      fireEvent.click(screen.getByLabelText(`Edit payment of ${label2000}`));
+      fireEvent.click(screen.getByLabelText(`Edit payment for ${label2000}`));
 
       const amountInput = screen.getByLabelText("Amount (MKD)") as HTMLInputElement;
       expect(amountInput.value).toBe("2000");
@@ -265,7 +265,7 @@ describe("PaymentHistory", () => {
       const { PaymentHistory } = await import("../PaymentHistory");
       render(<PaymentHistory payments={samplePayments} editable={true} />);
 
-      fireEvent.click(screen.getByLabelText(`Edit payment of ${label1500}`));
+      fireEvent.click(screen.getByLabelText(`Edit payment for ${label1500}`));
       fireEvent.click(screen.getByText("Update Payment"));
 
       await waitFor(() => {
@@ -289,7 +289,7 @@ describe("PaymentHistory", () => {
       const { PaymentHistory } = await import("../PaymentHistory");
       render(<PaymentHistory payments={samplePayments} editable={true} />);
 
-      fireEvent.click(screen.getByLabelText(`Edit payment of ${label1500}`));
+      fireEvent.click(screen.getByLabelText(`Edit payment for ${label1500}`));
       fireEvent.click(screen.getByText("Update Payment"));
 
       await waitFor(() => {
@@ -308,7 +308,7 @@ describe("PaymentHistory", () => {
       const { PaymentHistory } = await import("../PaymentHistory");
       render(<PaymentHistory payments={samplePayments} editable={true} />);
 
-      fireEvent.click(screen.getByLabelText(`Edit payment of ${label1500}`));
+      fireEvent.click(screen.getByLabelText(`Edit payment for ${label1500}`));
       fireEvent.click(screen.getByText("Update Payment"));
 
       await waitFor(() => {
@@ -327,7 +327,7 @@ describe("PaymentHistory", () => {
       const { PaymentHistory } = await import("../PaymentHistory");
       render(<PaymentHistory payments={samplePayments} editable={true} />);
 
-      fireEvent.click(screen.getByLabelText(`Edit payment of ${label1500}`));
+      fireEvent.click(screen.getByLabelText(`Edit payment for ${label1500}`));
       expect(screen.getByText("Edit Payment")).toBeTruthy();
 
       fireEvent.click(screen.getByText("Update Payment"));
@@ -341,7 +341,7 @@ describe("PaymentHistory", () => {
       const { PaymentHistory } = await import("../PaymentHistory");
       render(<PaymentHistory payments={samplePayments} editable={true} />);
 
-      fireEvent.click(screen.getByLabelText(`Edit payment of ${label1500}`));
+      fireEvent.click(screen.getByLabelText(`Edit payment for ${label1500}`));
       expect(screen.getByText("Edit Payment")).toBeTruthy();
 
       fireEvent.click(screen.getByText("Cancel"));
@@ -356,7 +356,7 @@ describe("PaymentHistory", () => {
       const { PaymentHistory } = await import("../PaymentHistory");
       render(<PaymentHistory payments={samplePayments} editable={true} />);
 
-      fireEvent.click(screen.getByLabelText(`Edit payment of ${label1500}`));
+      fireEvent.click(screen.getByLabelText(`Edit payment for ${label1500}`));
 
       // Set period end before period start
       const periodStart = screen.getByLabelText("Period Start") as HTMLInputElement;
@@ -381,7 +381,7 @@ describe("PaymentHistory", () => {
       const { PaymentHistory } = await import("../PaymentHistory");
       render(<PaymentHistory payments={samplePayments} editable={true} />);
 
-      fireEvent.click(screen.getByLabelText(`Edit payment of ${label1500}`));
+      fireEvent.click(screen.getByLabelText(`Edit payment for ${label1500}`));
       fireEvent.click(screen.getByText("Update Payment"));
 
       await waitFor(() => {
@@ -405,18 +405,18 @@ describe("PaymentHistory", () => {
         />
       );
 
-      fireEvent.click(screen.getByLabelText(`Delete payment of ${label1500}`));
+      fireEvent.click(screen.getByLabelText(`Delete payment for ${label1500}`));
 
       screen.getByText("Delete Payment");
       screen.getByText(/cannot be undone/);
-      screen.getByText("Jane Doe");
+      screen.getByText(/Jane Doe/);
     });
 
     it("closes on Cancel", async () => {
       const { PaymentHistory } = await import("../PaymentHistory");
       render(<PaymentHistory payments={samplePayments} editable={true} />);
 
-      fireEvent.click(screen.getByLabelText(`Delete payment of ${label1500}`));
+      fireEvent.click(screen.getByLabelText(`Delete payment for ${label1500}`));
 
       // Confirm the modal is open
       screen.getByText("Delete Payment");
@@ -446,7 +446,7 @@ describe("PaymentHistory", () => {
         />
       );
 
-      fireEvent.click(screen.getByLabelText(`Delete payment of ${label1500}`));
+      fireEvent.click(screen.getByLabelText(`Delete payment for ${label1500}`));
 
       // Click the Delete button in the modal (not the icon button)
       const deleteButton = screen.getByRole("button", { name: "Delete" });
@@ -473,7 +473,7 @@ describe("PaymentHistory", () => {
       const { PaymentHistory } = await import("../PaymentHistory");
       render(<PaymentHistory payments={samplePayments} editable={true} />);
 
-      fireEvent.click(screen.getByLabelText(`Delete payment of ${label1500}`));
+      fireEvent.click(screen.getByLabelText(`Delete payment for ${label1500}`));
 
       const deleteButton = screen.getByRole("button", { name: "Delete" });
       fireEvent.click(deleteButton);
@@ -492,7 +492,7 @@ describe("PaymentHistory", () => {
       const { PaymentHistory } = await import("../PaymentHistory");
       render(<PaymentHistory payments={samplePayments} editable={true} />);
 
-      fireEvent.click(screen.getByLabelText(`Delete payment of ${label1500}`));
+      fireEvent.click(screen.getByLabelText(`Delete payment for ${label1500}`));
 
       screen.getByText("Delete Payment");
       screen.getByText(/cannot be undone/);
@@ -509,7 +509,7 @@ describe("PaymentHistory", () => {
       const { PaymentHistory } = await import("../PaymentHistory");
       render(<PaymentHistory payments={samplePayments} editable={true} />);
 
-      fireEvent.click(screen.getByLabelText(`Delete payment of ${label1500}`));
+      fireEvent.click(screen.getByLabelText(`Delete payment for ${label1500}`));
       const deleteButton = screen.getByRole("button", { name: "Delete" });
       fireEvent.click(deleteButton);
 
@@ -529,7 +529,7 @@ describe("PaymentHistory", () => {
       const { PaymentHistory } = await import("../PaymentHistory");
       render(<PaymentHistory payments={samplePayments} editable={true} />);
 
-      fireEvent.click(screen.getByLabelText(`Delete payment of ${label1500}`));
+      fireEvent.click(screen.getByLabelText(`Delete payment for ${label1500}`));
       const deleteButton = screen.getByRole("button", { name: "Delete" });
       fireEvent.click(deleteButton);
 
@@ -549,7 +549,7 @@ describe("PaymentHistory", () => {
       const { PaymentHistory } = await import("../PaymentHistory");
       render(<PaymentHistory payments={samplePayments} editable={true} />);
 
-      fireEvent.click(screen.getByLabelText(`Delete payment of ${label1500}`));
+      fireEvent.click(screen.getByLabelText(`Delete payment for ${label1500}`));
       expect(screen.getByText(/cannot be undone/)).toBeTruthy();
 
       const deleteButton = screen.getByRole("button", { name: "Delete" });
@@ -569,7 +569,7 @@ describe("PaymentHistory", () => {
       const { PaymentHistory } = await import("../PaymentHistory");
       render(<PaymentHistory payments={samplePayments} editable={true} />);
 
-      fireEvent.click(screen.getByLabelText(`Delete payment of ${label2000}`));
+      fireEvent.click(screen.getByLabelText(`Delete payment for ${label2000}`));
 
       const deleteButton = screen.getByRole("button", { name: "Delete" });
       fireEvent.click(deleteButton);
@@ -598,7 +598,7 @@ describe("PaymentHistory", () => {
         />
       );
 
-      fireEvent.click(screen.getByLabelText(`Delete payment of ${label1500}`));
+      fireEvent.click(screen.getByLabelText(`Delete payment for ${label1500}`));
       const deleteButton = screen.getByRole("button", { name: "Delete" });
       fireEvent.click(deleteButton);
 

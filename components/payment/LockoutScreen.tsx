@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { signOut } from "next-auth/react";
 
 interface LockoutScreenProps {
@@ -11,6 +12,8 @@ export function LockoutScreen({
   memberName,
   ownerEmail,
 }: LockoutScreenProps): React.ReactElement {
+  const t = useTranslations("lockout");
+
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-4">
       <div role="alert" className="max-w-md text-center">
@@ -30,48 +33,41 @@ export function LockoutScreen({
         </div>
 
         <h1 className="mb-2 text-2xl font-bold text-surface-100">
-          Account Locked
+          {t("title")}
         </h1>
         <p className="mb-6 text-surface-400">
-          Hi {memberName}, your account has been locked due to an overdue payment.
-          Your schedule access and class attendance have been temporarily restricted.
+          {t("message", { memberName })}
         </p>
 
         <div className="rounded-lg border border-surface-700 bg-surface-800 p-4 text-left">
           <h3 className="mb-2 text-sm font-semibold text-surface-200">
-            To restore your access:
+            {t("toRestore")}
           </h3>
           <ol className="space-y-2 text-sm text-surface-400">
             <li className="flex items-start gap-2">
               <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary-900/50 text-xs font-bold text-primary-300">
                 1
               </span>
-              <span>Make your monthly payment to the gym owner in person (cash only)</span>
+              <span>{t("step1")}</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary-900/50 text-xs font-bold text-primary-300">
                 2
               </span>
-              <span>The owner will record your payment in the system</span>
+              <span>{t("step2")}</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary-900/50 text-xs font-bold text-primary-300">
                 3
               </span>
-              <span>Your access will be restored automatically</span>
+              <span>{t("step3")}</span>
             </li>
           </ol>
         </div>
 
         {ownerEmail && (
           <p className="mt-4 text-sm text-surface-500">
-            Questions? Contact{" "}
-            <a
-              href={`mailto:${ownerEmail}`}
-              className="text-primary-400 hover:text-primary-300 underline"
-            >
-              {ownerEmail}
-            </a>
+            {t("contactOwner", { ownerEmail })}
           </p>
         )}
 
@@ -86,7 +82,7 @@ export function LockoutScreen({
               clipRule="evenodd"
             />
           </svg>
-          Log Out
+          {t("logOut")}
         </button>
       </div>
     </div>
