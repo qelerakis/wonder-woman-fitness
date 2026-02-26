@@ -75,43 +75,62 @@ body {
 
 /* Auth background orb animations */
 @keyframes orb1 {
-  0%, 100% {
+  0% {
     transform: translate(0, 0) scale(1);
-    opacity: 0.45;
   }
-  33% {
-    transform: translate(30px, -40px) scale(1.1);
-    opacity: 0.55;
+  20% {
+    transform: translate(80px, -100px) scale(1.2);
   }
-  66% {
-    transform: translate(-20px, 20px) scale(1.05);
-    opacity: 0.4;
+  40% {
+    transform: translate(-50px, -60px) scale(1.05);
+  }
+  60% {
+    transform: translate(60px, 50px) scale(1.25);
+  }
+  80% {
+    transform: translate(-30px, 80px) scale(1.1);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
   }
 }
 
 @keyframes orb2 {
-  0%, 100% {
+  0% {
     transform: translate(0, 0) scale(1);
-    opacity: 0.35;
   }
-  33% {
-    transform: translate(-35px, 25px) scale(1.08);
-    opacity: 0.45;
+  20% {
+    transform: translate(-90px, 60px) scale(1.15);
   }
-  66% {
-    transform: translate(25px, -30px) scale(1.02);
-    opacity: 0.3;
+  40% {
+    transform: translate(70px, 100px) scale(1.25);
+  }
+  60% {
+    transform: translate(-60px, -40px) scale(1.05);
+  }
+  80% {
+    transform: translate(50px, -70px) scale(1.2);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
   }
 }
 
 @keyframes orb3 {
-  0%, 100% {
-    transform: translate(0, 0) scale(0.95);
-    opacity: 0.3;
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  25% {
+    transform: translate(100px, -50px) scale(1.2);
   }
   50% {
-    transform: translate(10px, -30px) scale(1.1);
-    opacity: 0.45;
+    transform: translate(-60px, 70px) scale(1.1);
+  }
+  75% {
+    transform: translate(70px, 40px) scale(1.25);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
   }
 }
 

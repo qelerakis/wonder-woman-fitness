@@ -8,33 +8,33 @@ export function AuthBackground(): React.ReactElement {
     >
       {/* Orb 1 — Large, top-right */}
       <div
-        className="auth-orb absolute -top-32 -right-32 h-[500px] w-[500px] rounded-full opacity-45 blur-[100px] sm:h-[600px] sm:w-[600px]"
+        className="auth-orb absolute -top-10 right-[-5%] h-[400px] w-[400px] rounded-full blur-[60px] sm:h-[550px] sm:w-[550px]"
         style={{
           background:
-            "radial-gradient(circle, var(--color-primary-600), var(--color-primary-800) 70%, transparent)",
-          animation: "orb1 20s ease-in-out infinite",
+            "radial-gradient(circle, rgba(168,85,247,0.8), rgba(126,34,206,0.4) 60%, transparent 80%)",
+          animation: "orb1 10s ease-in-out infinite",
           willChange: "transform, opacity",
         }}
       />
 
       {/* Orb 2 — Medium, bottom-left */}
       <div
-        className="auth-orb absolute -bottom-24 -left-24 h-[350px] w-[350px] rounded-full opacity-35 blur-[100px] sm:h-[450px] sm:w-[450px]"
+        className="auth-orb absolute bottom-[-5%] left-[-8%] h-[350px] w-[350px] rounded-full blur-[50px] sm:h-[480px] sm:w-[480px]"
         style={{
           background:
-            "radial-gradient(circle, var(--color-primary-500), var(--color-primary-700) 70%, transparent)",
-          animation: "orb2 25s ease-in-out infinite",
+            "radial-gradient(circle, rgba(192,132,252,0.7), rgba(147,51,234,0.35) 60%, transparent 80%)",
+          animation: "orb2 13s ease-in-out infinite",
           willChange: "transform, opacity",
         }}
       />
 
-      {/* Orb 3 — Small, center-left accent */}
+      {/* Orb 3 — Small, accent, drifts across center */}
       <div
-        className="auth-orb absolute top-1/3 -left-12 h-[250px] w-[250px] rounded-full opacity-30 blur-[80px] sm:h-[300px] sm:w-[300px]"
+        className="auth-orb absolute top-[40%] left-[10%] h-[250px] w-[250px] rounded-full blur-[50px] sm:h-[350px] sm:w-[350px]"
         style={{
           background:
-            "radial-gradient(circle, var(--color-primary-400), var(--color-surface-900) 70%, transparent)",
-          animation: "orb3 18s ease-in-out infinite",
+            "radial-gradient(circle, rgba(216,180,254,0.6), rgba(168,85,247,0.25) 60%, transparent 80%)",
+          animation: "orb3 8s ease-in-out infinite",
           willChange: "transform, opacity",
         }}
       />
