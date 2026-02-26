@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -23,16 +24,16 @@ interface MemberNotificationsClientProps {
 }
 
 const typeIcons: Record<string, string> = {
-  PAYMENT_REMINDER: "💰",
-  LOCKOUT: "🔒",
-  CLASS_CANCELLED: "❌",
-  WORKOUT_POSTED: "💪",
-  VOTING_OPENED: "🗳️",
-  MEMBER_MOVED: "🔀",
-  SESSION_DELETED: "🗑️",
-  MANUAL_REMINDER: "📢",
-  TRIAL_EXPIRING: "⏳",
-  TRIAL_EXPIRED: "⌛",
+  PAYMENT_REMINDER: "\u{1F4B0}",
+  LOCKOUT: "\u{1F512}",
+  CLASS_CANCELLED: "\u{274C}",
+  WORKOUT_POSTED: "\u{1F4AA}",
+  VOTING_OPENED: "\u{1F5F3}\u{FE0F}",
+  MEMBER_MOVED: "\u{1F500}",
+  SESSION_DELETED: "\u{1F5D1}\u{FE0F}",
+  MANUAL_REMINDER: "\u{1F4E2}",
+  TRIAL_EXPIRING: "\u{23F3}",
+  TRIAL_EXPIRED: "\u{231B}",
 };
 
 export function MemberNotificationsClient({
@@ -41,6 +42,8 @@ export function MemberNotificationsClient({
 }: MemberNotificationsClientProps): React.ReactElement {
   const router = useRouter();
   const { addToast } = useToast();
+  const t = useTranslations("notifications");
+  const tCommon = useTranslations("common");
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [loading, setLoading] = useState(false);
 
@@ -61,7 +64,7 @@ export function MemberNotificationsClient({
         router.refresh();
       }
     } catch {
-      addToast({ type: "error", title: "Failed to mark as read" });
+      addToast({ type: "error", title: t("failedToMarkRead") });
     }
   }
 
@@ -78,10 +81,10 @@ export function MemberNotificationsClient({
           })
         )
       );
-      addToast({ type: "success", title: "All marked as read" });
+      addToast({ type: "success", title: t("allMarkedRead") });
       router.refresh();
     } catch {
-      addToast({ type: "error", title: "Failed to mark all as read" });
+      addToast({ type: "error", title: t("failedToMarkAllRead") });
     } finally {
       setLoading(false);
     }
@@ -93,12 +96,12 @@ export function MemberNotificationsClient({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-surface-100">
-            Notifications
+            {t("title")}
           </h1>
           <p className="mt-1 text-sm text-surface-400">
             {unreadCount > 0
-              ? `${unreadCount} unread`
-              : "All caught up!"}
+              ? t("unreadCount", { count: unreadCount })
+              : t("allCaughtUp")}
           </p>
         </div>
         <div className="flex gap-2">
@@ -107,14 +110,14 @@ export function MemberNotificationsClient({
             size="sm"
             onClick={() => setFilter("all")}
           >
-            All
+            {tCommon("all")}
           </Button>
           <Button
             variant={filter === "unread" ? "secondary" : "ghost"}
             size="sm"
             onClick={() => setFilter("unread")}
           >
-            Unread ({unreadCount})
+            {t("unread")} ({unreadCount})
           </Button>
           {unreadCount > 0 && (
             <Button
@@ -123,7 +126,7 @@ export function MemberNotificationsClient({
               onClick={handleMarkAllRead}
               loading={loading}
             >
-              Mark all read
+              {t("markAllReadShort")}
             </Button>
           )}
         </div>
@@ -133,11 +136,11 @@ export function MemberNotificationsClient({
       {displayed.length === 0 ? (
         <Card>
           <div className="py-12 text-center">
-            <p className="text-3xl mb-3">🔔</p>
+            <p className="text-3xl mb-3">{"\u{1F514}"}</p>
             <p className="text-sm text-surface-500">
               {filter === "unread"
-                ? "No unread notifications"
-                : "No notifications yet"}
+                ? t("noUnreadNotifications")
+                : t("noNotificationsYet")}
             </p>
           </div>
         </Card>
@@ -154,7 +157,7 @@ export function MemberNotificationsClient({
                 }`}
               >
                 <span className="mt-0.5 text-lg">
-                  {typeIcons[notification.type] || "📋"}
+                  {typeIcons[notification.type] || "\u{1F4CB}"}
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
@@ -169,7 +172,7 @@ export function MemberNotificationsClient({
                     </p>
                     {!notification.read && (
                       <Badge variant="primary" size="sm">
-                        New
+                        {t("new")}
                       </Badge>
                     )}
                   </div>
@@ -187,7 +190,7 @@ export function MemberNotificationsClient({
                     onClick={() => handleMarkAsRead(notification.id)}
                     className="shrink-0 rounded-md px-2 py-1 text-xs text-surface-400 transition-colors hover:bg-surface-700 hover:text-surface-200"
                   >
-                    Mark read
+                    {t("markRead")}
                   </button>
                 )}
               </div>

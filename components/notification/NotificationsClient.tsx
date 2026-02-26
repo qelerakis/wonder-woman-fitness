@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -54,6 +55,8 @@ export function NotificationsClient({
 }: NotificationsClientProps): React.ReactElement {
   const router = useRouter();
   const { addToast } = useToast();
+  const t = useTranslations("notifications");
+  const tCommon = useTranslations("common");
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [loading, setLoading] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
@@ -75,7 +78,7 @@ export function NotificationsClient({
         router.refresh();
       }
     } catch {
-      addToast({ type: "error", title: "Failed to mark as read" });
+      addToast({ type: "error", title: t("failedToMarkRead") });
     }
   }
 
@@ -86,13 +89,13 @@ export function NotificationsClient({
         method: "POST",
       });
       if (res.ok) {
-        addToast({ type: "success", title: "All marked as read" });
+        addToast({ type: "success", title: t("allMarkedRead") });
         router.refresh();
       } else {
-        addToast({ type: "error", title: "Failed to mark all as read" });
+        addToast({ type: "error", title: t("failedToMarkAllRead") });
       }
     } catch {
-      addToast({ type: "error", title: "Network error" });
+      addToast({ type: "error", title: tCommon("networkError") });
     } finally {
       setLoading(false);
     }
@@ -104,12 +107,12 @@ export function NotificationsClient({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-surface-100">
-            Notifications
+            {t("title")}
           </h1>
           <p className="mt-1 text-sm text-surface-400">
             {unreadCount > 0
               ? `${unreadCount} unread notification${unreadCount !== 1 ? "s" : ""}`
-              : "All caught up!"}
+              : t("allCaughtUp")}
           </p>
         </div>
         <div className="flex gap-2">
@@ -119,7 +122,7 @@ export function NotificationsClient({
               size="sm"
               onClick={() => setShowSendModal(true)}
             >
-              Send Notification
+              {t("send")}
             </Button>
           )}
           <Button
@@ -127,14 +130,14 @@ export function NotificationsClient({
             size="sm"
             onClick={() => setFilter("all")}
           >
-            All ({notifications.length})
+            {tCommon("all")} ({notifications.length})
           </Button>
           <Button
             variant={filter === "unread" ? "secondary" : "ghost"}
             size="sm"
             onClick={() => setFilter("unread")}
           >
-            Unread ({unreadCount})
+            {t("unread")} ({unreadCount})
           </Button>
           {unreadCount > 0 && (
             <Button
@@ -143,7 +146,7 @@ export function NotificationsClient({
               onClick={handleMarkAllRead}
               loading={loading}
             >
-              Mark all read
+              {t("markAllReadShort")}
             </Button>
           )}
         </div>
@@ -156,8 +159,8 @@ export function NotificationsClient({
             <p className="text-3xl mb-3">{"\u{1F514}"}</p>
             <p className="text-sm text-surface-500">
               {filter === "unread"
-                ? "No unread notifications"
-                : "No notifications yet"}
+                ? t("noUnreadNotifications")
+                : t("noNotificationsYet")}
             </p>
           </div>
         </Card>
@@ -192,7 +195,7 @@ export function NotificationsClient({
                     </p>
                     {!notification.read && (
                       <Badge variant="primary" size="sm">
-                        New
+                        {t("new")}
                       </Badge>
                     )}
                   </div>
@@ -212,7 +215,7 @@ export function NotificationsClient({
                     onClick={() => handleMarkAsRead(notification.id)}
                     className="shrink-0 rounded-md px-2 py-1 text-xs text-surface-400 transition-colors hover:bg-surface-700 hover:text-surface-200"
                   >
-                    Mark read
+                    {t("markRead")}
                   </button>
                 )}
               </div>

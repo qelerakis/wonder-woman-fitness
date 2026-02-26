@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { NotificationItem } from "./NotificationItem";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -18,6 +19,7 @@ export function NotificationList({
   onMarkAllRead,
   loading = false,
 }: NotificationListProps): React.ReactElement {
+  const t = useTranslations("notifications");
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   if (notifications.length === 0) {
@@ -31,9 +33,9 @@ export function NotificationList({
           >
             <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
           </svg>
-          <p className="text-sm text-surface-500">No notifications yet</p>
+          <p className="text-sm text-surface-500">{t("noNotificationsYet")}</p>
           <p className="mt-1 text-xs text-surface-600">
-            You&apos;ll see updates about your classes, payments, and schedule here.
+            {t("noNotificationsDescription")}
           </p>
         </div>
       </Card>
@@ -44,11 +46,11 @@ export function NotificationList({
     <Card padding="none">
       <div className="flex items-center justify-between px-6 py-4">
         <CardHeader
-          title="Notifications"
+          title={t("title")}
           description={
             unreadCount > 0
               ? `${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}`
-              : "All caught up"
+              : t("allCaughtUpClean")
           }
         />
         {unreadCount > 0 && (
@@ -58,7 +60,7 @@ export function NotificationList({
             onClick={onMarkAllRead}
             loading={loading}
           >
-            Mark all read
+            {t("markAllReadShort")}
           </Button>
         )}
       </div>

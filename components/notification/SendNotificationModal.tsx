@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
@@ -34,6 +35,9 @@ export function SendNotificationModal({
 }: SendNotificationModalProps): React.ReactElement | null {
   const router = useRouter();
   const { addToast } = useToast();
+  const t = useTranslations("notifications");
+  const tCommon = useTranslations("common");
+  const tPayment = useTranslations("paymentStatus");
 
   const [audience, setAudience] = useState<AudienceType>("ALL");
   const [slotId, setSlotId] = useState<string>("");
@@ -135,10 +139,10 @@ export function SendNotificationModal({
         router.refresh();
       } else {
         const data = await res.json();
-        addToast({ type: "error", title: data.error || "Failed to send notification" });
+        addToast({ type: "error", title: data.error || t("failedToSend") });
       }
     } catch {
-      addToast({ type: "error", title: "Failed to send notification" });
+      addToast({ type: "error", title: t("failedToSend") });
     } finally {
       setSending(false);
       setShowConfirm(false);
@@ -156,21 +160,21 @@ export function SendNotificationModal({
   }
 
   const audienceOptions: { value: AudienceType; label: string }[] = [
-    { value: "ALL", label: "All active members" },
-    { value: "TRIAL", label: "Trial members only" },
-    { value: "SESSION_SLOT", label: "Members from a session slot" },
-    { value: "PAYMENT_STATUS", label: "Members by payment status" },
-    { value: "INDIVIDUAL", label: "Select specific members" },
+    { value: "ALL", label: t("allActiveMembers") },
+    { value: "TRIAL", label: t("trialMembersOnly") },
+    { value: "SESSION_SLOT", label: t("membersFromSlot") },
+    { value: "PAYMENT_STATUS", label: t("membersByPaymentStatus") },
+    { value: "INDIVIDUAL", label: t("selectSpecific") },
   ];
 
   return (
     <>
-      <Modal isOpen={isOpen} onClose={onClose} title="Send Notification" size="lg">
+      <Modal isOpen={isOpen} onClose={onClose} title={t("sendTitle")} size="lg">
         <div className="space-y-5">
           {/* Audience selector */}
           <div>
             <label className="mb-2 block text-sm font-medium text-surface-200">
-              Audience
+              {t("audience")}
             </label>
             <div className="space-y-2">
               {audienceOptions.map((opt) => (
@@ -196,14 +200,14 @@ export function SendNotificationModal({
           {audience === "SESSION_SLOT" && (
             <div>
               <label className="mb-1 block text-sm font-medium text-surface-200">
-                Session Slot
+                {t("sessionSlot")}
               </label>
               <select
                 value={slotId}
                 onChange={(e) => setSlotId(e.target.value)}
                 className="w-full rounded-lg border border-surface-700 bg-surface-800 px-3 py-2 text-sm text-surface-200 focus:border-primary-500 focus:outline-none"
               >
-                <option value="">Select a slot...</option>
+                <option value="">{t("selectSlot")}</option>
                 {recurringSlots.map((slot) => (
                   <option key={slot.id} value={slot.id}>
                     {formatSlotLabel(slot)}
@@ -217,15 +221,15 @@ export function SendNotificationModal({
           {audience === "PAYMENT_STATUS" && (
             <div>
               <label className="mb-1 block text-sm font-medium text-surface-200">
-                Payment Status
+                {t("paymentStatusLabel")}
               </label>
               <select
                 value={paymentStatus}
                 onChange={(e) => setPaymentStatus(e.target.value as "GRACE_PERIOD" | "LOCKED")}
                 className="w-full rounded-lg border border-surface-700 bg-surface-800 px-3 py-2 text-sm text-surface-200 focus:border-primary-500 focus:outline-none"
               >
-                <option value="GRACE_PERIOD">Grace Period</option>
-                <option value="LOCKED">Locked</option>
+                <option value="GRACE_PERIOD">{tPayment("gracePeriod")}</option>
+                <option value="LOCKED">{tPayment("locked")}</option>
               </select>
             </div>
           )}
@@ -234,19 +238,19 @@ export function SendNotificationModal({
           {audience === "INDIVIDUAL" && (
             <div>
               <label className="mb-1 block text-sm font-medium text-surface-200">
-                Select Members
+                {t("selectMembers")}
               </label>
               <input
                 type="text"
                 value={memberSearch}
                 onChange={(e) => setMemberSearch(e.target.value)}
-                placeholder="Search members..."
+                placeholder={t("searchMembers")}
                 className="mb-2 w-full rounded-lg border border-surface-700 bg-surface-800 px-3 py-2 text-sm text-surface-200 placeholder:text-surface-500 focus:border-primary-500 focus:outline-none"
               />
               <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border border-surface-700 p-2">
                 {filteredMembers.length === 0 ? (
                   <p className="py-2 text-center text-xs text-surface-500">
-                    {loadingRecipients ? "Loading..." : "No members found"}
+                    {loadingRecipients ? tCommon("loading") : t("noMembersFound")}
                   </p>
                 ) : (
                   filteredMembers.map((member) => (
@@ -267,7 +271,7 @@ export function SendNotificationModal({
               </div>
               {selectedMemberIds.length > 0 && (
                 <p className="mt-1 text-xs text-surface-400">
-                  {selectedMemberIds.length} selected
+                  {t("selectedCount", { count: selectedMemberIds.length })}
                 </p>
               )}
             </div>
@@ -277,21 +281,21 @@ export function SendNotificationModal({
           {audience !== "INDIVIDUAL" && (
             <p className="text-sm text-surface-400">
               {loadingRecipients
-                ? "Counting recipients..."
-                : `Will notify ${recipientCount} member${recipientCount !== 1 ? "s" : ""}`}
+                ? t("countingRecipients")
+                : t("willNotify", { count: recipientCount })}
             </p>
           )}
 
           {/* Title */}
           <div>
             <label className="mb-1 block text-sm font-medium text-surface-200">
-              Title
+              {t("notificationTitle")}
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., Studio closed this Friday"
+              placeholder={t("titlePlaceholder")}
               maxLength={MAX_BROADCAST_TITLE_LENGTH}
               className="w-full rounded-lg border border-surface-700 bg-surface-800 px-3 py-2 text-sm text-surface-200 placeholder:text-surface-500 focus:border-primary-500 focus:outline-none"
             />
@@ -303,12 +307,12 @@ export function SendNotificationModal({
           {/* Message body */}
           <div>
             <label className="mb-1 block text-sm font-medium text-surface-200">
-              Message
+              {t("message")}
             </label>
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              placeholder="Write your message here..."
+              placeholder={t("messagePlaceholder")}
               maxLength={MAX_BROADCAST_BODY_LENGTH}
               rows={4}
               className="w-full resize-none rounded-lg border border-surface-700 bg-surface-800 px-3 py-2 text-sm text-surface-200 placeholder:text-surface-500 focus:border-primary-500 focus:outline-none"
@@ -326,10 +330,10 @@ export function SendNotificationModal({
               onClick={() => setShowConfirm(true)}
               disabled={!canSend}
             >
-              Send Notification
+              {t("send")}
             </Button>
             <Button variant="ghost" size="sm" onClick={onClose}>
-              Cancel
+              {tCommon("cancel")}
             </Button>
           </div>
         </div>
@@ -339,9 +343,9 @@ export function SendNotificationModal({
         isOpen={showConfirm}
         onClose={() => setShowConfirm(false)}
         onConfirm={handleSend}
-        title="Confirm Send"
-        message={`Send this notification to ${effectiveCount} member${effectiveCount !== 1 ? "s" : ""}?`}
-        confirmLabel="Send"
+        title={t("confirmSend")}
+        message={t("confirmSendMessage", { count: effectiveCount })}
+        confirmLabel={t("sendButton")}
         loading={sending}
       />
     </>

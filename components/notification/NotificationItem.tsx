@@ -1,6 +1,7 @@
 "use client";
 
 import { format, formatDistanceToNow } from "date-fns";
+import { useTranslations } from "next-intl";
 import type { NotificationType } from "@/lib/constants";
 
 interface NotificationItemData {
@@ -93,6 +94,7 @@ export function NotificationItem({
   notification,
   onMarkRead,
 }: NotificationItemProps): React.ReactElement {
+  const t = useTranslations("notifications");
   const { icon, colorClass } = typeIcons[notification.type] || defaultIcon;
 
   return (
@@ -126,7 +128,7 @@ export function NotificationItem({
         <button
           onClick={() => onMarkRead(notification.id)}
           className="mt-1 shrink-0 rounded p-1 text-surface-500 hover:text-surface-300 transition-colors"
-          aria-label="Mark as read"
+          aria-label={t("markAsRead")}
         >
           <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
             <path
