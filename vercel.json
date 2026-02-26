@@ -1,5 +1,40 @@
 {
   "regions": ["fra1"],
+  "redirects": [
+    {
+      "source": "/:path(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.wonderwomanfitness.org"
+        }
+      ],
+      "destination": "https://wonderwomanfitness.org/:path",
+      "permanent": true
+    },
+    {
+      "source": "/:path(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "wonder-woman-fitness.vercel.app"
+        }
+      ],
+      "destination": "https://wonderwomanfitness.org/:path",
+      "permanent": true
+    },
+    {
+      "source": "/:path(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "(?:.*)\\.vercel\\.app"
+        }
+      ],
+      "destination": "https://wonderwomanfitness.org/:path",
+      "permanent": true
+    }
+  ],
   "crons": [
     {
       "path": "/api/cron/payment-reminders",
