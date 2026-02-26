@@ -15,12 +15,12 @@ export function PaymentBanner({
   daysIntoGracePeriod = 0,
   totalGraceDays = GRACE_PERIOD_DAYS,
 }: PaymentBannerProps): React.ReactElement | null {
+  const t = useTranslations("paymentBanner");
+
   // Only show banner for grace period and locked statuses
   if (status !== "GRACE_PERIOD" && status !== "LOCKED") {
     return null;
   }
-
-  const t = useTranslations("paymentBanner");
   const daysRemaining = Math.max(0, totalGraceDays - daysIntoGracePeriod);
 
   if (status === "GRACE_PERIOD") {
