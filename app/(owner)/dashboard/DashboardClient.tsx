@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { format } from "date-fns";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { useTranslations } from "next-intl";
 import { MetricCard } from "@/components/analytics/MetricCard";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
@@ -91,6 +92,8 @@ export function DashboardClient(props: DashboardClientProps): React.ReactElement
     initialVoteVsActual,
   } = props;
 
+  const t = useTranslations("dashboard");
+  const tNav = useTranslations("navigation");
   const { addToast } = useToast();
   const [viewMonth, setViewMonth] = useState(initialMonth);
   const [viewYear, setViewYear] = useState(initialYear);
@@ -128,7 +131,7 @@ export function DashboardClient(props: DashboardClientProps): React.ReactElement
         const json = await res.json();
         const data = json.data;
         if (!data) {
-          addToast({ type: "error", title: "Unexpected response format" });
+          addToast({ type: "error", title: t("unexpectedResponse") });
           return;
         }
         setTotalActive(data.memberEngagement.totalActiveMembers);
@@ -153,14 +156,14 @@ export function DashboardClient(props: DashboardClientProps): React.ReactElement
           setVoteVsActual(data.attendance.voteVsActual || { totalVotedComing: 0, totalActuallyAttended: 0, reliability: 0 });
         }
       } else {
-        addToast({ type: "error", title: "Failed to load dashboard data" });
+        addToast({ type: "error", title: t("failedToLoad") });
       }
     } catch {
-      addToast({ type: "error", title: "Failed to load dashboard data" });
+      addToast({ type: "error", title: t("failedToLoad") });
     } finally {
       setLoading(false);
     }
-  }, [addToast]);
+  }, [addToast, t]);
 
   function handlePrevMonth(): void {
     let newMonth = viewMonth - 1;
@@ -192,24 +195,24 @@ export function DashboardClient(props: DashboardClientProps): React.ReactElement
       {/* Page header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-surface-100">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-surface-100">{t("title")}</h1>
           <div className="mt-1 flex items-center gap-1">
             <button
               onClick={handlePrevMonth}
               disabled={loading}
               className="rounded p-0.5 text-surface-400 transition-colors hover:text-surface-100 disabled:opacity-30 disabled:cursor-not-allowed"
-              aria-label="Previous month"
+              aria-label={t("previousMonth")}
             >
               <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
             </button>
-            <span className="text-sm text-surface-400">{monthLabel} overview</span>
+            <span className="text-sm text-surface-400">{monthLabel} {t("overview")}</span>
             <button
               onClick={handleNextMonth}
               disabled={isCurrentMonth || loading}
               className="rounded p-0.5 text-surface-400 transition-colors hover:text-surface-100 disabled:opacity-30 disabled:cursor-not-allowed"
-              aria-label="Next month"
+              aria-label={t("nextMonth")}
             >
               <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
@@ -220,12 +223,12 @@ export function DashboardClient(props: DashboardClientProps): React.ReactElement
         <div className="flex gap-2">
           <Link href="/owner/schedule">
             <Button variant="secondary" size="sm">
-              Schedule
+              {tNav("schedule")}
             </Button>
           </Link>
           <Link href="/members">
             <Button variant="primary" size="sm">
-              Members
+              {tNav("members")}
             </Button>
           </Link>
         </div>
@@ -234,9 +237,9 @@ export function DashboardClient(props: DashboardClientProps): React.ReactElement
       {/* Metric cards */}
       <div className={`grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 transition-opacity ${loading ? "opacity-50" : ""}`}>
         <MetricCard
-          title="Active Members"
+          title={t("activeMembers")}
           value={totalActive}
-          subtitle={trialCount > 0 ? `${trialCount} on trial` : undefined}
+          subtitle={trialCount > 0 ? `${trialCount} ${t("onTrial")}` : undefined}
           icon={
             <svg className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
               <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
@@ -244,7 +247,7 @@ export function DashboardClient(props: DashboardClientProps): React.ReactElement
           }
         />
         <MetricCard
-          title="Revenue"
+          title={t("revenue")}
           value={formatCurrency(totalRevenue)}
           subtitle={`Membership: ${formatCurrency(membershipRevenue)} | Private: ${formatCurrency(privateRevenue)}`}
           icon={
@@ -254,12 +257,12 @@ export function DashboardClient(props: DashboardClientProps): React.ReactElement
           }
         />
         <MetricCard
-          title="Outstanding"
+          title={t("outstanding")}
           value={outstandingCount}
           subtitle={
             outstandingCount > 0
-              ? `${gracePeriodCount} grace, ${lockedCount} locked`
-              : "All members current"
+              ? t("graceAndLocked", { graceCount: gracePeriodCount, lockedCount })
+              : t("allMembersCurrent")
           }
           icon={
             <svg className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
@@ -268,9 +271,9 @@ export function DashboardClient(props: DashboardClientProps): React.ReactElement
           }
         />
         <MetricCard
-          title="Trials"
+          title={t("trials")}
           value={trialCount}
-          subtitle={trialCount > 0 ? "Active trials" : "No active trials"}
+          subtitle={trialCount > 0 ? t("activeTrials") : t("noActiveTrials")}
           icon={
             <svg className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
@@ -291,7 +294,7 @@ export function DashboardClient(props: DashboardClientProps): React.ReactElement
 
       {/* Attendance Analytics */}
       <div className={`space-y-6 transition-opacity ${loading ? "opacity-50" : ""}`}>
-        <h2 className="text-lg font-semibold text-surface-100">Attendance Tracking</h2>
+        <h2 className="text-lg font-semibold text-surface-100">{t("attendanceTracking")}</h2>
         <VoteVsActualCards data={voteVsActual} />
         <MemberAttendanceTable members={memberRates} />
       </div>
@@ -299,7 +302,7 @@ export function DashboardClient(props: DashboardClientProps): React.ReactElement
       {/* Quick actions */}
       <div className="rounded-xl border border-surface-700 bg-surface-800 p-6">
         <h2 className="mb-4 text-lg font-semibold text-surface-100">
-          Quick Actions
+          {t("quickActions")}
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Link href="/owner/schedule">
@@ -307,7 +310,7 @@ export function DashboardClient(props: DashboardClientProps): React.ReactElement
               <svg className="h-6 w-6 text-primary-400" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
               </svg>
-              <span className="text-xs font-medium text-surface-300">Manage Schedule</span>
+              <span className="text-xs font-medium text-surface-300">{t("manageSchedule")}</span>
             </div>
           </Link>
           <Link href="/payments">
@@ -315,7 +318,7 @@ export function DashboardClient(props: DashboardClientProps): React.ReactElement
               <svg className="h-6 w-6 text-primary-400" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
               </svg>
-              <span className="text-xs font-medium text-surface-300">Record Payment</span>
+              <span className="text-xs font-medium text-surface-300">{t("recordPayment")}</span>
             </div>
           </Link>
           <Link href="/private-sessions">
@@ -323,7 +326,7 @@ export function DashboardClient(props: DashboardClientProps): React.ReactElement
               <svg className="h-6 w-6 text-primary-400" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
               </svg>
-              <span className="text-xs font-medium text-surface-300">Private Sessions</span>
+              <span className="text-xs font-medium text-surface-300">{t("privateSessionsLink")}</span>
             </div>
           </Link>
           <Link href="/trainers">
@@ -331,7 +334,7 @@ export function DashboardClient(props: DashboardClientProps): React.ReactElement
               <svg className="h-6 w-6 text-primary-400" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.599-.8a1 1 0 01.894 1.79l-1.233.616 1.738 5.42a1 1 0 01-.285 1.05A3.989 3.989 0 0115 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.715-5.349L11 6.477V16h2a1 1 0 110 2H7a1 1 0 110-2h2V6.477L6.237 7.582l1.715 5.349a1 1 0 01-.285 1.05A3.989 3.989 0 015 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.738-5.42-1.233-.617a1 1 0 01.894-1.788l1.599.799L9 4.323V3a1 1 0 011-1z" clipRule="evenodd" />
               </svg>
-              <span className="text-xs font-medium text-surface-300">Manage Trainers</span>
+              <span className="text-xs font-medium text-surface-300">{t("manageTrainers")}</span>
             </div>
           </Link>
         </div>

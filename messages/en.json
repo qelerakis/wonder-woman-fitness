@@ -297,13 +297,18 @@
     "onTrial": "on trial",
     "allMembersCurrent": "All members current",
     "noActiveTrials": "No active trials",
-    "graceAndLocked": "grace, locked",
+    "graceAndLocked": "{graceCount} grace, {lockedCount} locked",
     "attendanceTracking": "Attendance Tracking",
     "quickActions": "Quick Actions",
     "manageSchedule": "Manage Schedule",
     "recordPayment": "Record Payment",
     "privateSessionsLink": "Private Sessions",
-    "manageTrainers": "Manage Trainers"
+    "manageTrainers": "Manage Trainers",
+    "activeTrials": "Active trials",
+    "failedToLoad": "Failed to load dashboard data",
+    "unexpectedResponse": "Unexpected response format",
+    "previousMonth": "Previous month",
+    "nextMonth": "Next month"
   },
   "notifications": {
     "title": "Notifications",

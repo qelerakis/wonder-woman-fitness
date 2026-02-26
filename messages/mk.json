@@ -297,13 +297,18 @@
     "onTrial": "на проба",
     "allMembersCurrent": "Сите членови се тековни",
     "noActiveTrials": "Нема активни проби",
-    "graceAndLocked": "грејс, заклучени",
+    "graceAndLocked": "{graceCount} грејс, {lockedCount} заклучени",
     "attendanceTracking": "Следење на присуство",
     "quickActions": "Брзи акции",
     "manageSchedule": "Управувај со распоред",
     "recordPayment": "Забележи плаќање",
     "privateSessionsLink": "Приватни сесии",
-    "manageTrainers": "Управувај со тренери"
+    "manageTrainers": "Управувај со тренери",
+    "activeTrials": "Активни проби",
+    "failedToLoad": "Неуспешно вчитување на контролната табла",
+    "unexpectedResponse": "Неочекуван формат на одговор",
+    "previousMonth": "Претходен месец",
+    "nextMonth": "Следен месец"
   },
   "notifications": {
     "title": "Известувања",
