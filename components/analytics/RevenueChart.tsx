@@ -8,6 +8,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
+import { useTranslations } from "next-intl";
 import { Card, CardHeader } from "@/components/ui/Card";
 
 interface RevenueChartProps {
@@ -27,17 +28,19 @@ export function RevenueChart({
   privateSessionRevenue,
   totalRevenue,
 }: RevenueChartProps): React.ReactElement {
+  const t = useTranslations("analytics");
+
   const data = [
-    { name: "Membership", value: membershipRevenue },
-    { name: "Private Sessions", value: privateSessionRevenue },
+    { name: t("membership"), value: membershipRevenue },
+    { name: t("privateSessions"), value: privateSessionRevenue },
   ].filter((d) => d.value > 0);
 
   if (data.length === 0) {
     return (
       <Card>
-        <CardHeader title="Revenue Breakdown" description="Income by source" />
+        <CardHeader title={t("revenueBreakdown")} description={t("incomeBySource")} />
         <div className="mt-4 flex h-48 items-center justify-center">
-          <p className="text-sm text-surface-500">No revenue data available</p>
+          <p className="text-sm text-surface-500">{t("noRevenueData")}</p>
         </div>
       </Card>
     );
@@ -46,8 +49,8 @@ export function RevenueChart({
   return (
     <Card>
       <CardHeader
-        title="Revenue Breakdown"
-        description={`Total: ${formatCurrency(totalRevenue)}`}
+        title={t("revenueBreakdown")}
+        description={t("total", { amount: formatCurrency(totalRevenue) })}
       />
       <div className="mt-4 h-64">
         <ResponsiveContainer width="100%" height="100%">

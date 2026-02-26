@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { MetricCard } from "@/components/analytics/MetricCard";
 
 interface VoteVsActualCardsProps {
@@ -13,14 +14,16 @@ interface VoteVsActualCardsProps {
 export function VoteVsActualCards({
   data,
 }: VoteVsActualCardsProps): React.ReactElement {
+  const t = useTranslations("analytics");
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-      <MetricCard title="Voted Coming" value={data.totalVotedComing} />
+      <MetricCard title={t("votedComing")} value={data.totalVotedComing} />
       <MetricCard
-        title="Actually Attended"
+        title={t("actuallyAttended")}
         value={data.totalActuallyAttended}
       />
-      <MetricCard title="Vote Reliability" value={`${data.reliability}%`} />
+      <MetricCard title={t("voteReliability")} value={`${data.reliability}%`} />
     </div>
   );
 }

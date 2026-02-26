@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { Button } from "@/components/ui/Button";
 import { format, subMonths, startOfMonth, endOfMonth, subWeeks, startOfWeek, endOfWeek } from "date-fns";
@@ -13,12 +14,14 @@ interface DateRangeFilterProps {
 
 type Preset = "this-month" | "last-month" | "last-3-months" | "this-week" | "last-week";
 
-const presets: Array<{ key: Preset; label: string }> = [
-  { key: "this-week", label: "This Week" },
-  { key: "last-week", label: "Last Week" },
-  { key: "this-month", label: "This Month" },
-  { key: "last-month", label: "Last Month" },
-  { key: "last-3-months", label: "Last 3 Months" },
+type PresetKey = "thisWeek" | "lastWeek" | "thisMonth" | "lastMonth" | "last3Months";
+
+const presets: Array<{ key: Preset; labelKey: PresetKey }> = [
+  { key: "this-week", labelKey: "thisWeek" },
+  { key: "last-week", labelKey: "lastWeek" },
+  { key: "this-month", labelKey: "thisMonth" },
+  { key: "last-month", labelKey: "lastMonth" },
+  { key: "last-3-months", labelKey: "last3Months" },
 ];
 
 function getPresetDates(preset: Preset): { start: string; end: string } {
@@ -70,6 +73,7 @@ export function DateRangeFilter({
   endDate,
   onDateChange,
 }: DateRangeFilterProps): React.ReactElement {
+  const t = useTranslations("dateRange");
   const [localStart, setLocalStart] = useState(startDate);
   const [localEnd, setLocalEnd] = useState(endDate);
 
@@ -96,7 +100,7 @@ export function DateRangeFilter({
             onClick={() => handlePreset(preset.key)}
             className="rounded-lg border border-surface-600 px-3 py-1.5 text-xs font-medium text-surface-300 hover:border-primary-600/50 hover:bg-surface-800 hover:text-surface-100 transition-colors"
           >
-            {preset.label}
+            {t(preset.labelKey)}
           </button>
         ))}
       </div>
@@ -104,12 +108,12 @@ export function DateRangeFilter({
       {/* Custom date inputs */}
       <div className="flex items-end gap-2">
         <DatePicker
-          label="From"
+          label={t("from")}
           value={localStart}
           onChange={(v) => setLocalStart(v)}
         />
         <DatePicker
-          label="To"
+          label={t("to")}
           value={localEnd}
           onChange={(v) => setLocalEnd(v)}
         />
@@ -119,7 +123,7 @@ export function DateRangeFilter({
           onClick={handleApply}
           disabled={!localStart || !localEnd}
         >
-          Apply
+          {t("apply")}
         </Button>
       </div>
     </div>

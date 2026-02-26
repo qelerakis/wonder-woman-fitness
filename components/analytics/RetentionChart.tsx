@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Card, CardHeader } from "@/components/ui/Card";
 
 interface RetentionChartProps {
@@ -15,6 +16,7 @@ export function RetentionChart({
   departedInPeriod,
   avgLifespanDays,
 }: RetentionChartProps): React.ReactElement {
+  const t = useTranslations("analytics");
   const retentionPct = Math.round(retentionRate * 100);
   const churnPct = Math.round(churnRate * 100);
 
@@ -36,15 +38,15 @@ export function RetentionChart({
   return (
     <Card>
       <CardHeader
-        title="Member Retention"
-        description="How well you keep members"
+        title={t("memberRetention")}
+        description={t("howWellYouKeepMembers")}
       />
 
       <div className="mt-4 space-y-6">
         {/* Retention rate bar */}
         <div>
           <div className="flex items-end justify-between mb-2">
-            <span className="text-sm text-surface-400">Retention Rate</span>
+            <span className="text-sm text-surface-400">{t("retentionRate")}</span>
             <span className={`text-2xl font-bold ${retentionColor}`}>
               {retentionPct}%
             </span>
@@ -61,19 +63,19 @@ export function RetentionChart({
         <div className="grid grid-cols-3 gap-4">
           <div className="text-center">
             <p className="text-xl font-bold text-surface-100">{churnPct}%</p>
-            <p className="text-xs text-surface-500">Churn Rate</p>
+            <p className="text-xs text-surface-500">{t("churnRate")}</p>
           </div>
           <div className="text-center">
             <p className="text-xl font-bold text-surface-100">
               {departedInPeriod}
             </p>
-            <p className="text-xs text-surface-500">Departed</p>
+            <p className="text-xs text-surface-500">{t("departed")}</p>
           </div>
           <div className="text-center">
             <p className="text-xl font-bold text-surface-100">
               {avgLifespanDays > 0 ? `${avgLifespanDays}d` : "N/A"}
             </p>
-            <p className="text-xs text-surface-500">Avg Lifespan</p>
+            <p className="text-xs text-surface-500">{t("avgLifespan")}</p>
           </div>
         </div>
       </div>

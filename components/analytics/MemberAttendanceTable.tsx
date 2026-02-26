@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Card, CardHeader } from "@/components/ui/Card";
 
 interface MemberAttendanceTableProps {
@@ -20,16 +21,18 @@ function getRateColor(rate: number): string {
 export function MemberAttendanceTable({
   members,
 }: MemberAttendanceTableProps): React.ReactElement {
+  const t = useTranslations("analytics");
+
   if (members.length === 0) {
     return (
       <Card>
         <CardHeader
-          title="Member Attendance Rates"
-          description="Show-up rate per member"
+          title={t("memberAttendanceRates")}
+          description={t("showUpRatePerMember")}
         />
         <div className="mt-4 flex h-48 items-center justify-center">
           <p className="text-sm text-surface-500">
-            No attendance data available
+            {t("noAttendanceData")}
           </p>
         </div>
       </Card>
@@ -39,24 +42,24 @@ export function MemberAttendanceTable({
   return (
     <Card>
       <CardHeader
-        title="Member Attendance Rates"
-        description="Show-up rate per member"
+        title={t("memberAttendanceRates")}
+        description={t("showUpRatePerMember")}
       />
       <div className="mt-4 overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-surface-700">
               <th className="pb-2 text-left font-medium text-surface-500">
-                Member
+                {t("member")}
               </th>
               <th className="pb-2 text-right font-medium text-surface-500">
-                Expected
+                {t("expected")}
               </th>
               <th className="pb-2 text-right font-medium text-surface-500">
-                Attended
+                {t("attended")}
               </th>
               <th className="pb-2 text-right font-medium text-surface-500">
-                Rate
+                {t("rate")}
               </th>
             </tr>
           </thead>

@@ -9,6 +9,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { useTranslations } from "next-intl";
 import { Card, CardHeader } from "@/components/ui/Card";
 
 interface SlotData {
@@ -32,6 +33,8 @@ function formatHour(hour: number): string {
 export function AttendanceChart({
   slots,
 }: AttendanceChartProps): React.ReactElement {
+  const t = useTranslations("analytics");
+
   const chartData = slots.map((slot) => ({
     name: `${slot.day.slice(0, 3)} ${formatHour(slot.hour)}`,
     attendance: Math.round(slot.avgAttendance * 10) / 10,
@@ -41,9 +44,9 @@ export function AttendanceChart({
   if (chartData.length === 0) {
     return (
       <Card>
-        <CardHeader title="Class Attendance" description="Average attendance by time slot" />
+        <CardHeader title={t("classAttendance")} description={t("avgAttendanceBySlot")} />
         <div className="mt-4 flex h-48 items-center justify-center">
-          <p className="text-sm text-surface-500">No session data available</p>
+          <p className="text-sm text-surface-500">{t("noSessionData")}</p>
         </div>
       </Card>
     );
@@ -51,7 +54,7 @@ export function AttendanceChart({
 
   return (
     <Card>
-      <CardHeader title="Class Attendance" description="Average attendance by time slot" />
+      <CardHeader title={t("classAttendance")} description={t("avgAttendanceBySlot")} />
       <div className="mt-4 h-64">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
@@ -77,8 +80,8 @@ export function AttendanceChart({
               }}
               formatter={(value: number | undefined, name: string | undefined) => {
                 const v = value ?? 0;
-                if (name === "fillRate") return [`${v}%`, "Fill Rate"];
-                return [v, "Avg Attendance"];
+                if (name === "fillRate") return [`${v}%`, t("fillRate")];
+                return [v, t("avgAttendance")];
               }}
             />
             <Bar
