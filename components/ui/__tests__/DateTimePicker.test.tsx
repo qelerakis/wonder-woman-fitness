@@ -1310,4 +1310,80 @@ describe("DateTimePicker", () => {
       expect(today.className).not.toContain("ring-1");
     });
   });
+
+  // ─── Mobile Centered Popup ────────────────────────────────
+
+  describe("mobile centered popup", () => {
+    let originalInnerWidth: number;
+
+    beforeEach(() => {
+      originalInnerWidth = window.innerWidth;
+      Object.defineProperty(window, "innerWidth", {
+        writable: true,
+        configurable: true,
+        value: 375,
+      });
+      window.dispatchEvent(new Event("resize"));
+    });
+
+    afterEach(() => {
+      Object.defineProperty(window, "innerWidth", {
+        writable: true,
+        configurable: true,
+        value: originalInnerWidth,
+      });
+      window.dispatchEvent(new Event("resize"));
+    });
+
+    it("renders backdrop overlay on mobile", () => {
+      render(<DateTimePicker value="" onChange={onChange} />);
+      openPicker();
+
+      const dialog = screen.getByRole("dialog");
+      const backdrop = dialog.parentElement;
+
+      expect(backdrop).toBeTruthy();
+      expect(backdrop!.className).toContain("fixed");
+      expect(backdrop!.className).toContain("inset-0");
+      expect(backdrop!.className).toContain("bg-black/50");
+    });
+
+    it("closes when tapping backdrop and auto-confirms pending date", () => {
+      render(<DateTimePicker value="" onChange={onChange} />);
+      openPicker();
+
+      expect(screen.getByRole("dialog")).toBeTruthy();
+
+      // Select a day (sets it as pending)
+      const dayButton = screen.getByLabelText("Wednesday, February 18, 2026");
+      fireEvent.click(dayButton);
+
+      const dialog = screen.getByRole("dialog");
+      const backdrop = dialog.parentElement!;
+
+      // Click directly on the backdrop (not on the dialog)
+      fireEvent.click(backdrop);
+
+      // Should close
+      expect(screen.queryByRole("dialog")).toBeNull();
+
+      // Should have auto-confirmed the pending date
+      expect(onChange).toHaveBeenCalledOnce();
+      expect(onChange).toHaveBeenCalledWith("2026-02-18T09:00");
+    });
+
+    it("does not close on scroll (mobile)", () => {
+      render(<DateTimePicker value="" onChange={onChange} />);
+      openPicker();
+
+      expect(screen.getByRole("dialog")).toBeTruthy();
+
+      act(() => {
+        window.dispatchEvent(new Event("scroll"));
+      });
+
+      // On mobile, scroll should NOT close the popup
+      expect(screen.getByRole("dialog")).toBeTruthy();
+    });
+  });
 });

@@ -899,4 +899,71 @@ describe("DatePicker", () => {
       expect(trigger.id).toBe(htmlFor);
     });
   });
+
+  // ─── Mobile Centered Popup ────────────────────────────────
+
+  describe("mobile centered popup", () => {
+    let originalInnerWidth: number;
+
+    beforeEach(() => {
+      originalInnerWidth = window.innerWidth;
+      Object.defineProperty(window, "innerWidth", {
+        writable: true,
+        configurable: true,
+        value: 375,
+      });
+      window.dispatchEvent(new Event("resize"));
+    });
+
+    afterEach(() => {
+      Object.defineProperty(window, "innerWidth", {
+        writable: true,
+        configurable: true,
+        value: originalInnerWidth,
+      });
+      window.dispatchEvent(new Event("resize"));
+    });
+
+    it("renders backdrop overlay on mobile", () => {
+      render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
+      openCalendar();
+
+      const dialog = screen.getByRole("dialog");
+      const backdrop = dialog.parentElement;
+
+      expect(backdrop).toBeTruthy();
+      expect(backdrop!.className).toContain("fixed");
+      expect(backdrop!.className).toContain("inset-0");
+      expect(backdrop!.className).toContain("bg-black/50");
+    });
+
+    it("closes when tapping backdrop", () => {
+      render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
+      openCalendar();
+
+      expect(screen.getByRole("dialog")).toBeTruthy();
+
+      const dialog = screen.getByRole("dialog");
+      const backdrop = dialog.parentElement!;
+
+      // Click directly on the backdrop (not on the dialog)
+      fireEvent.click(backdrop);
+
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("does not close on scroll (mobile)", () => {
+      render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
+      openCalendar();
+
+      expect(screen.getByRole("dialog")).toBeTruthy();
+
+      act(() => {
+        window.dispatchEvent(new Event("scroll"));
+      });
+
+      // On mobile, scroll should NOT close the popup
+      expect(screen.getByRole("dialog")).toBeTruthy();
+    });
+  });
 });
