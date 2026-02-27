@@ -120,7 +120,7 @@ The schedule follows a **recurring weekly structure** — the same time slots re
 - Create, edit, and delete individual training sessions within those slots.
 - Assign one or more trainers to a session.
 - Add or remove members from a session.
-- Cap each class at a maximum of **20 members**.
+- Cap each class at a maximum of **27 members**.
 
 **Workout Posting**:
 - The owner or assigned trainer can write workout details for each session.

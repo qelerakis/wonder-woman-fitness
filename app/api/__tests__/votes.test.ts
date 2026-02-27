@@ -432,7 +432,7 @@ describe("POST /api/votes", () => {
     expect(body.data.attending).toBe(false);
   });
 
-  it("returns 400 when session is full (20 Coming votes) and attending=true", async () => {
+  it("returns 400 when session is full (27 Coming votes) and attending=true", async () => {
     mockAuth.mockResolvedValue(memberSession("member-1"));
     mockPrisma.session.findUnique.mockResolvedValue({
       id: "cm1234567890abcdef",
@@ -440,7 +440,7 @@ describe("POST /api/votes", () => {
       votingEnabled: true,
       votingDeadline: new Date("2099-01-01"),
     });
-    mockPrisma.vote.count.mockResolvedValue(20);
+    mockPrisma.vote.count.mockResolvedValue(27);
 
     const { POST } = await import("@/app/api/votes/route");
     const response = await POST(
@@ -610,7 +610,7 @@ describe("POST /api/votes", () => {
     expect(body.data.attending).toBe(true);
   });
 
-  it("rejects vote when Coming count exceeds MAX_CLASS_SIZE (21 > 20)", async () => {
+  it("rejects vote when Coming count exceeds MAX_CLASS_SIZE (28 > 27)", async () => {
     mockAuth.mockResolvedValue(memberSession("member-1"));
     mockPrisma.session.findUnique.mockResolvedValue({
       id: "cm1234567890abcdef",
@@ -618,7 +618,7 @@ describe("POST /api/votes", () => {
       votingEnabled: true,
       votingDeadline: new Date("2099-01-01"),
     });
-    mockPrisma.vote.count.mockResolvedValue(21); // over max
+    mockPrisma.vote.count.mockResolvedValue(28); // over max
 
     const { POST } = await import("@/app/api/votes/route");
     const response = await POST(
@@ -1496,7 +1496,7 @@ describe("POST /api/votes — $transaction behavior", () => {
       recurringSlot: { dayOfWeek: 1, startHour: 9 },
       customDay: null,
     });
-    mockPrisma.vote.count.mockResolvedValue(20); // full (MAX_CLASS_SIZE)
+    mockPrisma.vote.count.mockResolvedValue(27); // full (MAX_CLASS_SIZE)
 
     const { POST } = await import("@/app/api/votes/route");
     const response = await POST(

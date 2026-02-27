@@ -310,7 +310,7 @@ describe("POST /api/sessions/[id]/members", () => {
     mockAuth.mockResolvedValue(ownerSession());
     mockPrisma.session.findUnique.mockResolvedValue({ id: "s-1", status: "SCHEDULED" });
     mockPrisma.user.findUnique.mockResolvedValue({ id: VALID_CUID, role: "MEMBER", status: "ACTIVE" });
-    mockPrisma.sessionMember.count.mockResolvedValue(20); // at capacity
+    mockPrisma.sessionMember.count.mockResolvedValue(27); // at capacity
 
     const { POST } = await import("@/app/api/sessions/[id]/members/route");
     const response = await POST(

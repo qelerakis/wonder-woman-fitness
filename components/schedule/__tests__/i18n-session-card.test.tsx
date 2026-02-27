@@ -145,7 +145,7 @@ describe("SessionCard — renders session data correctly", () => {
         basePath="/test"
       />
     );
-    expect(screen.getByText(/2\/20/)).toBeDefined();
+    expect(screen.getByText(/2\/27/)).toBeDefined();
     expect(screen.getByText(/members/)).toBeDefined();
   });
 });

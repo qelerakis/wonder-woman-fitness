@@ -187,7 +187,7 @@ npx prisma migrate deploy
 ### 4.8 Constants
 - All magic numbers live in `lib/constants.ts`. Never hardcode numbers in business logic.
   ```typescript
-  export const MAX_CLASS_SIZE = 20;
+  export const MAX_CLASS_SIZE = 27;
   export const GRACE_PERIOD_DAYS = 10;
   export const TRIAL_DAYS = 14;
   export const SLOT_START_HOUR = 7;
@@ -344,7 +344,7 @@ CRON_SECRET=              # Random 32+ char string for securing cron endpoints
 7. **Cloudinary unsigned uploads are insecure.** Always upload from the server (API route), never directly from the client.
 8. **The owner account is created via seed script, not via the registration page.** The registration page always creates MEMBER accounts.
 9. **Session weekDate** is always the Monday of that week, regardless of which day the session falls on. The actual day comes from the RecurringSlot's `dayOfWeek` or Session's `customDay`.
-10. **Max class size is 20.** Always validate before adding members to a session. The constant is in `lib/constants.ts`.
+10. **Max class size is 27.** Always validate before adding members to a session. The constant is in `lib/constants.ts`.
 11. **Trial period is exactly 14 days.** After that, the first grace period starts from `trialEndsAt`, not from the 1st of the month.
 12. **Client components cannot import from `@/generated/prisma/client`** — use local type aliases instead.
 13. **Route groups are invisible in URL.** `(auth)`, `(locked)`, `(owner)`, `(trainer)`, `(member)` don't appear in paths. Use role-prefixed paths: `/owner/schedule`, `/member/schedule`, `/trainer/session/[id]`. The `(locked)` group handles the payment lockout screen at `/member/locked`.
