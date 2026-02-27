@@ -181,7 +181,7 @@
     "comingStatus": "Coming",
     "notComingStatus": "Not coming",
     "votingDeadlinePassed": "Voting deadline has passed.",
-    "votingNotOpen": "Voting is not open for this session.",
+    "youAreAssigned": "You are assigned to this session.",
     "imComingButton": "I'm Coming",
     "notComingButton": "Not Coming",
     "trainersTitle": "Trainers",

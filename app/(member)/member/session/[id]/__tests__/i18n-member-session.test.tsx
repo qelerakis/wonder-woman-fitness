@@ -143,8 +143,20 @@ describe("MemberSessionDetailClient — translated voting UI", () => {
     expect(screen.getByText("Voting Open")).toBeDefined();
   });
 
-  it("shows translated 'Your Attendance' card heading", () => {
-    renderMemberSession({ status: "SCHEDULED" });
+  it("shows translated 'Your Attendance' card heading when voting enabled", () => {
+    renderMemberSession({
+      status: "SCHEDULED",
+      votingEnabled: true,
+      votingDeadline: new Date(Date.now() + 86400000).toISOString(),
+    });
+    expect(screen.getByText("Your Attendance")).toBeDefined();
+  });
+
+  it("shows translated 'Your Attendance' card heading for assigned non-voting session", () => {
+    renderMemberSession(
+      { status: "SCHEDULED", votingEnabled: false },
+      { isAssigned: true }
+    );
     expect(screen.getByText("Your Attendance")).toBeDefined();
   });
 

@@ -179,8 +179,8 @@ export function MemberSessionDetailClient(
             </div>
           </Card>
 
-          {/* Voting */}
-          {!isCancelled && (
+          {/* Voting — only for sessions with voting enabled */}
+          {!isCancelled && session.votingEnabled && (
             <Card>
               <CardHeader title={t("yourAttendance")} />
               <div className="mt-4">
@@ -263,13 +263,23 @@ export function MemberSessionDetailClient(
                       </p>
                     ) : (
                       <p className="text-sm text-surface-500">
-                        {deadlinePassed
-                          ? t("votingDeadlinePassed")
-                          : t("votingNotOpen")}
+                        {t("votingDeadlinePassed")}
                       </p>
                     )}
                   </div>
                 )}
+              </div>
+            </Card>
+          )}
+
+          {/* Assigned status — for non-voting sessions when member is assigned */}
+          {!isCancelled && !session.votingEnabled && isAssigned && (
+            <Card>
+              <CardHeader title={t("yourAttendance")} />
+              <div className="mt-4">
+                <p className="text-sm text-surface-300">
+                  {t("youAreAssigned")}
+                </p>
               </div>
             </Card>
           )}

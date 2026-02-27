@@ -123,7 +123,7 @@ describe("MemberSessionDetailClient", () => {
     expect(screen.queryByText(/not assigned to this session/i)).toBeNull();
   });
 
-  it("hides voting buttons when voting is disabled (regardless of assignment)", () => {
+  it("hides voting buttons and attendance card when voting is disabled and not assigned", () => {
     render(
       <MemberSessionDetailClient
         session={makeSession({ votingEnabled: false })}
@@ -137,7 +137,7 @@ describe("MemberSessionDetailClient", () => {
 
     expect(screen.queryByText("I'm Coming")).toBeNull();
     expect(screen.queryByText("Not Coming")).toBeNull();
-    expect(screen.getByText("Voting is not open for this session.")).toBeTruthy();
+    expect(screen.queryByText("Your Attendance")).toBeNull();
   });
 
   it("hides voting buttons when deadline has passed (regardless of assignment)", () => {
@@ -1409,21 +1409,6 @@ describe("MemberSessionDetailClient", () => {
 
   // ─── Voting disabled for this session only ──────────────────────
 
-  it("shows 'Voting is not open' when votingEnabled=false and no vote exists", () => {
-    render(
-      <MemberSessionDetailClient
-        session={makeSession({ votingEnabled: false })}
-        myVote={null}
-        userId="member-1"
-        isFull={false}
-        hasComingVoteOnSameDay={false}
-        isAssigned={false}
-      />
-    );
-
-    expect(screen.getByText("Voting is not open for this session.")).toBeTruthy();
-  });
-
   it("shows 'Voting deadline has passed' when deadline is past and no vote exists", () => {
     render(
       <MemberSessionDetailClient
@@ -2418,6 +2403,684 @@ describe("MemberSessionDetailClient", () => {
       // Both should have "A" initials
       const avatarInitials = screen.getAllByText("A");
       expect(avatarInitials.length).toBe(2);
+    });
+  });
+
+  // ─── Your Attendance card visibility based on votingEnabled ──────
+
+  describe("Your Attendance card visibility", () => {
+    it("hides Your Attendance card entirely when votingEnabled=false and not assigned", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({ votingEnabled: false })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={false}
+        />
+      );
+
+      expect(screen.queryByText("Your Attendance")).toBeNull();
+      expect(screen.queryByText("Voting is not open for this session.")).toBeNull();
+    });
+
+    it("shows 'You are assigned to this session' when votingEnabled=false and assigned", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({ votingEnabled: false })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.getByText("Your Attendance")).toBeTruthy();
+      expect(screen.getByText("You are assigned to this session.")).toBeTruthy();
+    });
+
+    it("still shows 'Voting deadline has passed' when votingEnabled=true and deadline passed", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingEnabled: true,
+            votingDeadline: "2020-01-01T00:00:00.000Z",
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={false}
+        />
+      );
+
+      expect(screen.getByText("Your Attendance")).toBeTruthy();
+      expect(screen.getByText("Voting deadline has passed.")).toBeTruthy();
+    });
+
+    it("does not show 'Voting is not open' text for non-voting sessions even when assigned", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({ votingEnabled: false })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.queryByText("Voting is not open for this session.")).toBeNull();
+      expect(screen.queryByText("Voting deadline has passed.")).toBeNull();
+    });
+
+    // ─── Cancelled session × votingEnabled × isAssigned matrix ─────
+
+    it("hides Your Attendance card when cancelled + votingEnabled=true + assigned", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({ status: "CANCELLED", votingEnabled: true })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.queryByText("Your Attendance")).toBeNull();
+    });
+
+    it("hides Your Attendance card when cancelled + votingEnabled=false + assigned", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({ status: "CANCELLED", votingEnabled: false })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      // The assigned status card requires !isCancelled
+      expect(screen.queryByText("Your Attendance")).toBeNull();
+      expect(screen.queryByText("You are assigned to this session.")).toBeNull();
+    });
+
+    it("hides Your Attendance card when cancelled + votingEnabled=false + not assigned", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({ status: "CANCELLED", votingEnabled: false })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={false}
+        />
+      );
+
+      expect(screen.queryByText("Your Attendance")).toBeNull();
+    });
+
+    it("hides Your Attendance card when cancelled + votingEnabled=true + not assigned", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({ status: "CANCELLED", votingEnabled: true })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={false}
+        />
+      );
+
+      expect(screen.queryByText("Your Attendance")).toBeNull();
+    });
+
+    // ─── Assigned card ignores voting-related props ─────────────────
+
+    it("shows assigned text regardless of past deadline when voting is disabled", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingEnabled: false,
+            votingDeadline: "2020-01-01T00:00:00.000Z", // past
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.getByText("Your Attendance")).toBeTruthy();
+      expect(screen.getByText("You are assigned to this session.")).toBeTruthy();
+      // Should NOT show any voting-related text
+      expect(screen.queryByText("Voting deadline has passed.")).toBeNull();
+    });
+
+    it("shows assigned text regardless of isFull when voting is disabled", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({ votingEnabled: false })}
+          myVote={null}
+          userId="member-1"
+          isFull={true}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.getByText("You are assigned to this session.")).toBeTruthy();
+      // Should NOT show Full badge in the assigned card
+      expect(screen.queryByText("Full")).toBeNull();
+    });
+
+    it("shows assigned text regardless of hasComingVoteOnSameDay when voting is disabled", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({ votingEnabled: false })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={true}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.getByText("You are assigned to this session.")).toBeTruthy();
+      // Should NOT show same-day warning
+      expect(screen.queryByText(/already coming to another session/i)).toBeNull();
+    });
+
+    it("shows assigned text regardless of existing myVote=true when voting is disabled", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({ votingEnabled: false })}
+          myVote={true}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.getByText("You are assigned to this session.")).toBeTruthy();
+      // Should NOT show vote display
+      expect(screen.queryByText("You voted:")).toBeNull();
+      expect(screen.queryByText("I'm Coming")).toBeNull();
+    });
+
+    it("shows assigned text regardless of existing myVote=false when voting is disabled", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({ votingEnabled: false })}
+          myVote={false}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.getByText("You are assigned to this session.")).toBeTruthy();
+      expect(screen.queryByText("You voted:")).toBeNull();
+      expect(screen.queryByText("Not Coming")).toBeNull();
+    });
+
+    // ─── Voting card with isAssigned=true (voting sessions) ────────
+
+    it("shows voting buttons (not assigned text) when votingEnabled=true and assigned", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({ votingEnabled: true })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.getByText("Your Attendance")).toBeTruthy();
+      expect(screen.getByText("I'm Coming")).toBeTruthy();
+      expect(screen.getByText("Not Coming")).toBeTruthy();
+      // Should NOT show the assigned status text
+      expect(screen.queryByText("You are assigned to this session.")).toBeNull();
+    });
+
+    it("shows 'You voted: Coming' when votingEnabled=true, assigned, deadline passed, voted coming", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingEnabled: true,
+            votingDeadline: "2020-01-01T00:00:00.000Z",
+          })}
+          myVote={true}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.getByText("You voted:")).toBeTruthy();
+      const comingSpans = screen.getAllByText("Coming");
+      const voteSpan = comingSpans.find((el) =>
+        el.classList.contains("text-success-400")
+      );
+      expect(voteSpan).toBeTruthy();
+      expect(screen.queryByText("You are assigned to this session.")).toBeNull();
+    });
+
+    it("shows 'Voting deadline has passed' when votingEnabled=true, assigned, deadline passed, no vote", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingEnabled: true,
+            votingDeadline: "2020-01-01T00:00:00.000Z",
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.getByText("Voting deadline has passed.")).toBeTruthy();
+      expect(screen.queryByText("You are assigned to this session.")).toBeNull();
+    });
+
+    // ─── Mutual exclusivity: voting card vs assigned card ──────────
+
+    it("never shows both voting card and assigned card simultaneously", () => {
+      // votingEnabled=true → only voting card
+      const { unmount: unmount1 } = render(
+        <MemberSessionDetailClient
+          session={makeSession({ votingEnabled: true })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+      expect(screen.getByText("I'm Coming")).toBeTruthy();
+      expect(screen.queryByText("You are assigned to this session.")).toBeNull();
+      unmount1();
+
+      // votingEnabled=false + assigned → only assigned card
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({ votingEnabled: false })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+      expect(screen.queryByText("I'm Coming")).toBeNull();
+      expect(screen.getByText("You are assigned to this session.")).toBeTruthy();
+    });
+
+    it("shows voting card not assigned card when votingEnabled=true even with all other flags set", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingEnabled: true,
+            votingDeadline: "2099-01-01T00:00:00.000Z",
+          })}
+          myVote={true}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={true}
+          isAssigned={true}
+        />
+      );
+
+      // Voting card should render with vote change hint
+      expect(screen.getByText("Your Attendance")).toBeTruthy();
+      expect(screen.getByText("I'm Coming")).toBeTruthy();
+      expect(screen.queryByText("You are assigned to this session.")).toBeNull();
+    });
+
+    // ─── Custom sessions with assigned card ────────────────────────
+
+    it("shows assigned text for custom session (no recurringSlot) with voting disabled", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            recurringSlot: null,
+            customDay: 5,
+            customStartHour: 16,
+            votingEnabled: false,
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.getByText(/Friday/)).toBeTruthy();
+      expect(screen.getByText(/4:00 PM/)).toBeTruthy();
+      expect(screen.getByText("You are assigned to this session.")).toBeTruthy();
+    });
+
+    it("shows voting buttons for custom session (no recurringSlot) with voting enabled", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            recurringSlot: null,
+            customDay: 2,
+            customStartHour: 10,
+            votingEnabled: true,
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={false}
+        />
+      );
+
+      expect(screen.getByText(/Tuesday/)).toBeTruthy();
+      expect(screen.getByText("I'm Coming")).toBeTruthy();
+      expect(screen.queryByText("You are assigned to this session.")).toBeNull();
+    });
+
+    // ─── Assigned card text styling ────────────────────────────────
+
+    it("assigned text uses text-sm text-surface-300 styling", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({ votingEnabled: false })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      const assignedText = screen.getByText("You are assigned to this session.");
+      expect(assignedText.className).toContain("text-sm");
+      expect(assignedText.className).toContain("text-surface-300");
+    });
+
+    // ─── No voting-related text leaks into non-voting sessions ─────
+
+    it("non-voting assigned session shows no voting UI elements at all", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingEnabled: false,
+            votingDeadline: "2020-01-01T00:00:00.000Z",
+          })}
+          myVote={true}
+          userId="member-1"
+          isFull={true}
+          hasComingVoteOnSameDay={true}
+          isAssigned={true}
+        />
+      );
+
+      // Should only show assigned text
+      expect(screen.getByText("You are assigned to this session.")).toBeTruthy();
+
+      // None of these voting-related elements should appear
+      expect(screen.queryByText("I'm Coming")).toBeNull();
+      expect(screen.queryByText("Not Coming")).toBeNull();
+      expect(screen.queryByText("Voting deadline has passed.")).toBeNull();
+      expect(screen.queryByText("Voting is not open for this session.")).toBeNull();
+      expect(screen.queryByText("You voted:")).toBeNull();
+      expect(screen.queryByText("Full")).toBeNull();
+      expect(screen.queryByText(/This session is full/)).toBeNull();
+      expect(screen.queryByText(/Will you attend/)).toBeNull();
+      expect(screen.queryByText(/already coming to another session/i)).toBeNull();
+      expect(screen.queryByText(/You can change your vote/)).toBeNull();
+    });
+
+    it("non-voting unassigned session shows no attendance card at all", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingEnabled: false,
+            votingDeadline: "2020-01-01T00:00:00.000Z",
+          })}
+          myVote={true}
+          userId="member-1"
+          isFull={true}
+          hasComingVoteOnSameDay={true}
+          isAssigned={false}
+        />
+      );
+
+      // No attendance card at all
+      expect(screen.queryByText("Your Attendance")).toBeNull();
+      expect(screen.queryByText("You are assigned to this session.")).toBeNull();
+      expect(screen.queryByText("I'm Coming")).toBeNull();
+      expect(screen.queryByText("Not Coming")).toBeNull();
+      expect(screen.queryByText("Voting deadline has passed.")).toBeNull();
+      expect(screen.queryByText("You voted:")).toBeNull();
+    });
+
+    // ─── Header badges for non-voting sessions ─────────────────────
+
+    it("does not show Voting Open or Voting Closed badges for non-voting sessions", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({ votingEnabled: false })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.queryByText("Voting Open")).toBeNull();
+      expect(screen.queryByText("Voting Closed")).toBeNull();
+      // Status badge should still show
+      expect(screen.getByText("Scheduled")).toBeTruthy();
+    });
+
+    // ─── Full matrix: scheduled × votingEnabled × isAssigned ───────
+
+    it("SCHEDULED + votingEnabled=true + assigned → voting card with buttons", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({ votingEnabled: true })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.getByText("Your Attendance")).toBeTruthy();
+      expect(screen.getByText("I'm Coming")).toBeTruthy();
+    });
+
+    it("SCHEDULED + votingEnabled=true + not assigned → voting card with buttons", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({ votingEnabled: true })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={false}
+        />
+      );
+
+      expect(screen.getByText("Your Attendance")).toBeTruthy();
+      expect(screen.getByText("I'm Coming")).toBeTruthy();
+    });
+
+    it("SCHEDULED + votingEnabled=false + assigned → assigned card", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({ votingEnabled: false })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.getByText("Your Attendance")).toBeTruthy();
+      expect(screen.getByText("You are assigned to this session.")).toBeTruthy();
+    });
+
+    it("SCHEDULED + votingEnabled=false + not assigned → no card", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({ votingEnabled: false })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={false}
+        />
+      );
+
+      expect(screen.queryByText("Your Attendance")).toBeNull();
+    });
+
+    it("CANCELLED + votingEnabled=true + assigned → no card", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({ status: "CANCELLED", votingEnabled: true })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.queryByText("Your Attendance")).toBeNull();
+    });
+
+    it("CANCELLED + votingEnabled=false + assigned → no card", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({ status: "CANCELLED", votingEnabled: false })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.queryByText("Your Attendance")).toBeNull();
+    });
+
+    it("CANCELLED + votingEnabled=true + not assigned → no card", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({ status: "CANCELLED", votingEnabled: true })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={false}
+        />
+      );
+
+      expect(screen.queryByText("Your Attendance")).toBeNull();
+    });
+
+    it("CANCELLED + votingEnabled=false + not assigned → no card", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({ status: "CANCELLED", votingEnabled: false })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={false}
+        />
+      );
+
+      expect(screen.queryByText("Your Attendance")).toBeNull();
+    });
+
+    // ─── Right-column cards for non-voting sessions ────────────────
+
+    it("non-voting + assigned shows Members card but not Who's Coming card", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingEnabled: false,
+            assignedMemberNames: ["Alice", "Bob"],
+            comingMemberNames: ["Alice"],
+            votesCount: { coming: 1 },
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.getByText("Members")).toBeTruthy();
+      expect(screen.getByText("2 assigned")).toBeTruthy();
+      expect(screen.queryByText("Who's Coming")).toBeNull();
+    });
+
+    it("non-voting + not assigned hides both Members and Who's Coming cards", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingEnabled: false,
+            assignedMemberNames: ["Alice"],
+            comingMemberNames: [],
+            votesCount: { coming: 0 },
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={false}
+        />
+      );
+
+      expect(screen.queryByText("Members")).toBeNull();
+      expect(screen.queryByText("Who's Coming")).toBeNull();
+    });
+
+    it("voting + assigned shows Who's Coming card but not Members card", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingEnabled: true,
+            assignedMemberNames: ["Alice"],
+            comingMemberNames: ["Alice"],
+            votesCount: { coming: 1 },
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={true}
+        />
+      );
+
+      expect(screen.getByText("Who's Coming")).toBeTruthy();
+      expect(screen.queryByText(/assigned/)).toBeNull();
     });
   });
 });
