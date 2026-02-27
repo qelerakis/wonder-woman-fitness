@@ -22,7 +22,7 @@ export const env = {
   get NEXTAUTH_URL(): string { return requireEnv("NEXTAUTH_URL"); },
   get CRON_SECRET(): string { return requireEnv("CRON_SECRET"); },
   get RESEND_API_KEY(): string | null { return process.env.RESEND_API_KEY ?? null; },
-  get EMAIL_FROM(): string { return process.env.EMAIL_FROM ?? "noreply@wonderwomanfitness.mk"; },
+  get EMAIL_FROM(): string { return process.env.EMAIL_FROM ?? "noreply@contact.wonderwomanfitness.org"; },
   get CLOUDINARY_CLOUD_NAME(): string | null { return process.env.CLOUDINARY_CLOUD_NAME ?? null; },
   get CLOUDINARY_API_KEY(): string | null { return process.env.CLOUDINARY_API_KEY ?? null; },
   get CLOUDINARY_API_SECRET(): string | null { return process.env.CLOUDINARY_API_SECRET ?? null; },

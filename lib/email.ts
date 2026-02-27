@@ -13,7 +13,7 @@ let resend: Resend | null = null;
 
 function getResendClient(): Resend | null {
   if (!process.env.RESEND_API_KEY) {
-    console.warn('RESEND_API_KEY not configured. Emails will not be sent.');
+    console.error('[EMAIL] RESEND_API_KEY is not set — emails WILL NOT be sent. Set it in Vercel Environment Variables.');
     return null;
   }
   if (!resend) {
@@ -45,16 +45,21 @@ export async function sendNotificationEmail(
 
     const html = buildEmailHtml(type, title, body);
 
-    await client.emails.send({
+    const result = await client.emails.send({
       from: EMAIL_FROM,
       to,
       subject: title,
       html,
     });
 
+    if (result.error) {
+      console.error(`[EMAIL] Resend API error sending ${type} to ${to}:`, result.error);
+      return false;
+    }
+
     return true;
   } catch (error) {
-    console.error(`Failed to send ${type} email to ${to}:`, error);
+    console.error(`[EMAIL] Failed to send ${type} email to ${to}:`, error);
     return false;
   }
 }
@@ -76,19 +81,31 @@ export async function sendVerificationEmail(
       return false;
     }
 
-    const verifyUrl = `${process.env.NEXTAUTH_URL}/verify-email?token=${token}`;
+    const baseUrl = process.env.NEXTAUTH_URL;
+    if (!baseUrl) {
+      console.error('[EMAIL] NEXTAUTH_URL is not set — cannot build verification link.');
+      return false;
+    }
+
+    const verifyUrl = `${baseUrl}/verify-email?token=${token}`;
     const html = buildVerificationEmailHtml(verifyUrl);
 
-    await client.emails.send({
+    const result = await client.emails.send({
       from: EMAIL_FROM,
       to,
       subject: 'Verify your email — Wonder Woman Fitness',
       html,
     });
 
+    if (result.error) {
+      console.error(`[EMAIL] Resend API error sending to ${to}:`, result.error);
+      return false;
+    }
+
+    console.log(`[EMAIL] Verification email sent to ${to} (id: ${result.data?.id})`);
     return true;
   } catch (error) {
-    console.error(`Failed to send verification email to ${to}:`, error);
+    console.error(`[EMAIL] Failed to send verification email to ${to}:`, error);
     return false;
   }
 }

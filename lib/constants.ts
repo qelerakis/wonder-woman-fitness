@@ -114,7 +114,7 @@ export const CRON_SCHEDULES = {
 } as const;
 
 // ===== EMAIL CONFIGURATION =====
-export const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@wonderwomanfitness.mk';
+export const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@contact.wonderwomanfitness.org';
 
 // ===== PAYMENTS FILTER CONFIGURATION =====
 export const PAYMENTS_START_YEAR = 2025; // Earliest year shown in payments year dropdown

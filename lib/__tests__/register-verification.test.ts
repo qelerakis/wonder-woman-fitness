@@ -275,7 +275,7 @@ describe('POST /api/auth/register (with verification)', () => {
     expect(callArgs[1].length).toBeGreaterThan(0);
   });
 
-  it('returns 201 even when sendVerificationEmail throws (fire-and-forget)', async () => {
+  it('returns 201 even when sendVerificationEmail returns false (email failure)', async () => {
     mockPrisma.user.findUnique.mockResolvedValue(null);
     mockPrisma.pendingVerification.upsert.mockResolvedValue({
       id: 'pv-7',
@@ -284,7 +284,7 @@ describe('POST /api/auth/register (with verification)', () => {
     });
 
     const { sendVerificationEmail } = await import('@/lib/email');
-    vi.mocked(sendVerificationEmail).mockRejectedValueOnce(new Error('SMTP connection failed'));
+    vi.mocked(sendVerificationEmail).mockResolvedValueOnce(false);
 
     const { POST } = await import('@/app/api/auth/register/route');
     const req = new Request('http://localhost:3000/api/auth/register', {
@@ -298,7 +298,7 @@ describe('POST /api/auth/register (with verification)', () => {
     });
 
     const res = await POST(req);
-    // Email sending is fire-and-forget — registration succeeds even if email fails
+    // Registration succeeds even if email fails to send
     expect(res.status).toBe(201);
     const data = await res.json();
     expect(data.message).toContain('Verification email sent');

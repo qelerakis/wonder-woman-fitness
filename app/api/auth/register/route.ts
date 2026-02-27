@@ -70,10 +70,13 @@ export async function POST(req: Request): Promise<Response> {
       },
     });
 
-    // Send verification email (fire-and-forget — don't block registration on email failure)
-    sendVerificationEmail(normalizedEmail, token).catch((err) => {
-      console.error("Failed to send verification email:", err);
-    });
+    // Send verification email — must await so the serverless function
+    // stays alive long enough for the Resend API call to complete.
+    // Email failure is logged but does not block registration.
+    const emailSent = await sendVerificationEmail(normalizedEmail, token);
+    if (!emailSent) {
+      console.error(`[EMAIL] Verification email was NOT sent to ${normalizedEmail}`);
+    }
 
     return Response.json(
       { message: "Verification email sent. Please check your inbox." },

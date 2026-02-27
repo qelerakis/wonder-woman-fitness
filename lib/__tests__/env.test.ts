@@ -106,7 +106,7 @@ describe("lib/env", () => {
 
       const { env } = await import("@/lib/env");
 
-      expect(env.EMAIL_FROM).toBe("noreply@wonderwomanfitness.mk");
+      expect(env.EMAIL_FROM).toBe("noreply@contact.wonderwomanfitness.org");
     });
 
     it("CLOUDINARY_* vars default to null when not set", async () => {
