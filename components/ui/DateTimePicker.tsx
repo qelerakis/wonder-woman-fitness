@@ -316,6 +316,189 @@ function DateTimePicker({
       ? helpId
       : undefined;
 
+  const calendarContent = (
+    <>
+      {/* Month/Year header with nav arrows */}
+      <div className="flex items-center justify-between px-2 py-1.5">
+        <button
+          type="button"
+          onClick={() => setViewDate((d) => subMonths(d, 1))}
+          className="rounded-lg p-1 text-surface-400 transition-colors duration-100 hover:bg-surface-700 hover:text-surface-100"
+          aria-label={t("previousMonth")}
+        >
+          <svg
+            className="h-4 w-4"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={2}
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M15.75 19.5 8.25 12l7.5-7.5"
+            />
+          </svg>
+        </button>
+        <span className="text-sm font-semibold text-surface-100">
+          {format(viewDate, "MMMM yyyy", { locale: dateLocale })}
+        </span>
+        <button
+          type="button"
+          onClick={() => setViewDate((d) => addMonths(d, 1))}
+          className="rounded-lg p-1 text-surface-400 transition-colors duration-100 hover:bg-surface-700 hover:text-surface-100"
+          aria-label={t("nextMonth")}
+        >
+          <svg
+            className="h-4 w-4"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={2}
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="m8.25 4.5 7.5 7.5-7.5 7.5"
+            />
+          </svg>
+        </button>
+      </div>
+
+      {/* Weekday headers */}
+      <div className="grid grid-cols-7 px-1.5">
+        {weekdayLabels.map((day, i) => (
+          <div
+            key={i}
+            className="flex h-6 items-center justify-center text-xs font-medium text-surface-500"
+          >
+            {day}
+          </div>
+        ))}
+      </div>
+
+      {/* Day grid */}
+      <div
+        ref={gridRef}
+        className="grid grid-cols-7 px-1.5 pb-1"
+        role="grid"
+        tabIndex={0}
+        onKeyDown={handleGridKeyDown}
+      >
+        {calendarDays.map((day) => {
+          const isCurrentMonth = isSameMonth(day, viewDate);
+          const isPending =
+            pendingDate !== null && isSameDay(day, pendingDate);
+          const isTodayDate = isToday(day);
+          const isDisabled = isDayDisabled(day);
+          const isFocused =
+            focusedDate !== null && isSameDay(day, focusedDate);
+
+          let dayClasses =
+            "flex h-7 w-7 items-center justify-center rounded-md text-xs transition-colors duration-100";
+
+          if (isDisabled) {
+            dayClasses += " text-surface-600 cursor-not-allowed";
+          } else if (isPending) {
+            dayClasses +=
+              " bg-primary-600 text-white font-semibold cursor-pointer";
+          } else if (!isCurrentMonth) {
+            dayClasses +=
+              " text-surface-600 hover:bg-surface-700 cursor-pointer";
+          } else {
+            dayClasses +=
+              " text-surface-200 hover:bg-surface-700 cursor-pointer";
+          }
+
+          if (isTodayDate && !isPending) {
+            dayClasses += " ring-1 ring-primary-500";
+          }
+
+          if (isFocused && !isPending) {
+            dayClasses += " bg-surface-700";
+          }
+
+          return (
+            <div
+              key={day.toISOString()}
+              role="gridcell"
+              aria-selected={isPending}
+              className="flex items-center justify-center"
+            >
+              <button
+                type="button"
+                tabIndex={-1}
+                disabled={isDisabled}
+                aria-label={format(day, "EEEE, MMMM d, yyyy", { locale: dateLocale })}
+                aria-current={isTodayDate ? "date" : undefined}
+                onClick={() => {
+                  if (!isCurrentMonth) {
+                    // Navigate to that month before selecting
+                    setViewDate(startOfMonth(day));
+                  }
+                  handleSelectDay(day);
+                }}
+                className={dayClasses}
+              >
+                {format(day, "d")}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Time selector */}
+      <div className="border-t border-surface-700 px-2 py-1.5">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-surface-400">
+            {t("time")}
+          </span>
+          <select
+            value={selectedHour}
+            onChange={(e) => setSelectedHour(e.target.value)}
+            aria-label="Hour"
+            className="rounded-md border border-surface-600 bg-surface-900 px-1.5 py-0.5 text-xs text-surface-100 focus:ring-1 focus:ring-primary-500"
+          >
+            {HOUR_OPTIONS.map((h) => (
+              <option key={h} value={h}>
+                {h}
+              </option>
+            ))}
+          </select>
+          <span className="text-surface-400 font-medium text-xs">:</span>
+          <select
+            value={selectedMinute}
+            onChange={(e) => setSelectedMinute(e.target.value)}
+            aria-label="Minute"
+            className="rounded-md border border-surface-600 bg-surface-900 px-1.5 py-0.5 text-xs text-surface-100 focus:ring-1 focus:ring-primary-500"
+          >
+            {MINUTE_OPTIONS.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Done button */}
+        <div className="mt-2">
+          <button
+            type="button"
+            onClick={commitAndClose}
+            disabled={!pendingDate}
+            className="w-full rounded-md bg-primary-600 py-1 text-xs font-semibold text-white hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {t("done")}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <div className="relative w-full" ref={containerRef}>
       {label && (
@@ -390,230 +573,41 @@ function DateTimePicker({
           </svg>
         </button>
 
-      </div>
-
-      {/* Calendar + time content (shared between mobile and desktop popups) */}
-      {(() => {
-        const calendarContent = (
-          <>
-            {/* Month/Year header with nav arrows */}
-            <div className="flex items-center justify-between px-2 py-1.5">
-              <button
-                type="button"
-                onClick={() => setViewDate((d) => subMonths(d, 1))}
-                className="rounded-lg p-1 text-surface-400 transition-colors duration-100 hover:bg-surface-700 hover:text-surface-100"
-                aria-label={t("previousMonth")}
-              >
-                <svg
-                  className="h-4 w-4"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2}
-                  stroke="currentColor"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M15.75 19.5 8.25 12l7.5-7.5"
-                  />
-                </svg>
-              </button>
-              <span className="text-sm font-semibold text-surface-100">
-                {format(viewDate, "MMMM yyyy", { locale: dateLocale })}
-              </span>
-              <button
-                type="button"
-                onClick={() => setViewDate((d) => addMonths(d, 1))}
-                className="rounded-lg p-1 text-surface-400 transition-colors duration-100 hover:bg-surface-700 hover:text-surface-100"
-                aria-label={t("nextMonth")}
-              >
-                <svg
-                  className="h-4 w-4"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2}
-                  stroke="currentColor"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="m8.25 4.5 7.5 7.5-7.5 7.5"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            {/* Weekday headers */}
-            <div className="grid grid-cols-7 px-1.5">
-              {weekdayLabels.map((day, i) => (
-                <div
-                  key={i}
-                  className="flex h-6 items-center justify-center text-xs font-medium text-surface-500"
-                >
-                  {day}
-                </div>
-              ))}
-            </div>
-
-            {/* Day grid */}
+        {/* Dropdown calendar + time — mobile: centered with backdrop */}
+        {isOpen && isMobile && (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                if (pendingDate) {
+                  onChange(formatDateTime(formatISODate(pendingDate), selectedHour, selectedMinute));
+                }
+                setIsOpen(false);
+                setFocusedDate(null);
+              }
+            }}
+          >
             <div
-              ref={gridRef}
-              className="grid grid-cols-7 px-1.5 pb-1"
-              role="grid"
-              tabIndex={0}
-              onKeyDown={handleGridKeyDown}
+              role="dialog"
+              aria-label={t("chooseDateAndTime")}
+              className="w-[232px] rounded-xl border border-surface-600 bg-surface-800 shadow-xl shadow-black/30"
             >
-              {calendarDays.map((day) => {
-                const isCurrentMonth = isSameMonth(day, viewDate);
-                const isPending =
-                  pendingDate !== null && isSameDay(day, pendingDate);
-                const isTodayDate = isToday(day);
-                const isDisabled = isDayDisabled(day);
-                const isFocused =
-                  focusedDate !== null && isSameDay(day, focusedDate);
-
-                let dayClasses =
-                  "flex h-7 w-7 items-center justify-center rounded-md text-xs transition-colors duration-100";
-
-                if (isDisabled) {
-                  dayClasses += " text-surface-600 cursor-not-allowed";
-                } else if (isPending) {
-                  dayClasses +=
-                    " bg-primary-600 text-white font-semibold cursor-pointer";
-                } else if (!isCurrentMonth) {
-                  dayClasses +=
-                    " text-surface-600 hover:bg-surface-700 cursor-pointer";
-                } else {
-                  dayClasses +=
-                    " text-surface-200 hover:bg-surface-700 cursor-pointer";
-                }
-
-                if (isTodayDate && !isPending) {
-                  dayClasses += " ring-1 ring-primary-500";
-                }
-
-                if (isFocused && !isPending) {
-                  dayClasses += " bg-surface-700";
-                }
-
-                return (
-                  <div
-                    key={day.toISOString()}
-                    role="gridcell"
-                    aria-selected={isPending}
-                    className="flex items-center justify-center"
-                  >
-                    <button
-                      type="button"
-                      tabIndex={-1}
-                      disabled={isDisabled}
-                      aria-label={format(day, "EEEE, MMMM d, yyyy", { locale: dateLocale })}
-                      aria-current={isTodayDate ? "date" : undefined}
-                      onClick={() => {
-                        if (!isCurrentMonth) {
-                          // Navigate to that month before selecting
-                          setViewDate(startOfMonth(day));
-                        }
-                        handleSelectDay(day);
-                      }}
-                      className={dayClasses}
-                    >
-                      {format(day, "d")}
-                    </button>
-                  </div>
-                );
-              })}
+              {calendarContent}
             </div>
-
-            {/* Time selector */}
-            <div className="border-t border-surface-700 px-2 py-1.5">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-surface-400">
-                  {t("time")}
-                </span>
-                <select
-                  value={selectedHour}
-                  onChange={(e) => setSelectedHour(e.target.value)}
-                  aria-label="Hour"
-                  className="rounded-md border border-surface-600 bg-surface-900 px-1.5 py-0.5 text-xs text-surface-100 focus:ring-1 focus:ring-primary-500"
-                >
-                  {HOUR_OPTIONS.map((h) => (
-                    <option key={h} value={h}>
-                      {h}
-                    </option>
-                  ))}
-                </select>
-                <span className="text-surface-400 font-medium text-xs">:</span>
-                <select
-                  value={selectedMinute}
-                  onChange={(e) => setSelectedMinute(e.target.value)}
-                  aria-label="Minute"
-                  className="rounded-md border border-surface-600 bg-surface-900 px-1.5 py-0.5 text-xs text-surface-100 focus:ring-1 focus:ring-primary-500"
-                >
-                  {MINUTE_OPTIONS.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Done button */}
-              <div className="mt-2">
-                <button
-                  type="button"
-                  onClick={commitAndClose}
-                  disabled={!pendingDate}
-                  className="w-full rounded-md bg-primary-600 py-1 text-xs font-semibold text-white hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {t("done")}
-                </button>
-              </div>
-            </div>
-          </>
-        );
-
-        return (
-          <>
-            {isOpen && isMobile && (
-              <div
-                className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
-                onClick={(e) => {
-                  if (e.target === e.currentTarget) {
-                    if (pendingDate) {
-                      onChange(formatDateTime(formatISODate(pendingDate), selectedHour, selectedMinute));
-                    }
-                    setIsOpen(false);
-                    setFocusedDate(null);
-                  }
-                }}
-              >
-                <div
-                  role="dialog"
-                  aria-label={t("chooseDateAndTime")}
-                  className="w-[232px] rounded-xl border border-surface-600 bg-surface-800 shadow-xl shadow-black/30"
-                >
-                  {calendarContent}
-                </div>
-              </div>
-            )}
-            {isOpen && !isMobile && (
-              <div
-                role="dialog"
-                aria-label={t("chooseDateAndTime")}
-                style={{ top: dropdownPos.top, left: dropdownPos.left }}
-                className="fixed z-[100] w-[232px] rounded-xl border border-surface-600 bg-surface-800 shadow-xl shadow-black/30"
-              >
-                {calendarContent}
-              </div>
-            )}
-          </>
-        );
-      })()}
+          </div>
+        )}
+        {/* Dropdown calendar + time — desktop: fixed position near trigger */}
+        {isOpen && !isMobile && (
+          <div
+            role="dialog"
+            aria-label={t("chooseDateAndTime")}
+            style={{ top: dropdownPos.top, left: dropdownPos.left }}
+            className="fixed z-[100] w-[232px] rounded-xl border border-surface-600 bg-surface-800 shadow-xl shadow-black/30"
+          >
+            {calendarContent}
+          </div>
+        )}
+      </div>
 
       {/* Error message */}
       {error && (

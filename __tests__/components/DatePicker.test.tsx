@@ -937,33 +937,169 @@ describe("DatePicker", () => {
       expect(backdrop!.className).toContain("bg-black/50");
     });
 
-    it("closes when tapping backdrop", () => {
+    it("renders backdrop with centering classes", () => {
       render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
       openCalendar();
-
-      expect(screen.getByRole("dialog")).toBeTruthy();
 
       const dialog = screen.getByRole("dialog");
       const backdrop = dialog.parentElement!;
 
-      // Click directly on the backdrop (not on the dialog)
+      expect(backdrop.className).toContain("flex");
+      expect(backdrop.className).toContain("items-center");
+      expect(backdrop.className).toContain("justify-center");
+    });
+
+    it("closes when tapping backdrop", () => {
+      render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
+      openCalendar();
+
+      const dialog = screen.getByRole("dialog");
+      const backdrop = dialog.parentElement!;
       fireEvent.click(backdrop);
 
       expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("does not close when clicking inside the dialog on mobile", () => {
+      render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
+      openCalendar();
+
+      const dialog = screen.getByRole("dialog");
+      fireEvent.click(dialog);
+
+      expect(screen.getByRole("dialog")).toBeTruthy();
     });
 
     it("does not close on scroll (mobile)", () => {
       render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
       openCalendar();
 
+      act(() => {
+        window.dispatchEvent(new Event("scroll"));
+      });
+
       expect(screen.getByRole("dialog")).toBeTruthy();
+    });
+
+    it("does not close on resize (mobile)", () => {
+      render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
+      openCalendar();
+
+      act(() => {
+        window.dispatchEvent(new Event("resize"));
+      });
+
+      expect(screen.getByRole("dialog")).toBeTruthy();
+    });
+
+    it("closes on Escape key (mobile)", () => {
+      render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
+      openCalendar();
+
+      act(() => {
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+      });
+
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("selecting a date works on mobile and closes popup", () => {
+      const onChange = vi.fn();
+      render(<DatePicker value="2026-02-17" onChange={onChange} />);
+      openCalendar();
+
+      const day20 = screen.getByLabelText("Friday, February 20, 2026");
+      fireEvent.click(day20);
+
+      expect(onChange).toHaveBeenCalledWith("2026-02-20");
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("month navigation works on mobile", () => {
+      render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
+      openCalendar();
+
+      expect(screen.getByText("February 2026")).toBeTruthy();
+
+      const nextMonth = screen.getByLabelText("Next month");
+      fireEvent.click(nextMonth);
+
+      expect(screen.getByText("March 2026")).toBeTruthy();
+      expect(screen.getByRole("dialog")).toBeTruthy();
+    });
+
+    it("plus one month shortcut works on mobile", () => {
+      const onChange = vi.fn();
+      render(<DatePicker value="2026-02-17" onChange={onChange} />);
+      openCalendar();
+
+      const plusOne = screen.getByText("+1 Month");
+      fireEvent.click(plusOne);
+
+      expect(onChange).toHaveBeenCalledWith("2026-03-17");
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("dialog has correct aria-label on mobile", () => {
+      render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
+      openCalendar();
+
+      expect(screen.getByRole("dialog", { name: "Choose date" })).toBeTruthy();
+    });
+
+    it("popup does not have inline style positioning on mobile", () => {
+      render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
+      openCalendar();
+
+      const dialog = screen.getByRole("dialog");
+      expect(dialog.style.top).toBeFalsy();
+      expect(dialog.style.left).toBeFalsy();
+    });
+  });
+
+  // ─── Desktop — no backdrop ──────────────────────────────────
+
+  describe("desktop — no backdrop", () => {
+    it("does not render backdrop overlay on desktop", () => {
+      render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
+      openCalendar();
+
+      const dialog = screen.getByRole("dialog");
+      const parent = dialog.parentElement!;
+
+      expect(parent.className).not.toContain("inset-0");
+      expect(parent.className).not.toContain("bg-black/50");
+    });
+
+    it("uses fixed position with inline styles on desktop", () => {
+      render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
+      openCalendar();
+
+      const dialog = screen.getByRole("dialog");
+      expect(dialog.style.top).toBeTruthy();
+      expect(dialog.style.left).toBeTruthy();
+    });
+
+    it("closes on scroll on desktop", () => {
+      render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
+      openCalendar();
 
       act(() => {
         window.dispatchEvent(new Event("scroll"));
       });
 
-      // On mobile, scroll should NOT close the popup
-      expect(screen.getByRole("dialog")).toBeTruthy();
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("closes on resize on desktop", () => {
+      render(<DatePicker value="2026-02-17" onChange={vi.fn()} />);
+      openCalendar();
+
+      act(() => {
+        window.dispatchEvent(new Event("resize"));
+      });
+
+      expect(screen.queryByRole("dialog")).toBeNull();
     });
   });
 });

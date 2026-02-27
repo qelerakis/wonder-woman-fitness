@@ -1348,11 +1348,21 @@ describe("DateTimePicker", () => {
       expect(backdrop!.className).toContain("bg-black/50");
     });
 
-    it("closes when tapping backdrop and auto-confirms pending date", () => {
+    it("renders backdrop with centering classes", () => {
       render(<DateTimePicker value="" onChange={onChange} />);
       openPicker();
 
-      expect(screen.getByRole("dialog")).toBeTruthy();
+      const dialog = screen.getByRole("dialog");
+      const backdrop = dialog.parentElement!;
+
+      expect(backdrop.className).toContain("flex");
+      expect(backdrop.className).toContain("items-center");
+      expect(backdrop.className).toContain("justify-center");
+    });
+
+    it("closes when tapping backdrop and auto-confirms pending date", () => {
+      render(<DateTimePicker value="" onChange={onChange} />);
+      openPicker();
 
       // Select a day (sets it as pending)
       const dayButton = screen.getByLabelText("Wednesday, February 18, 2026");
@@ -1360,30 +1370,194 @@ describe("DateTimePicker", () => {
 
       const dialog = screen.getByRole("dialog");
       const backdrop = dialog.parentElement!;
-
-      // Click directly on the backdrop (not on the dialog)
       fireEvent.click(backdrop);
 
-      // Should close
       expect(screen.queryByRole("dialog")).toBeNull();
-
-      // Should have auto-confirmed the pending date
-      expect(onChange).toHaveBeenCalledOnce();
       expect(onChange).toHaveBeenCalledWith("2026-02-18T09:00");
+    });
+
+    it("closes without calling onChange when tapping backdrop without pending date", () => {
+      render(<DateTimePicker value="" onChange={onChange} />);
+      openPicker();
+
+      const dialog = screen.getByRole("dialog");
+      const backdrop = dialog.parentElement!;
+      fireEvent.click(backdrop);
+
+      expect(screen.queryByRole("dialog")).toBeNull();
+      // No pending date was selected, so onChange should NOT be called
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("auto-confirms with custom time when tapping backdrop", () => {
+      render(<DateTimePicker value="" onChange={onChange} />);
+      openPicker();
+
+      // Select a day
+      const dayButton = screen.getByLabelText("Wednesday, February 18, 2026");
+      fireEvent.click(dayButton);
+
+      // Change the hour to 14
+      const hourSelect = screen.getByLabelText("Hour");
+      fireEvent.change(hourSelect, { target: { value: "14" } });
+
+      // Change the minute to 30
+      const minuteSelect = screen.getByLabelText("Minute");
+      fireEvent.change(minuteSelect, { target: { value: "30" } });
+
+      const dialog = screen.getByRole("dialog");
+      const backdrop = dialog.parentElement!;
+      fireEvent.click(backdrop);
+
+      expect(onChange).toHaveBeenCalledWith("2026-02-18T14:30");
+    });
+
+    it("does not close when clicking inside the dialog on mobile", () => {
+      render(<DateTimePicker value="" onChange={onChange} />);
+      openPicker();
+
+      const dialog = screen.getByRole("dialog");
+      fireEvent.click(dialog);
+
+      expect(screen.getByRole("dialog")).toBeTruthy();
     });
 
     it("does not close on scroll (mobile)", () => {
       render(<DateTimePicker value="" onChange={onChange} />);
       openPicker();
 
+      act(() => {
+        window.dispatchEvent(new Event("scroll"));
+      });
+
       expect(screen.getByRole("dialog")).toBeTruthy();
+    });
+
+    it("does not close on resize (mobile)", () => {
+      render(<DateTimePicker value="" onChange={onChange} />);
+      openPicker();
+
+      act(() => {
+        window.dispatchEvent(new Event("resize"));
+      });
+
+      expect(screen.getByRole("dialog")).toBeTruthy();
+    });
+
+    it("closes on Escape key without confirming (mobile)", () => {
+      render(<DateTimePicker value="" onChange={onChange} />);
+      openPicker();
+
+      // Select a day
+      const dayButton = screen.getByLabelText("Wednesday, February 18, 2026");
+      fireEvent.click(dayButton);
+
+      act(() => {
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+      });
+
+      expect(screen.queryByRole("dialog")).toBeNull();
+      // Escape should NOT confirm the pending date
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("Done button works on mobile", () => {
+      render(<DateTimePicker value="" onChange={onChange} />);
+      openPicker();
+
+      // Select a day
+      const dayButton = screen.getByLabelText("Wednesday, February 18, 2026");
+      fireEvent.click(dayButton);
+
+      const doneButton = screen.getByText("Done");
+      fireEvent.click(doneButton);
+
+      expect(onChange).toHaveBeenCalledWith("2026-02-18T09:00");
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("month navigation works on mobile", () => {
+      render(<DateTimePicker value="2026-02-17T10:00" onChange={onChange} />);
+      openPicker();
+
+      expect(screen.getByText("February 2026")).toBeTruthy();
+
+      const nextMonth = screen.getByLabelText("Next month");
+      fireEvent.click(nextMonth);
+
+      expect(screen.getByText("March 2026")).toBeTruthy();
+      expect(screen.getByRole("dialog")).toBeTruthy();
+    });
+
+    it("time selectors are visible on mobile", () => {
+      render(<DateTimePicker value="2026-02-17T10:00" onChange={onChange} />);
+      openPicker();
+
+      expect(screen.getByLabelText("Hour")).toBeTruthy();
+      expect(screen.getByLabelText("Minute")).toBeTruthy();
+      expect(screen.getByText("Done")).toBeTruthy();
+    });
+
+    it("dialog has correct aria-label on mobile", () => {
+      render(<DateTimePicker value="" onChange={onChange} />);
+      openPicker();
+
+      expect(screen.getByRole("dialog", { name: "Choose date and time" })).toBeTruthy();
+    });
+
+    it("popup does not have inline style positioning on mobile", () => {
+      render(<DateTimePicker value="" onChange={onChange} />);
+      openPicker();
+
+      const dialog = screen.getByRole("dialog");
+      expect(dialog.style.top).toBeFalsy();
+      expect(dialog.style.left).toBeFalsy();
+    });
+  });
+
+  // ─── Desktop — no backdrop ──────────────────────────────────
+
+  describe("desktop — no backdrop", () => {
+    it("does not render backdrop overlay on desktop", () => {
+      render(<DateTimePicker value="" onChange={onChange} />);
+      openPicker();
+
+      const dialog = screen.getByRole("dialog");
+      const parent = dialog.parentElement!;
+
+      expect(parent.className).not.toContain("inset-0");
+      expect(parent.className).not.toContain("bg-black/50");
+    });
+
+    it("uses fixed position with inline styles on desktop", () => {
+      render(<DateTimePicker value="" onChange={onChange} />);
+      openPicker();
+
+      const dialog = screen.getByRole("dialog");
+      expect(dialog.style.top).toBeTruthy();
+      expect(dialog.style.left).toBeTruthy();
+    });
+
+    it("closes on scroll on desktop", () => {
+      render(<DateTimePicker value="" onChange={onChange} />);
+      openPicker();
 
       act(() => {
         window.dispatchEvent(new Event("scroll"));
       });
 
-      // On mobile, scroll should NOT close the popup
-      expect(screen.getByRole("dialog")).toBeTruthy();
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("closes on resize on desktop", () => {
+      render(<DateTimePicker value="" onChange={onChange} />);
+      openPicker();
+
+      act(() => {
+        window.dispatchEvent(new Event("resize"));
+      });
+
+      expect(screen.queryByRole("dialog")).toBeNull();
     });
   });
 });
