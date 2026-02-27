@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useId, useCallback, useMemo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { getDateLocale } from "@/lib/date-locale";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import {
   format,
   parse,
@@ -60,6 +61,7 @@ function DatePicker({
   const locale = useLocale();
   const dateLocale = useMemo(() => getDateLocale(locale), [locale]);
   const resolvedPlaceholder = placeholder ?? t("selectDate");
+  const isMobile = useIsMobile();
 
   const weekdayLabels = useMemo(() => {
     // Generate Mon-Sun short labels using the locale
@@ -99,9 +101,9 @@ function DatePicker({
     }
   }, [value]);
 
-  // Close on outside click
+  // Close on outside click (desktop only — mobile uses backdrop onClick)
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || isMobile) return;
 
     function handleClickOutside(e: MouseEvent): void {
       if (
@@ -115,7 +117,7 @@ function DatePicker({
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen]);
+  }, [isOpen, isMobile]);
 
   // Close on Escape (stopPropagation prevents parent modal from closing too)
   useEffect(() => {
@@ -136,7 +138,7 @@ function DatePicker({
 
   // Close on scroll/resize to prevent stale fixed positioning
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || isMobile) return; // Mobile popup is centered, no stale positioning
 
     const close = (): void => {
       setIsOpen(false);
@@ -149,7 +151,7 @@ function DatePicker({
       window.removeEventListener("scroll", close, true);
       window.removeEventListener("resize", close);
     };
-  }, [isOpen]);
+  }, [isOpen, isMobile]);
 
   // Focus the grid when dropdown opens
   useEffect(() => {
@@ -250,6 +252,154 @@ function DatePicker({
       ? helpId
       : undefined;
 
+  const calendarContent = (
+    <>
+      {/* Month/Year header with nav arrows */}
+      <div className="flex items-center justify-between px-2 py-1.5">
+        <button
+          type="button"
+          onClick={() => setViewDate((d) => subMonths(d, 1))}
+          className="rounded-lg p-1 text-surface-400 transition-colors duration-100 hover:bg-surface-700 hover:text-surface-100"
+          aria-label={t("previousMonth")}
+        >
+          <svg
+            className="h-4 w-4"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={2}
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M15.75 19.5 8.25 12l7.5-7.5"
+            />
+          </svg>
+        </button>
+        <span className="text-sm font-semibold text-surface-100">
+          {format(viewDate, "MMMM yyyy", { locale: dateLocale })}
+        </span>
+        <button
+          type="button"
+          onClick={() => setViewDate((d) => addMonths(d, 1))}
+          className="rounded-lg p-1 text-surface-400 transition-colors duration-100 hover:bg-surface-700 hover:text-surface-100"
+          aria-label={t("nextMonth")}
+        >
+          <svg
+            className="h-4 w-4"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={2}
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="m8.25 4.5 7.5 7.5-7.5 7.5"
+            />
+          </svg>
+        </button>
+      </div>
+
+      {/* Weekday headers */}
+      <div className="grid grid-cols-7 px-1.5">
+        {weekdayLabels.map((day, i) => (
+          <div
+            key={i}
+            className="flex h-6 items-center justify-center text-xs font-medium text-surface-500"
+          >
+            {day}
+          </div>
+        ))}
+      </div>
+
+      {/* Day grid */}
+      <div
+        ref={gridRef}
+        className="grid grid-cols-7 px-1.5 pb-1"
+        role="grid"
+        tabIndex={0}
+        onKeyDown={handleGridKeyDown}
+      >
+        {calendarDays.map((day) => {
+          const isCurrentMonth = isSameMonth(day, viewDate);
+          const isSelected =
+            selectedDate !== null && isSameDay(day, selectedDate);
+          const isTodayDate = isToday(day);
+          const isDisabled = isDayDisabled(day);
+          const isFocused =
+            focusedDate !== null && isSameDay(day, focusedDate);
+
+          let dayClasses =
+            "flex h-7 w-7 items-center justify-center rounded-md text-xs transition-colors duration-100";
+
+          if (isDisabled) {
+            dayClasses += " text-surface-600 cursor-not-allowed";
+          } else if (isSelected) {
+            dayClasses +=
+              " bg-primary-600 text-white font-semibold cursor-pointer";
+          } else if (!isCurrentMonth) {
+            dayClasses +=
+              " text-surface-600 hover:bg-surface-700 cursor-pointer";
+          } else {
+            dayClasses +=
+              " text-surface-200 hover:bg-surface-700 cursor-pointer";
+          }
+
+          if (isTodayDate && !isSelected) {
+            dayClasses += " ring-1 ring-primary-500";
+          }
+
+          if (isFocused && !isSelected) {
+            dayClasses += " bg-surface-700";
+          }
+
+          return (
+            <div
+              key={day.toISOString()}
+              role="gridcell"
+              aria-selected={isSelected}
+              className="flex items-center justify-center"
+            >
+              <button
+                type="button"
+                tabIndex={-1}
+                disabled={isDisabled}
+                aria-label={format(day, "EEEE, MMMM d, yyyy", { locale: dateLocale })}
+                aria-current={isTodayDate ? "date" : undefined}
+                onClick={() => {
+                  if (!isCurrentMonth) {
+                    // Navigate to that month before selecting
+                    setViewDate(startOfMonth(day));
+                  }
+                  handleSelectDay(day);
+                }}
+                className={dayClasses}
+              >
+                {format(day, "d")}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* +1 Month shortcut */}
+      <div className="border-t border-surface-700 px-2 py-1.5">
+        <button
+          type="button"
+          onClick={handlePlusOneMonth}
+          className="w-full rounded-md px-2 py-0.5 text-center text-xs text-primary-400 transition-colors duration-100 hover:bg-surface-700 hover:text-primary-300"
+        >
+          {t("plusOneMonth")}
+        </button>
+      </div>
+    </>
+  );
+
   return (
     <div className="relative w-full" ref={containerRef}>
       {label && (
@@ -273,7 +423,7 @@ function DatePicker({
           ref={triggerRef}
           onClick={() => {
             if (!disabled) {
-              if (!isOpen && triggerRef.current) {
+              if (!isOpen && triggerRef.current && !isMobile) {
                 const rect = triggerRef.current.getBoundingClientRect();
                 setDropdownPos({ top: rect.bottom + 4, left: rect.left });
               }
@@ -321,157 +471,35 @@ function DatePicker({
           </svg>
         </button>
 
-        {/* Dropdown calendar */}
-        {isOpen && (
+        {/* Dropdown calendar — mobile: centered with backdrop */}
+        {isOpen && isMobile && (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setIsOpen(false);
+                setFocusedDate(null);
+              }
+            }}
+          >
+            <div
+              role="dialog"
+              aria-label={t("chooseDate")}
+              className="w-[232px] rounded-xl border border-surface-600 bg-surface-800 shadow-xl shadow-black/30"
+            >
+              {calendarContent}
+            </div>
+          </div>
+        )}
+        {/* Dropdown calendar — desktop: fixed position near trigger */}
+        {isOpen && !isMobile && (
           <div
             role="dialog"
             aria-label={t("chooseDate")}
             style={{ top: dropdownPos.top, left: dropdownPos.left }}
             className="fixed z-[100] w-[232px] rounded-xl border border-surface-600 bg-surface-800 shadow-xl shadow-black/30"
           >
-            {/* Month/Year header with nav arrows */}
-            <div className="flex items-center justify-between px-2 py-1.5">
-              <button
-                type="button"
-                onClick={() => setViewDate((d) => subMonths(d, 1))}
-                className="rounded-lg p-1 text-surface-400 transition-colors duration-100 hover:bg-surface-700 hover:text-surface-100"
-                aria-label={t("previousMonth")}
-              >
-                <svg
-                  className="h-4 w-4"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2}
-                  stroke="currentColor"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M15.75 19.5 8.25 12l7.5-7.5"
-                  />
-                </svg>
-              </button>
-              <span className="text-sm font-semibold text-surface-100">
-                {format(viewDate, "MMMM yyyy", { locale: dateLocale })}
-              </span>
-              <button
-                type="button"
-                onClick={() => setViewDate((d) => addMonths(d, 1))}
-                className="rounded-lg p-1 text-surface-400 transition-colors duration-100 hover:bg-surface-700 hover:text-surface-100"
-                aria-label={t("nextMonth")}
-              >
-                <svg
-                  className="h-4 w-4"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={2}
-                  stroke="currentColor"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="m8.25 4.5 7.5 7.5-7.5 7.5"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            {/* Weekday headers */}
-            <div className="grid grid-cols-7 px-1.5">
-              {weekdayLabels.map((day, i) => (
-                <div
-                  key={i}
-                  className="flex h-6 items-center justify-center text-xs font-medium text-surface-500"
-                >
-                  {day}
-                </div>
-              ))}
-            </div>
-
-            {/* Day grid */}
-            <div
-              ref={gridRef}
-              className="grid grid-cols-7 px-1.5 pb-1"
-              role="grid"
-              tabIndex={0}
-              onKeyDown={handleGridKeyDown}
-            >
-              {calendarDays.map((day) => {
-                const isCurrentMonth = isSameMonth(day, viewDate);
-                const isSelected =
-                  selectedDate !== null && isSameDay(day, selectedDate);
-                const isTodayDate = isToday(day);
-                const isDisabled = isDayDisabled(day);
-                const isFocused =
-                  focusedDate !== null && isSameDay(day, focusedDate);
-
-                let dayClasses =
-                  "flex h-7 w-7 items-center justify-center rounded-md text-xs transition-colors duration-100";
-
-                if (isDisabled) {
-                  dayClasses += " text-surface-600 cursor-not-allowed";
-                } else if (isSelected) {
-                  dayClasses +=
-                    " bg-primary-600 text-white font-semibold cursor-pointer";
-                } else if (!isCurrentMonth) {
-                  dayClasses +=
-                    " text-surface-600 hover:bg-surface-700 cursor-pointer";
-                } else {
-                  dayClasses +=
-                    " text-surface-200 hover:bg-surface-700 cursor-pointer";
-                }
-
-                if (isTodayDate && !isSelected) {
-                  dayClasses += " ring-1 ring-primary-500";
-                }
-
-                if (isFocused && !isSelected) {
-                  dayClasses += " bg-surface-700";
-                }
-
-                return (
-                  <div
-                    key={day.toISOString()}
-                    role="gridcell"
-                    aria-selected={isSelected}
-                    className="flex items-center justify-center"
-                  >
-                    <button
-                      type="button"
-                      tabIndex={-1}
-                      disabled={isDisabled}
-                      aria-label={format(day, "EEEE, MMMM d, yyyy", { locale: dateLocale })}
-                      aria-current={isTodayDate ? "date" : undefined}
-                      onClick={() => {
-                        if (!isCurrentMonth) {
-                          // Navigate to that month before selecting
-                          setViewDate(startOfMonth(day));
-                        }
-                        handleSelectDay(day);
-                      }}
-                      className={dayClasses}
-                    >
-                      {format(day, "d")}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* +1 Month shortcut */}
-            <div className="border-t border-surface-700 px-2 py-1.5">
-              <button
-                type="button"
-                onClick={handlePlusOneMonth}
-                className="w-full rounded-md px-2 py-0.5 text-center text-xs text-primary-400 transition-colors duration-100 hover:bg-surface-700 hover:text-primary-300"
-              >
-                {t("plusOneMonth")}
-              </button>
-            </div>
+            {calendarContent}
           </div>
         )}
       </div>
