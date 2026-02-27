@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useId, useCallback, useMemo } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { getDateLocale } from "@/lib/date-locale";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import {
   format,
   parse,
@@ -97,6 +98,7 @@ function DateTimePicker({
   const t = useTranslations("datePicker");
   const locale = useLocale();
   const dateLocale = useMemo(() => getDateLocale(locale), [locale]);
+  const isMobile = useIsMobile();
   const resolvedPlaceholder = placeholder ?? t("selectDateTime");
 
   const weekdayLabels = useMemo(() => {
@@ -157,7 +159,7 @@ function DateTimePicker({
 
   // Close on outside click — auto-confirms pending selection
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || isMobile) return;
 
     function handleClickOutside(e: MouseEvent): void {
       if (
@@ -181,7 +183,7 @@ function DateTimePicker({
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen, pendingDate, selectedHour, selectedMinute, onChange]);
+  }, [isOpen, isMobile, pendingDate, selectedHour, selectedMinute, onChange]);
 
   // Close on Escape — without confirming (stopPropagation prevents parent modal from closing too)
   useEffect(() => {
@@ -206,7 +208,7 @@ function DateTimePicker({
 
   // Close on scroll/resize to prevent stale fixed positioning
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || isMobile) return;
 
     const close = (): void => {
       // Auto-confirm pending selection on scroll/resize
@@ -225,7 +227,7 @@ function DateTimePicker({
       window.removeEventListener("scroll", close, true);
       window.removeEventListener("resize", close);
     };
-  }, [isOpen, pendingDate, selectedHour, selectedMinute, onChange]);
+  }, [isOpen, isMobile, pendingDate, selectedHour, selectedMinute, onChange]);
 
   // Focus the grid when dropdown opens
   useEffect(() => {
@@ -337,7 +339,7 @@ function DateTimePicker({
           ref={triggerRef}
           onClick={() => {
             if (!disabled) {
-              if (!isOpen && triggerRef.current) {
+              if (!isOpen && triggerRef.current && !isMobile) {
                 const rect = triggerRef.current.getBoundingClientRect();
                 setDropdownPos({ top: rect.bottom + 4, left: rect.left });
               }
@@ -388,14 +390,12 @@ function DateTimePicker({
           </svg>
         </button>
 
-        {/* Dropdown calendar + time */}
-        {isOpen && (
-          <div
-            role="dialog"
-            aria-label={t("chooseDateAndTime")}
-            style={{ top: dropdownPos.top, left: dropdownPos.left }}
-            className="fixed z-[100] w-[232px] rounded-xl border border-surface-600 bg-surface-800 shadow-xl shadow-black/30"
-          >
+      </div>
+
+      {/* Calendar + time content (shared between mobile and desktop popups) */}
+      {(() => {
+        const calendarContent = (
+          <>
             {/* Month/Year header with nav arrows */}
             <div className="flex items-center justify-between px-2 py-1.5">
               <button
@@ -574,9 +574,46 @@ function DateTimePicker({
                 </button>
               </div>
             </div>
-          </div>
-        )}
-      </div>
+          </>
+        );
+
+        return (
+          <>
+            {isOpen && isMobile && (
+              <div
+                className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50"
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) {
+                    if (pendingDate) {
+                      onChange(formatDateTime(formatISODate(pendingDate), selectedHour, selectedMinute));
+                    }
+                    setIsOpen(false);
+                    setFocusedDate(null);
+                  }
+                }}
+              >
+                <div
+                  role="dialog"
+                  aria-label={t("chooseDateAndTime")}
+                  className="w-[232px] rounded-xl border border-surface-600 bg-surface-800 shadow-xl shadow-black/30"
+                >
+                  {calendarContent}
+                </div>
+              </div>
+            )}
+            {isOpen && !isMobile && (
+              <div
+                role="dialog"
+                aria-label={t("chooseDateAndTime")}
+                style={{ top: dropdownPos.top, left: dropdownPos.left }}
+                className="fixed z-[100] w-[232px] rounded-xl border border-surface-600 bg-surface-800 shadow-xl shadow-black/30"
+              >
+                {calendarContent}
+              </div>
+            )}
+          </>
+        );
+      })()}
 
       {/* Error message */}
       {error && (
