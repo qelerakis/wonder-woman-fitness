@@ -29,10 +29,10 @@ function openPicker(): void {
 // ===== Tests =====
 
 describe("DateTimePicker", () => {
-  let onChange: ReturnType<typeof vi.fn>;
+  let onChange: ReturnType<typeof vi.fn<(value: string) => void>>;
 
   beforeEach(() => {
-    onChange = vi.fn();
+    onChange = vi.fn<(value: string) => void>();
     // Fix "now" to Feb 17, 2026 at 10:00 for deterministic tests
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 1, 17, 10, 0, 0));
