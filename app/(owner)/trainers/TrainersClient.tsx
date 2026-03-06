@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { useTranslations } from "next-intl";
@@ -20,6 +20,13 @@ interface TrainerData {
   createdAt: string;
 }
 
+interface MemberOption {
+  id: string;
+  name: string;
+  email: string;
+  status: string;
+}
+
 interface TrainersClientProps {
   trainers: TrainerData[];
 }
@@ -31,65 +38,95 @@ export function TrainersClient({
   const { addToast } = useToast();
   const t = useTranslations("trainers");
   const tCommon = useTranslations("common");
-  const tVal = useTranslations("validation");
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [members, setMembers] = useState<MemberOption[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [search, setSearch] = useState("");
+  const [selectedMember, setSelectedMember] = useState<MemberOption | null>(
+    null
+  );
+  const [showConfirm, setShowConfirm] = useState(false);
 
-  // Create form state
-  const [trainerName, setTrainerName] = useState("");
-  const [trainerEmail, setTrainerEmail] = useState("");
-  const [trainerPhone, setTrainerPhone] = useState("");
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const fetchMembers = useCallback(() => {
+    setLoadingMembers(true);
+    fetch("/api/members")
+      .then((res) => res.json())
+      .then((data: { data: MemberOption[] }) => {
+        const active = data.data.filter(
+          (m: MemberOption) => m.status !== "DEPARTED"
+        );
+        setMembers(active);
+      })
+      .catch(() => {
+        addToast({ type: "error", title: tCommon("networkError") });
+      })
+      .finally(() => setLoadingMembers(false));
+    // addToast and tCommon are stable refs from context/next-intl
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  function resetForm(): void {
-    setTrainerName("");
-    setTrainerEmail("");
-    setTrainerPhone("");
-    setFormErrors({});
+  // Fetch members when modal opens
+  useEffect(() => {
+    if (!showModal) return;
+    fetchMembers();
+  }, [showModal, fetchMembers]);
+
+  const filteredMembers = useMemo(() => {
+    if (!search.trim()) return members;
+    const q = search.toLowerCase();
+    return members.filter(
+      (m) =>
+        m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q)
+    );
+  }, [members, search]);
+
+  function resetModal(): void {
+    setSearch("");
+    setSelectedMember(null);
+    setShowConfirm(false);
+    setMembers([]);
   }
 
-  async function handleCreate(e: React.FormEvent): Promise<void> {
-    e.preventDefault();
-    const errors: Record<string, string> = {};
+  function handleClose(): void {
+    setShowModal(false);
+    resetModal();
+  }
 
-    if (!trainerName.trim()) errors.name = tVal("nameRequired");
-    if (!trainerEmail.trim()) errors.email = tVal("emailRequired");
-    if (trainerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trainerEmail)) {
-      errors.email = tVal("invalidEmailFormat");
-    }
+  function handleSelectMember(member: MemberOption): void {
+    setSelectedMember(member);
+    setShowConfirm(true);
+  }
 
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors);
-      return;
-    }
+  function handleBackToList(): void {
+    setSelectedMember(null);
+    setShowConfirm(false);
+  }
 
+  async function handlePromote(): Promise<void> {
+    if (!selectedMember) return;
     setLoading(true);
     try {
       const res = await fetch("/api/trainers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: trainerName.trim(),
-          email: trainerEmail.trim(),
-          phone: trainerPhone.trim() || undefined,
-        }),
+        body: JSON.stringify({ memberId: selectedMember.id }),
       });
 
       if (res.ok) {
         addToast({
           type: "success",
           title: t("trainerCreated"),
-          message: t("trainerCreatedMessage"),
+          message: t("trainerCreatedMessage", { name: selectedMember.name }),
         });
-        setShowCreateModal(false);
-        resetForm();
+        handleClose();
         router.refresh();
       } else {
-        const data: { error: string } = await res.json();
+        const data: { error?: string } = await res.json();
         addToast({
           type: "error",
           title: t("failedToCreate"),
-          message: data.error,
+          message: typeof data.error === "string" ? data.error : t("failedToCreate"),
         });
       }
     } catch {
@@ -112,7 +149,7 @@ export function TrainersClient({
         <Button
           variant="primary"
           size="sm"
-          onClick={() => setShowCreateModal(true)}
+          onClick={() => setShowModal(true)}
         >
           {t("addTrainer")}
         </Button>
@@ -170,7 +207,7 @@ export function TrainersClient({
                       {trainer.email}
                     </td>
                     <td className="hidden px-6 py-3 text-sm text-surface-400 sm:table-cell">
-                      {trainer.phone || "—"}
+                      {trainer.phone || "\u2014"}
                     </td>
                     <td className="px-6 py-3">
                       <Badge
@@ -193,60 +230,81 @@ export function TrainersClient({
         </Card>
       )}
 
-      {/* Create Trainer Modal */}
-      <Modal
-        isOpen={showCreateModal}
-        onClose={() => {
-          setShowCreateModal(false);
-          resetForm();
-        }}
-        title={t("addTrainer")}
-      >
-        <form onSubmit={handleCreate} className="space-y-4">
-          <p className="text-sm text-surface-400">
-            {t("tempPasswordNote")}
-          </p>
-
-          <Input
-            label={t("fullName")}
-            value={trainerName}
-            onChange={(e) => setTrainerName(e.target.value)}
-            placeholder={t("fullNamePlaceholder")}
-            error={formErrors.name}
-          />
-
-          <Input
-            label={t("email")}
-            type="email"
-            value={trainerEmail}
-            onChange={(e) => setTrainerEmail(e.target.value)}
-            placeholder={t("emailPlaceholder")}
-            error={formErrors.email}
-          />
-
-          <Input
-            label={t("phoneOptional")}
-            value={trainerPhone}
-            onChange={(e) => setTrainerPhone(e.target.value)}
-            placeholder={t("phonePlaceholder")}
-          />
-
-          <div className="flex items-center gap-2 pt-2">
-            <Button type="submit" variant="primary" loading={loading}>
-              {t("addTrainer")}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                setShowCreateModal(false);
-                resetForm();
-              }}
-            >
-              {tCommon("cancel")}
-            </Button>
+      {/* Promote Member Modal */}
+      <Modal isOpen={showModal} onClose={handleClose} title={t("addTrainer")}>
+        {showConfirm && selectedMember ? (
+          /* Confirmation step */
+          <div className="space-y-4">
+            <p className="text-sm font-medium text-surface-200">
+              {t("confirmPromote", { name: selectedMember.name })}
+            </p>
+            <p className="text-sm text-surface-400">
+              {t("confirmPromoteMessage")}
+            </p>
+            <div className="flex items-center gap-2 pt-2">
+              <Button
+                variant="primary"
+                loading={loading}
+                onClick={handlePromote}
+              >
+                {t("promote")}
+              </Button>
+              <Button variant="ghost" onClick={handleBackToList}>
+                {tCommon("cancel")}
+              </Button>
+            </div>
           </div>
-        </form>
+        ) : (
+          /* Member selection step */
+          <div className="space-y-4">
+            <p className="text-sm text-surface-400">{t("selectMember")}</p>
+            <Input
+              placeholder={t("searchMembers")}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            {loadingMembers ? (
+              <p className="py-4 text-center text-sm text-surface-500">
+                {t("loadingMembers")}
+              </p>
+            ) : filteredMembers.length === 0 ? (
+              <p className="py-4 text-center text-sm text-surface-500">
+                {t("noMembers")}
+              </p>
+            ) : (
+              <div className="max-h-60 overflow-y-auto rounded-lg border border-surface-700">
+                {filteredMembers.map((member) => (
+                  <button
+                    key={member.id}
+                    type="button"
+                    className="flex w-full items-center justify-between border-b border-surface-700/50 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-surface-800/80"
+                    onClick={() => handleSelectMember(member)}
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-surface-200">
+                        {member.name}
+                      </p>
+                      <p className="text-xs text-surface-400">{member.email}</p>
+                    </div>
+                    <Badge
+                      variant={
+                        member.status === "ACTIVE" ? "success" : "default"
+                      }
+                      size="sm"
+                    >
+                      {member.status}
+                    </Badge>
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="flex items-center gap-2 pt-2">
+              <Button variant="ghost" onClick={handleClose}>
+                {tCommon("cancel")}
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

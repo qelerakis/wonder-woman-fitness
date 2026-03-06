@@ -147,6 +147,34 @@ describe("POST /api/trainers", () => {
     expect(data.error).toContain("departed");
   });
 
+  it("returns 400 when user is OWNER role (not MEMBER)", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    mockPrisma.user.findUnique.mockResolvedValue({ id: "cm1234567890abcdef", role: "OWNER", status: "ACTIVE", name: "Boss" });
+    const res = await POST(makeRequest({ memberId: "cm1234567890abcdef" }));
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toContain("already a trainer or owner");
+  });
+
+  it("promotes a TRIAL member to trainer (sets status to ACTIVE)", async () => {
+    mockAuth.mockResolvedValue(ownerSession());
+    const member = { id: "cm1234567890abcdef", role: "MEMBER", status: "TRIAL", name: "New Member" };
+    mockPrisma.user.findUnique.mockResolvedValue(member);
+    mockPrisma.user.update.mockResolvedValue({ ...member, role: "TRAINER", status: "ACTIVE" });
+    mockPrisma.sessionMember.deleteMany.mockResolvedValue({ count: 0 });
+    mockPrisma.vote.deleteMany.mockResolvedValue({ count: 0 });
+    mockPrisma.user.findMany.mockResolvedValue([]);
+
+    const res = await POST(makeRequest({ memberId: "cm1234567890abcdef" }));
+    expect(res.status).toBe(200);
+
+    // Verify status was set to ACTIVE (not left as TRIAL)
+    expect(mockPrisma.user.update).toHaveBeenCalledWith({
+      where: { id: "cm1234567890abcdef" },
+      data: { role: "TRAINER", status: "ACTIVE" },
+    });
+  });
+
   // --- Happy path ---
 
   it("promotes a member to trainer successfully", async () => {

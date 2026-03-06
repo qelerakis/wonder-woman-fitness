@@ -50,3 +50,5 @@ next-env.d.ts
 
 # Windows artifacts
 nul
+
+.vercel

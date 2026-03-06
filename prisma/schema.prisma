@@ -42,6 +42,7 @@ enum NotificationType {
   TRIAL_EXPIRED
   SESSION_DELETED
   MANUAL_REMINDER
+  ROLE_CHANGED
 }
 
 // ─── Models ─────────────────────────────────────────────────────────

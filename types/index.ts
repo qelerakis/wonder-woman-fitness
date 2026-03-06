@@ -196,6 +196,7 @@ export const NotificationCreateSchema = z.object({
     'TRIAL_EXPIRED',
     'SESSION_DELETED',
     'MANUAL_REMINDER',
+    'ROLE_CHANGED',
   ]),
   title: z.string().min(1, 'Title is required').max(MAX_NOTIFICATION_TITLE_LENGTH, `Title too long (max ${MAX_NOTIFICATION_TITLE_LENGTH} chars)`),
   body: z.string().min(1, 'Body is required').max(MAX_NOTIFICATION_BODY_LENGTH, `Body too long (max ${MAX_NOTIFICATION_BODY_LENGTH} chars)`),
@@ -214,13 +215,11 @@ export type RecurringSlotInput = z.infer<typeof RecurringSlotSchema>;
 
 // ===== TRAINER SCHEMA =====
 
-export const TrainerCreateSchema = z.object({
-  email: z.string().email('Invalid email address').max(MAX_EMAIL_LENGTH),
-  name: z.string().min(1, 'Name is required').max(MAX_NAME_LENGTH),
-  phone: z.string().min(1, 'Phone is required').max(MAX_PHONE_LENGTH),
+export const PromoteMemberSchema = z.object({
+  memberId: z.string().cuid('Invalid member ID'),
 }).strict();
 
-export type TrainerCreateInput = z.infer<typeof TrainerCreateSchema>;
+export type PromoteMemberInput = z.infer<typeof PromoteMemberSchema>;
 
 // ===== QUERY PARAMETER SCHEMAS =====
 // Validates and sanitizes GET request query parameters (OWASP input validation)

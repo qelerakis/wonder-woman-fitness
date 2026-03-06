@@ -19,7 +19,7 @@ import {
   SessionMemberAssignmentSchema,
   WorkoutSchema,
   DepartureSchema,
-  TrainerCreateSchema,
+  PromoteMemberSchema,
   LoginSchema,
   ForgotPasswordSchema,
   ResetPasswordSchema,
@@ -171,11 +171,9 @@ describe("Strict schema validation — rejects unexpected fields", () => {
     expect(result.success).toBe(false);
   });
 
-  it("TrainerCreateSchema rejects extra fields", () => {
-    const result = TrainerCreateSchema.safeParse({
-      email: "t@test.com",
-      name: "Trainer",
-      phone: "123",
+  it("PromoteMemberSchema rejects extra fields", () => {
+    const result = PromoteMemberSchema.safeParse({
+      memberId: "cm1234567890abcdef",
       role: "OWNER",
     });
     expect(result.success).toBe(false);
@@ -297,17 +295,14 @@ describe("String length limits — rejects oversized fields", () => {
     }
   });
 
-  it("TrainerCreateSchema rejects email > 254 chars", () => {
-    const longEmail = "a".repeat(246) + "@test.com"; // 255 chars, exceeds 254 limit
-    const result = TrainerCreateSchema.safeParse({
-      email: longEmail,
-      name: "Trainer",
-      phone: "123",
+  it("PromoteMemberSchema rejects invalid memberId", () => {
+    const result = PromoteMemberSchema.safeParse({
+      memberId: "not-a-cuid",
     });
     expect(result.success).toBe(false);
     if (!result.success) {
-      const emailErrors = result.error.flatten().fieldErrors.email;
-      expect(emailErrors).toBeDefined();
+      const memberIdErrors = result.error.flatten().fieldErrors.memberId;
+      expect(memberIdErrors).toBeDefined();
     }
   });
 

@@ -8,6 +8,7 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./test/mocks/next-intl.ts"],
     globals: true,
+    exclude: ["**/node_modules/**", "**/.claude/**"],
   },
   resolve: {
     alias: {
