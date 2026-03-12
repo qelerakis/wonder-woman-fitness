@@ -219,7 +219,7 @@ describe("MemberSessionDetailClient — localized date formatting", () => {
       votingEnabled: true,
       votingDeadline: future.toISOString(),
     });
-    // The date should use "EEE, MMM d, h:mm a" format (comma, not 'at')
+    // The date should use "EEE, MMM d, HH:mm" format (comma, not 'at')
     // We verify 'at' does NOT appear between date and time
     const html = document.body.innerHTML;
     // The text should contain a comma-separated date-time, not "at"

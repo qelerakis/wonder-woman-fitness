@@ -1036,7 +1036,7 @@ describe("MemberSessionDetailClient", () => {
         session={makeSession({
           recurringSlot: null,
           customDay: 3, // Wednesday
-          customStartHour: 14, // 2 PM
+          customStartHour: 14, // 14:00
         })}
         myVote={null}
         userId="member-1"
@@ -1047,14 +1047,14 @@ describe("MemberSessionDetailClient", () => {
     );
 
     expect(screen.getByText(/Wednesday/)).toBeTruthy();
-    expect(screen.getByText(/2:00 PM/)).toBeTruthy();
+    expect(screen.getByText(/14:00/)).toBeTruthy();
   });
 
   it("renders correct day/time from recurringSlot when present", () => {
     render(
       <MemberSessionDetailClient
         session={makeSession({
-          recurringSlot: { dayOfWeek: 5, startHour: 17 }, // Friday 5 PM
+          recurringSlot: { dayOfWeek: 5, startHour: 17 }, // Friday 17:00
         })}
         myVote={null}
         userId="member-1"
@@ -1065,7 +1065,7 @@ describe("MemberSessionDetailClient", () => {
     );
 
     expect(screen.getByText(/Friday/)).toBeTruthy();
-    expect(screen.getByText(/5:00 PM/)).toBeTruthy();
+    expect(screen.getByText(/17:00/)).toBeTruthy();
   });
 
   // ─── Who's Coming vs isFull interaction ─────────────────────────
@@ -1547,7 +1547,7 @@ describe("MemberSessionDetailClient", () => {
         />
       );
 
-      // Should show "Closes Sun, Mar 8 at 9:00 AM" (not "Closes in")
+      // Should show "Closes Sun, Mar 8, 09:00" (not "Closes in")
       expect(screen.getByText(/Closes/)).toBeTruthy();
       expect(screen.queryByText(/Closes in/)).toBeNull();
 
@@ -1779,7 +1779,7 @@ describe("MemberSessionDetailClient", () => {
       vi.useRealTimers();
     });
 
-    it("absolute deadline text uses 'EEE, MMM d at h:mm a' format", () => {
+    it("absolute deadline text uses 'EEE, MMM d, HH:mm' format", () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date("2026-03-07T09:00:00.000Z"));
 
@@ -1796,8 +1796,8 @@ describe("MemberSessionDetailClient", () => {
         />
       );
 
-      // Verify the format pattern: "Closes <Day>, <Mon> <d>, <h>:<mm> <AM/PM>"
-      const closesEl = screen.getByText(/Closes \w{3}, \w{3} \d{1,2}, \d{1,2}:\d{2} [AP]M/);
+      // Verify the format pattern: "Closes <Day>, <Mon> <d>, <HH>:<mm>"
+      const closesEl = screen.getByText(/Closes \w{3}, \w{3} \d{1,2}, \d{2}:\d{2}/);
       expect(closesEl).toBeTruthy();
 
       vi.useRealTimers();
@@ -1924,7 +1924,7 @@ describe("MemberSessionDetailClient", () => {
       // Should contain an actual formatted date, not generic "the deadline"
       expect(screen.queryByText("You can change your vote until the deadline.")).toBeNull();
       // Verify it has the format pattern with day name, month, date, and time
-      expect(screen.getByText(/You can change your vote until \w{3}, \w{3} \d{1,2}, \d{1,2}:\d{2} [AP]M/)).toBeTruthy();
+      expect(screen.getByText(/You can change your vote until \w{3}, \w{3} \d{1,2}, \d{2}:\d{2}/)).toBeTruthy();
 
       vi.useRealTimers();
     });
@@ -1947,7 +1947,7 @@ describe("MemberSessionDetailClient", () => {
       );
 
       // Verify actual date is shown in hint, not generic "the deadline"
-      expect(screen.getByText(/You can change your vote until \w{3}, \w{3} \d{1,2}, \d{1,2}:\d{2} [AP]M/)).toBeTruthy();
+      expect(screen.getByText(/You can change your vote until \w{3}, \w{3} \d{1,2}, \d{2}:\d{2}/)).toBeTruthy();
 
       vi.useRealTimers();
     });
@@ -2088,7 +2088,7 @@ describe("MemberSessionDetailClient", () => {
       vi.useRealTimers();
     });
 
-    it("PM deadline formats correctly in hint text", () => {
+    it("evening deadline formats correctly in hint text", () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date("2026-03-07T09:00:00.000Z"));
 
@@ -2105,9 +2105,9 @@ describe("MemberSessionDetailClient", () => {
         />
       );
 
-      // Should include PM in the formatted time
+      // Should include 24-hour time in the formatted output (15:30 UTC = 16:30 local)
       const hintEl = screen.getByText(/You can change your vote until/);
-      expect(hintEl.textContent).toMatch(/PM/);
+      expect(hintEl.textContent).toMatch(/\d{2}:\d{2}/);
 
       vi.useRealTimers();
     });
@@ -2770,7 +2770,7 @@ describe("MemberSessionDetailClient", () => {
       );
 
       expect(screen.getByText(/Friday/)).toBeTruthy();
-      expect(screen.getByText(/4:00 PM/)).toBeTruthy();
+      expect(screen.getByText(/16:00/)).toBeTruthy();
       expect(screen.getByText("You are assigned to this session.")).toBeTruthy();
     });
 

@@ -45,9 +45,9 @@ describe("getDateLocale", () => {
   });
 
   it("formats a full date differently for each locale", () => {
-    const date = new Date(2026, 2, 9, 9, 0); // March 9, 2026 9:00 AM
-    const enFormatted = format(date, "EEE, MMM d, h:mm a", { locale: getDateLocale("en") });
-    const mkFormatted = format(date, "EEE, MMM d, h:mm a", { locale: getDateLocale("mk") });
+    const date = new Date(2026, 2, 9, 9, 0); // March 9, 2026 09:00
+    const enFormatted = format(date, "EEE, MMM d, HH:mm", { locale: getDateLocale("en") });
+    const mkFormatted = format(date, "EEE, MMM d, HH:mm", { locale: getDateLocale("mk") });
     expect(enFormatted).toContain("Mon");
     expect(mkFormatted).not.toContain("Mon");
   });
