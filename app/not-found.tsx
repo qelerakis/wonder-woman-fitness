@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/Button";
 
 export default function NotFoundPage(): React.ReactElement {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface-950 px-4">
+    <div className="flex flex-1 items-center justify-center bg-surface-950 px-4">
       <div className="max-w-md text-center">
         {/* 404 display */}
         <p className="mb-2 text-7xl font-bold text-primary-500">404</p>

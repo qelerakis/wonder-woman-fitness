@@ -7,7 +7,7 @@ export default function ForgotPasswordPage(): React.ReactElement {
   const t = useTranslations("auth");
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface-950 px-4">
+    <div className="flex flex-1 items-center justify-center bg-surface-950 px-4">
       <div className="w-full max-w-md rounded-xl border border-surface-800 bg-surface-900 p-8 text-center">
         <h1 className="text-2xl font-bold text-surface-100">
           {t("resetPassword")}

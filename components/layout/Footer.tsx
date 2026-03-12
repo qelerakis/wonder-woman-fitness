@@ -6,7 +6,7 @@ export function Footer(): React.ReactElement {
   const t = useTranslations("footer");
 
   return (
-    <footer className="w-full py-4 text-center text-xs text-surface-500">
+    <footer className="w-full shrink-0 py-4 text-center text-xs text-surface-500">
       {t("madeBy")}
     </footer>
   );

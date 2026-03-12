@@ -74,7 +74,7 @@ export default async function LockedPage(): Promise<React.ReactElement> {
   });
 
   return (
-    <div className="min-h-screen bg-surface-950">
+    <div className="bg-surface-950">
       <LockoutScreen
         memberName={session.user.name}
         ownerEmail={owner?.email}

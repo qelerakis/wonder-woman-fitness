@@ -12,7 +12,7 @@ export default function ErrorPage({
   reset,
 }: ErrorPageProps): React.ReactElement {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-surface-950 px-4">
+    <div className="flex flex-1 items-center justify-center bg-surface-950 px-4">
       <div className="max-w-md text-center">
         {/* Error icon */}
         <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-error-700/20 border border-error-700/30">

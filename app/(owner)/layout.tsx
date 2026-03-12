@@ -27,7 +27,7 @@ export default async function OwnerLayout({
   });
 
   return (
-    <div className="min-h-screen bg-surface-950">
+    <div className="bg-surface-950">
       <Header
         userName={session.user.name}
         userRole={session.user.role}

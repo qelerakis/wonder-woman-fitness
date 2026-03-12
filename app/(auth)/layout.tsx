@@ -10,7 +10,7 @@ export default async function AuthLayout({
   const tBrand = await getTranslations("brand");
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-surface-950 px-4">
+    <div className="relative flex flex-1 items-center justify-center overflow-hidden bg-surface-950 px-4">
       {/* Animated Background */}
       <AuthBackground />
 

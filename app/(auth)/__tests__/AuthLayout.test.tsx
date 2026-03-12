@@ -152,7 +152,7 @@ describe("AuthLayout", () => {
     it("uses full-screen height with centered content", async () => {
       const { container } = await renderAuthLayout();
       const outerDiv = container.firstChild as HTMLElement;
-      expect(outerDiv.className).toContain("min-h-screen");
+      expect(outerDiv.className).toContain("flex-1");
       expect(outerDiv.className).toContain("flex");
       expect(outerDiv.className).toContain("items-center");
       expect(outerDiv.className).toContain("justify-center");
