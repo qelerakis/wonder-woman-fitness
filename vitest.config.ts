@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: "jsdom",
-    setupFiles: ["./test/setup.ts", "./test/mocks/next-intl.ts"],
+    setupFiles: ["./test/mocks/next-intl.ts"],
     globals: true,
     exclude: ["**/node_modules/**", "**/.claude/**"],
   },
