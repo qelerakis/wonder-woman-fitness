@@ -43,17 +43,17 @@ function makeSession(overrides: Partial<SessionWithDetails> = {}): SessionWithDe
 }
 
 describe("SessionCard — formatTime utility", () => {
-  it("formats AM hours correctly", () => {
-    expect(formatTime(9)).toBe("9:00 AM");
-    expect(formatTime(0)).toBe("12:00 AM");
-    expect(formatTime(11)).toBe("11:00 AM");
+  it("formats morning hours correctly", () => {
+    expect(formatTime(9)).toBe("09:00");
+    expect(formatTime(0)).toBe("00:00");
+    expect(formatTime(11)).toBe("11:00");
   });
 
-  it("formats PM hours correctly", () => {
-    expect(formatTime(12)).toBe("12:00 PM");
-    expect(formatTime(13)).toBe("1:00 PM");
-    expect(formatTime(18)).toBe("6:00 PM");
-    expect(formatTime(23)).toBe("11:00 PM");
+  it("formats afternoon/evening hours correctly", () => {
+    expect(formatTime(12)).toBe("12:00");
+    expect(formatTime(13)).toBe("13:00");
+    expect(formatTime(18)).toBe("18:00");
+    expect(formatTime(23)).toBe("23:00");
   });
 });
 
@@ -119,7 +119,7 @@ describe("SessionCard — renders session data correctly", () => {
     render(
       <SessionCard session={makeSession()} basePath="/test" />
     );
-    expect(screen.getByText("9:00 AM")).toBeDefined();
+    expect(screen.getByText("09:00")).toBeDefined();
   });
 
   it("renders workout title", () => {

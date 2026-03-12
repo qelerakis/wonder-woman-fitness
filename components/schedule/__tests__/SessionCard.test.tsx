@@ -142,7 +142,7 @@ describe("SessionCard", () => {
       // recurringSlot.startHour = 9
       render(<SessionCard session={session} basePath="/member/session" />);
 
-      expect(screen.getByText("9:00 AM")).toBeDefined();
+      expect(screen.getByText("09:00")).toBeDefined();
     });
 
     it("displays time from customStartHour when no recurring slot", () => {
@@ -153,10 +153,10 @@ describe("SessionCard", () => {
       });
       render(<SessionCard session={session} basePath="/member/session" />);
 
-      expect(screen.getByText("2:00 PM")).toBeDefined();
+      expect(screen.getByText("14:00")).toBeDefined();
     });
 
-    it("displays 12:00 PM for noon", () => {
+    it("displays 12:00 for noon", () => {
       const session = makeSession({
         recurringSlot: {
           id: "slot-1",
@@ -167,10 +167,10 @@ describe("SessionCard", () => {
       });
       render(<SessionCard session={session} basePath="/member/session" />);
 
-      expect(screen.getByText("12:00 PM")).toBeDefined();
+      expect(screen.getByText("12:00")).toBeDefined();
     });
 
-    it("displays 12:00 AM for midnight (hour 0)", () => {
+    it("displays 00:00 for midnight (hour 0)", () => {
       const session = makeSession({
         recurringSlotId: null,
         recurringSlot: null,
@@ -178,10 +178,10 @@ describe("SessionCard", () => {
       });
       render(<SessionCard session={session} basePath="/member/session" />);
 
-      expect(screen.getByText("12:00 AM")).toBeDefined();
+      expect(screen.getByText("00:00")).toBeDefined();
     });
 
-    it("displays PM times correctly for afternoon hours", () => {
+    it("displays 24-hour times correctly for afternoon hours", () => {
       const session = makeSession({
         recurringSlot: {
           id: "slot-1",
@@ -192,7 +192,7 @@ describe("SessionCard", () => {
       });
       render(<SessionCard session={session} basePath="/member/session" />);
 
-      expect(screen.getByText("5:00 PM")).toBeDefined();
+      expect(screen.getByText("17:00")).toBeDefined();
     });
 
     it("falls back to hour 0 when neither slot nor custom hour exists", () => {
@@ -203,7 +203,7 @@ describe("SessionCard", () => {
       });
       render(<SessionCard session={session} basePath="/member/session" />);
 
-      expect(screen.getByText("12:00 AM")).toBeDefined();
+      expect(screen.getByText("00:00")).toBeDefined();
     });
   });
 
@@ -1217,53 +1217,53 @@ describe("SessionCard", () => {
   // ─── formatTime Utility ──────────────────────────────────────────
 
   describe("formatTime", () => {
-    it("formats midnight (0) as 12:00 AM", () => {
-      expect(formatTime(0)).toBe("12:00 AM");
+    it("formats midnight (0) as 00:00", () => {
+      expect(formatTime(0)).toBe("00:00");
     });
 
-    it("formats 1 AM", () => {
-      expect(formatTime(1)).toBe("1:00 AM");
+    it("formats 1 as 01:00", () => {
+      expect(formatTime(1)).toBe("01:00");
     });
 
-    it("formats 11 AM", () => {
-      expect(formatTime(11)).toBe("11:00 AM");
+    it("formats 11 as 11:00", () => {
+      expect(formatTime(11)).toBe("11:00");
     });
 
-    it("formats noon (12) as 12:00 PM", () => {
-      expect(formatTime(12)).toBe("12:00 PM");
+    it("formats noon (12) as 12:00", () => {
+      expect(formatTime(12)).toBe("12:00");
     });
 
-    it("formats 1 PM (13)", () => {
-      expect(formatTime(13)).toBe("1:00 PM");
+    it("formats 13 as 13:00", () => {
+      expect(formatTime(13)).toBe("13:00");
     });
 
-    it("formats 5 PM (17)", () => {
-      expect(formatTime(17)).toBe("5:00 PM");
+    it("formats 17 as 17:00", () => {
+      expect(formatTime(17)).toBe("17:00");
     });
 
-    it("formats 9 PM (21)", () => {
-      expect(formatTime(21)).toBe("9:00 PM");
+    it("formats 21 as 21:00", () => {
+      expect(formatTime(21)).toBe("21:00");
     });
 
-    it("formats 11 PM (23)", () => {
-      expect(formatTime(23)).toBe("11:00 PM");
+    it("formats 23 as 23:00", () => {
+      expect(formatTime(23)).toBe("23:00");
     });
 
     it("formats early morning hours correctly", () => {
-      expect(formatTime(7)).toBe("7:00 AM");
-      expect(formatTime(8)).toBe("8:00 AM");
-      expect(formatTime(9)).toBe("9:00 AM");
-      expect(formatTime(10)).toBe("10:00 AM");
+      expect(formatTime(7)).toBe("07:00");
+      expect(formatTime(8)).toBe("08:00");
+      expect(formatTime(9)).toBe("09:00");
+      expect(formatTime(10)).toBe("10:00");
     });
 
     it("formats afternoon hours correctly", () => {
-      expect(formatTime(14)).toBe("2:00 PM");
-      expect(formatTime(15)).toBe("3:00 PM");
-      expect(formatTime(16)).toBe("4:00 PM");
-      expect(formatTime(18)).toBe("6:00 PM");
-      expect(formatTime(19)).toBe("7:00 PM");
-      expect(formatTime(20)).toBe("8:00 PM");
-      expect(formatTime(22)).toBe("10:00 PM");
+      expect(formatTime(14)).toBe("14:00");
+      expect(formatTime(15)).toBe("15:00");
+      expect(formatTime(16)).toBe("16:00");
+      expect(formatTime(18)).toBe("18:00");
+      expect(formatTime(19)).toBe("19:00");
+      expect(formatTime(20)).toBe("20:00");
+      expect(formatTime(22)).toBe("22:00");
     });
   });
 
