@@ -673,5 +673,8 @@
     "noMembersYet": "No members yet",
     "noMembersMatch": "No members match your filters",
     "showingCount": "Showing {filtered} of {total} {total, plural, one {member} other {members}}"
+  },
+  "footer": {
+    "madeBy": "Made by Stefan Savevski"
   }
 }

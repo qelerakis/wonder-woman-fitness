@@ -673,5 +673,8 @@
     "noMembersYet": "Нема членови",
     "noMembersMatch": "Нема членови што одговараат на филтрите",
     "showingCount": "Прикажани {filtered} од {total} {total, plural, one {член} other {членови}}"
+  },
+  "footer": {
+    "madeBy": "Направено од Стефан Савевски"
   }
 }
