@@ -121,7 +121,7 @@ export function SessionCard({
         )}
         {showDeadline && deadline && (
           <span className={`text-xs ${isUrgent ? "text-warning-400" : "text-surface-500"}`}>
-            {t("byDeadline", { deadline: format(deadline, "EEE h a", { locale: dateLocale }) })}
+            {t("byDeadline", { deadline: format(deadline, "EEE HH:mm", { locale: dateLocale }) })}
           </span>
         )}
       </div>

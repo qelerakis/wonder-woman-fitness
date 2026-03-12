@@ -66,7 +66,7 @@ describe("next-intl mock — useTranslations", () => {
 
   it("interpolates simple placeholders", () => {
     const t = useTranslations("schedule");
-    expect(t("byDeadline", { deadline: "Mon 9 AM" })).toBe("by Mon 9 AM");
+    expect(t("byDeadline", { deadline: "Mon 09:00" })).toBe("by Mon 09:00");
   });
 
   it("interpolates multiple placeholders", () => {

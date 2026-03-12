@@ -899,7 +899,7 @@ describe("SessionCard", () => {
       vi.useRealTimers();
     });
 
-    it("formats deadline text using 'EEE h a' format (e.g. 'by Tue 9 AM')", () => {
+    it("formats deadline text using 'EEE HH:mm' 24-hour format (e.g. 'by Tue 08:00')", () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date("2026-02-09T12:00:00.000Z"));
 
@@ -916,14 +916,14 @@ describe("SessionCard", () => {
         />
       );
 
-      // Verify the format includes day abbreviation and AM/PM
+      // Verify the format includes day abbreviation and 24-hour time
       const deadlineText = screen.getByText(/^by /i);
-      expect(deadlineText.textContent).toMatch(/^by \w{3} \d{1,2} [AP]M$/);
+      expect(deadlineText.textContent).toMatch(/^by \w{3} \d{2}:\d{2}$/);
 
       vi.useRealTimers();
     });
 
-    it("formats PM deadline correctly (includes PM indicator)", () => {
+    it("formats evening deadline correctly in 24-hour format", () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date("2026-02-09T12:00:00.000Z"));
 
@@ -941,7 +941,7 @@ describe("SessionCard", () => {
       );
 
       const deadlineText = screen.getByText(/^by /i);
-      expect(deadlineText.textContent).toMatch(/PM$/);
+      expect(deadlineText.textContent).toMatch(/\d{2}:\d{2}$/);
 
       vi.useRealTimers();
     });
