@@ -87,7 +87,7 @@ function getTimeAgo(date: Date | string): string {
   if (diffMs < oneDayMs) {
     return formatDistanceToNow(d, { addSuffix: true });
   }
-  return format(d, "MMM d, h:mm a");
+  return format(d, "MMM d, HH:mm");
 }
 
 export function NotificationItem({

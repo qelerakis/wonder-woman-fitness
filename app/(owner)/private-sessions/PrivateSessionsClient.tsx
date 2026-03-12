@@ -420,7 +420,7 @@ export function PrivateSessionsClient({
                       {ps.createdBy}
                     </td>
                     <td className="px-6 py-3 text-sm text-surface-400">
-                      {format(new Date(ps.scheduledAt), "MMM d, yyyy h:mm a")}
+                      {format(new Date(ps.scheduledAt), "MMM d, yyyy HH:mm")}
                     </td>
                     <td className="px-6 py-3 text-sm font-medium text-surface-200">
                       {formatCurrency(ps.amount)}

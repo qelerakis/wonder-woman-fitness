@@ -149,7 +149,7 @@ export function MemberSessionDetailClient(
                 <span className={`text-xs ${isUrgent ? "text-warning-400" : "text-surface-400"}`}>
                   {isUrgent
                     ? t("votingClosesIn", { hours: timeUntil.hours, minutes: timeUntil.minutes })
-                    : t("votingClosesAt", { deadline: format(deadline, "EEE, MMM d, h:mm a", { locale: dateLocale }) })}
+                    : t("votingClosesAt", { deadline: format(deadline, "EEE, MMM d, HH:mm", { locale: dateLocale }) })}
                 </span>
               </>
             )}
@@ -242,7 +242,7 @@ export function MemberSessionDetailClient(
                     )}
                     {currentVote !== null && (
                       <p className="text-xs text-surface-500">
-                        {t("changeVoteUntil", { deadline: format(deadline, "EEE, MMM d, h:mm a", { locale: dateLocale }) })}
+                        {t("changeVoteUntil", { deadline: format(deadline, "EEE, MMM d, HH:mm", { locale: dateLocale }) })}
                       </p>
                     )}
                   </div>

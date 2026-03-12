@@ -53,7 +53,7 @@ export function VotingPrompt({
             <span className="text-warning-500">{t("votingHasClosed")}</span>
           ) : (
             <span className="font-medium text-surface-300">
-              {t("voteByDeadline", { deadline: format(votingDeadline, "EEE, MMM d, h:mm a", { locale: dateLocale }) })}
+              {t("voteByDeadline", { deadline: format(votingDeadline, "EEE, MMM d, HH:mm", { locale: dateLocale }) })}
             </span>
           )}
         </p>
