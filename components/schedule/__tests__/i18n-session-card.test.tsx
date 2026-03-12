@@ -114,6 +114,57 @@ describe("SessionCard — translated badges", () => {
   });
 });
 
+describe("SessionCard — deadline uses 24-hour format", () => {
+  it("deadline text uses 'EEE HH:mm' 24-hour format (e.g., 'by Mon 09:00')", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-08T12:00:00.000Z"));
+
+    render(
+      <SessionCard
+        session={makeSession({
+          votingEnabled: true,
+          votingDeadline: new Date("2026-03-09T15:00:00.000Z"),
+        })}
+        basePath="/test"
+        showVotingIndicator={true}
+        currentUserId="unvoted-user"
+      />
+    );
+
+    const deadlineText = screen.getByText(/^by /i);
+    // Format should be "by <DayAbbrev> HH:mm" with no AM/PM
+    expect(deadlineText.textContent).toMatch(/^by \w{3} \d{2}:\d{2}$/);
+    expect(deadlineText.textContent).not.toMatch(/AM/i);
+    expect(deadlineText.textContent).not.toMatch(/PM/i);
+
+    vi.useRealTimers();
+  });
+
+  it("deadline for evening time shows 24-hour format not 12-hour", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-08T12:00:00.000Z"));
+
+    render(
+      <SessionCard
+        session={makeSession({
+          votingEnabled: true,
+          votingDeadline: new Date("2026-03-09T20:00:00.000Z"),
+        })}
+        basePath="/test"
+        showVotingIndicator={true}
+        currentUserId="unvoted-user"
+      />
+    );
+
+    const deadlineText = screen.getByText(/^by /i);
+    // Should show 20:00 not 8:00 PM
+    expect(deadlineText.textContent).toMatch(/\d{2}:\d{2}$/);
+    expect(deadlineText.textContent).not.toMatch(/PM/i);
+
+    vi.useRealTimers();
+  });
+});
+
 describe("SessionCard — renders session data correctly", () => {
   it("renders time from formatTime", () => {
     render(

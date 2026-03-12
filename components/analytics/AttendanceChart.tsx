@@ -95,4 +95,5 @@ export function AttendanceChart({
   );
 }
 
+export { formatHour };
 export type { AttendanceChartProps, SlotData };

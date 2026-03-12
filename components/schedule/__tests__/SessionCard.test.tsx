@@ -1694,6 +1694,129 @@ describe("SessionCard", () => {
     });
   });
 
+  // ─── 24-hour Format Consistency ─────────────────────────────────
+
+  describe("24-hour format consistency", () => {
+    it("renders 07:00 for session with startHour 7", () => {
+      const session = makeSession({
+        recurringSlot: {
+          id: "slot-1",
+          dayOfWeek: 1,
+          startHour: 7,
+          createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        },
+      });
+      render(<SessionCard session={session} basePath="/member/session" />);
+
+      expect(screen.getByText("07:00")).toBeDefined();
+    });
+
+    it("renders 13:00 for session with startHour 13", () => {
+      const session = makeSession({
+        recurringSlot: {
+          id: "slot-1",
+          dayOfWeek: 1,
+          startHour: 13,
+          createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        },
+      });
+      render(<SessionCard session={session} basePath="/member/session" />);
+
+      expect(screen.getByText("13:00")).toBeDefined();
+    });
+
+    it("renders 20:00 for session with startHour 20", () => {
+      const session = makeSession({
+        recurringSlot: {
+          id: "slot-1",
+          dayOfWeek: 1,
+          startHour: 20,
+          createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        },
+      });
+      render(<SessionCard session={session} basePath="/member/session" />);
+
+      expect(screen.getByText("20:00")).toBeDefined();
+    });
+
+    it("renders 00:00 for custom session with customStartHour 0", () => {
+      const session = makeSession({
+        recurringSlotId: null,
+        recurringSlot: null,
+        customStartHour: 0,
+      });
+      render(<SessionCard session={session} basePath="/member/session" />);
+
+      expect(screen.getByText("00:00")).toBeDefined();
+    });
+
+    it("renders 23:00 for custom session with customStartHour 23", () => {
+      const session = makeSession({
+        recurringSlotId: null,
+        recurringSlot: null,
+        customStartHour: 23,
+      });
+      render(<SessionCard session={session} basePath="/member/session" />);
+
+      expect(screen.getByText("23:00")).toBeDefined();
+    });
+
+    it("voting deadline renders in HH:mm format with no AM/PM anywhere", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-02-09T12:00:00.000Z"));
+
+      const session = makeSession({
+        votingEnabled: true,
+        votingDeadline: new Date("2026-02-10T15:00:00.000Z"),
+      });
+      render(
+        <SessionCard
+          session={session}
+          basePath="/member/session"
+          showVotingIndicator={true}
+          currentUserId="member-99"
+        />
+      );
+
+      const deadlineText = screen.getByText(/^by /i);
+      expect(deadlineText.textContent).not.toMatch(/AM/i);
+      expect(deadlineText.textContent).not.toMatch(/PM/i);
+      expect(deadlineText.textContent).toMatch(/\d{2}:\d{2}/);
+
+      vi.useRealTimers();
+    });
+
+    it("no rendered text contains AM or PM for a standard session card", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-02-09T12:00:00.000Z"));
+
+      const session = makeSession({
+        votingEnabled: true,
+        votingDeadline: new Date("2026-02-10T15:00:00.000Z"),
+        recurringSlot: {
+          id: "slot-1",
+          dayOfWeek: 1,
+          startHour: 15,
+          createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        },
+      });
+      const { container } = render(
+        <SessionCard
+          session={session}
+          basePath="/member/session"
+          showVotingIndicator={true}
+          currentUserId="member-99"
+        />
+      );
+
+      const allText = container.textContent || "";
+      expect(allText).not.toMatch(/\bAM\b/);
+      expect(allText).not.toMatch(/\bPM\b/);
+
+      vi.useRealTimers();
+    });
+  });
+
   // ─── Styling ─────────────────────────────────────────────────────
 
   describe("styling", () => {

@@ -3083,4 +3083,150 @@ describe("MemberSessionDetailClient", () => {
       expect(screen.queryByText(/assigned/)).toBeNull();
     });
   });
+
+  // ─── 24-hour Format in Detail View ─────────────────────────────────
+
+  describe("24-hour format in detail view", () => {
+    it("session time header uses 24-hour format for morning hour", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({ recurringSlot: { dayOfWeek: 1, startHour: 9 } })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={false}
+        />
+      );
+
+      expect(screen.getByText(/09:00/)).toBeTruthy();
+    });
+
+    it("session time header uses 24-hour format for afternoon hour", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({ recurringSlot: { dayOfWeek: 1, startHour: 15 } })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={false}
+        />
+      );
+
+      expect(screen.getByText(/15:00/)).toBeTruthy();
+    });
+
+    it("session time header uses 24-hour format for midnight (hour 0)", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            recurringSlot: null,
+            customDay: 3,
+            customStartHour: 0,
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={false}
+        />
+      );
+
+      expect(screen.getByText(/00:00/)).toBeTruthy();
+    });
+
+    it("session time header uses 24-hour format for hour 23", () => {
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            recurringSlot: null,
+            customDay: 5,
+            customStartHour: 23,
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={false}
+        />
+      );
+
+      expect(screen.getByText(/23:00/)).toBeTruthy();
+    });
+
+    it("voting deadline hint text uses 24-hour format (no AM/PM)", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-03-07T09:00:00.000Z"));
+
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingDeadline: "2026-03-08T15:30:00.000Z",
+          })}
+          myVote={true}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={false}
+        />
+      );
+
+      const hintEl = screen.getByText(/You can change your vote until/);
+      expect(hintEl.textContent).not.toMatch(/\bAM\b/i);
+      expect(hintEl.textContent).not.toMatch(/\bPM\b/i);
+      expect(hintEl.textContent).toMatch(/\d{2}:\d{2}/);
+
+      vi.useRealTimers();
+    });
+
+    it("header deadline text uses 24-hour format (no AM/PM)", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-03-07T09:00:00.000Z"));
+
+      render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            votingDeadline: "2026-03-08T15:00:00.000Z",
+          })}
+          myVote={null}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={false}
+        />
+      );
+
+      const closesEl = screen.getByText(/Closes/);
+      expect(closesEl.textContent).not.toMatch(/\bAM\b/i);
+      expect(closesEl.textContent).not.toMatch(/\bPM\b/i);
+
+      vi.useRealTimers();
+    });
+
+    it("no rendered text in the detail view contains AM or PM", () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-03-07T09:00:00.000Z"));
+
+      const { container } = render(
+        <MemberSessionDetailClient
+          session={makeSession({
+            recurringSlot: { dayOfWeek: 1, startHour: 14 },
+            votingDeadline: "2026-03-08T15:30:00.000Z",
+          })}
+          myVote={true}
+          userId="member-1"
+          isFull={false}
+          hasComingVoteOnSameDay={false}
+          isAssigned={false}
+        />
+      );
+
+      const allText = container.textContent || "";
+      expect(allText).not.toMatch(/\bAM\b/);
+      expect(allText).not.toMatch(/\bPM\b/);
+
+      vi.useRealTimers();
+    });
+  });
 });
