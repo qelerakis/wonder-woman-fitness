@@ -367,6 +367,7 @@ export function SessionDetailClient({
               disabled={isCancelled}
               maxCapacity={MAX_CLASS_SIZE}
               currentCount={currentMemberIds.length}
+              showSearch
             />
           )}
         </div>
