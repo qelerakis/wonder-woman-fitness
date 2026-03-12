@@ -30,6 +30,7 @@ export function AssignmentToggleList({
   const t = useTranslations("assignment");
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const trimmedQuery = searchQuery.trim();
 
   const atCapacity =
     maxCapacity !== undefined &&
@@ -41,9 +42,9 @@ export function AssignmentToggleList({
       ? `${currentCount} / ${maxCapacity}`
       : undefined;
 
-  const filteredPeople = showSearch && searchQuery.trim()
+  const filteredPeople = showSearch && trimmedQuery
     ? people.filter((person) =>
-        person.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
+        person.name.toLowerCase().includes(trimmedQuery.toLowerCase())
       )
     : people;
 
@@ -64,14 +65,17 @@ export function AssignmentToggleList({
       <CardHeader title={title} description={capacityDescription} />
 
       {showSearch && (
-        <div className="mt-3 px-1">
+        <div className="mt-3 px-1" role="search">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t("searchPlaceholder")}
             aria-label={t("searchPlaceholder")}
-            className="w-full rounded-lg border border-surface-700 bg-surface-900 px-3 py-2 text-sm text-surface-100 placeholder-surface-500 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+            disabled={disabled}
+            className={`w-full rounded-lg border border-surface-700 bg-surface-900 px-3 py-2 text-sm text-surface-100 placeholder-surface-500 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500${
+              disabled ? " opacity-50 cursor-not-allowed" : ""
+            }`}
           />
         </div>
       )}
@@ -79,7 +83,7 @@ export function AssignmentToggleList({
       <div className="mt-3 flex flex-col gap-1.5">
         {filteredPeople.length === 0 && (
           <p className="px-3 py-2 text-sm text-surface-500">
-            {showSearch && searchQuery.trim() ? t("noSearchResults") : t("noPeopleAvailable")}
+            {showSearch && trimmedQuery ? t("noSearchResults") : t("noPeopleAvailable")}
           </p>
         )}
 
