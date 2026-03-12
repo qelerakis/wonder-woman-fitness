@@ -17,6 +17,7 @@ const sizes = [
   { size: 512, path: "public/icon-512.png" },
 ];
 
+await mkdir("app", { recursive: true });
 await mkdir("public", { recursive: true });
 
 for (const { size, path } of sizes) {
