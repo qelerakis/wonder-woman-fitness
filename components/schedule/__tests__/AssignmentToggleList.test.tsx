@@ -431,26 +431,15 @@ describe("AssignmentToggleList", () => {
       expect((input as HTMLInputElement).disabled).toBe(false);
     });
 
-    it("search input has opacity styling when disabled", () => {
+    it("search input has disabled styling via Tailwind variants", () => {
       render(
         <AssignmentToggleList
           {...makeProps({ showSearch: true, disabled: true })}
         />
       );
       const input = screen.getByPlaceholderText("Search members...");
-      expect(input.className).toContain("opacity-50");
-      expect(input.className).toContain("cursor-not-allowed");
-    });
-
-    it("search input does not have opacity styling when enabled", () => {
-      render(
-        <AssignmentToggleList
-          {...makeProps({ showSearch: true, disabled: false })}
-        />
-      );
-      const input = screen.getByPlaceholderText("Search members...");
-      expect(input.className).not.toContain("opacity-50");
-      expect(input.className).not.toContain("cursor-not-allowed");
+      expect(input.className).toContain("disabled:opacity-50");
+      expect(input.className).toContain("disabled:cursor-not-allowed");
     });
   });
 
@@ -619,6 +608,92 @@ describe("AssignmentToggleList", () => {
 
       expect(screen.getByText("Alice Johnson")).toBeDefined();
       expect(screen.queryByText("Bob Smith")).toBeNull();
+    });
+
+    it("shows 'no people available' when people=[] and search query is active", () => {
+      render(
+        <AssignmentToggleList
+          {...makeProps({ people: [], showSearch: true })}
+        />
+      );
+      const input = screen.getByPlaceholderText("Search members...");
+      fireEvent.change(input, { target: { value: "alice" } });
+
+      // Should show "no people available" NOT "no members found"
+      // because the list is genuinely empty, not filtered to zero
+      expect(screen.getByText("No people available.")).toBeDefined();
+      expect(screen.queryByText("No members found.")).toBeNull();
+    });
+
+    it("reflects typed value in the input DOM element", () => {
+      render(<AssignmentToggleList {...makeProps({ showSearch: true })} />);
+      const input = screen.getByPlaceholderText("Search members...") as HTMLInputElement;
+
+      fireEvent.change(input, { target: { value: "alice" } });
+      expect(input.value).toBe("alice");
+
+      fireEvent.change(input, { target: { value: "" } });
+      expect(input.value).toBe("");
+    });
+  });
+
+  // ─── Error handling ───────────────────────────────────────────────
+
+  describe("error handling", () => {
+    it("clears loading state when onToggle rejects", async () => {
+      // Use mockImplementation to control the rejection timing and catch in test
+      let rejectToggle: (err: Error) => void;
+      const onToggle = vi.fn().mockImplementation(
+        () => new Promise<void>((_resolve, reject) => { rejectToggle = reject; })
+      );
+      render(<AssignmentToggleList {...makeProps({ onToggle, assignedIds: [] })} />);
+
+      const addButtons = screen.getAllByText("Add");
+      fireEvent.click(addButtons[0]); // Alice
+
+      // Spinner should appear
+      await waitFor(() => {
+        expect(screen.getAllByText("Add")).toHaveLength(4);
+      });
+
+      // Reject — the component's handleToggle uses try/finally so loadingId clears
+      rejectToggle!(new Error("Network error"));
+
+      // After rejection, spinner should disappear and button should return
+      await waitFor(() => {
+        expect(screen.getAllByText("Add")).toHaveLength(5);
+      });
+    });
+
+    it("clears loading state when onToggle rejects during search", async () => {
+      let rejectToggle: (err: Error) => void;
+      const onToggle = vi.fn().mockImplementation(
+        () => new Promise<void>((_resolve, reject) => { rejectToggle = reject; })
+      );
+      render(
+        <AssignmentToggleList
+          {...makeProps({ onToggle, assignedIds: [], showSearch: true })}
+        />
+      );
+
+      const input = screen.getByPlaceholderText("Search members...");
+      fireEvent.change(input, { target: { value: "bob" } });
+
+      const addButton = screen.getByText("Add");
+      fireEvent.click(addButton);
+
+      // Spinner should appear (Bob's Add replaced)
+      await waitFor(() => {
+        expect(screen.queryByText("Add")).toBeNull();
+      });
+
+      // Reject
+      rejectToggle!(new Error("Network error"));
+
+      // After rejection, button should return
+      await waitFor(() => {
+        expect(screen.getByText("Add")).toBeDefined();
+      });
     });
   });
 });

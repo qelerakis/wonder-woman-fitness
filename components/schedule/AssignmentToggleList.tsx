@@ -55,6 +55,9 @@ export function AssignmentToggleList({
     setLoadingId(userId);
     try {
       await onToggle(userId, currentlyAssigned);
+    } catch {
+      // Error handling is the parent's responsibility via onToggle.
+      // We catch here to prevent unhandled promise rejections from event handlers.
     } finally {
       setLoadingId(null);
     }
@@ -73,9 +76,7 @@ export function AssignmentToggleList({
             placeholder={t("searchPlaceholder")}
             aria-label={t("searchPlaceholder")}
             disabled={disabled}
-            className={`w-full rounded-lg border border-surface-700 bg-surface-900 px-3 py-2 text-sm text-surface-100 placeholder-surface-500 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500${
-              disabled ? " opacity-50 cursor-not-allowed" : ""
-            }`}
+            className="w-full rounded-lg border border-surface-700 bg-surface-800 px-3 py-2 text-sm text-surface-200 placeholder:text-surface-500 focus:border-primary-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
           />
         </div>
       )}
@@ -83,7 +84,7 @@ export function AssignmentToggleList({
       <div className="mt-3 flex flex-col gap-1.5">
         {filteredPeople.length === 0 && (
           <p className="px-3 py-2 text-sm text-surface-500">
-            {showSearch && trimmedQuery ? t("noSearchResults") : t("noPeopleAvailable")}
+            {showSearch && trimmedQuery && people.length > 0 ? t("noSearchResults") : t("noPeopleAvailable")}
           </p>
         )}
 
