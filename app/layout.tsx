@@ -3,6 +3,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { SessionProvider } from "next-auth/react";
 import { ToastProvider } from "@/components/ui/Toast";
+import { Footer } from "@/components/layout/Footer";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
@@ -34,7 +35,10 @@ export default async function RootLayout({
       <body className="min-h-screen bg-surface-950 text-surface-200 antialiased">
         <NextIntlClientProvider messages={messages}>
           <SessionProvider>
-            <ToastProvider>{children}</ToastProvider>
+            <ToastProvider>
+              {children}
+              <Footer />
+            </ToastProvider>
           </SessionProvider>
         </NextIntlClientProvider>
         <Analytics />
