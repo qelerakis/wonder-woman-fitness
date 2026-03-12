@@ -276,7 +276,9 @@
   "assignment": {
     "assigned": "Доделен",
     "add": "Додај",
-    "noPeopleAvailable": "Нема достапни лица."
+    "noPeopleAvailable": "Нема достапни лица.",
+    "searchPlaceholder": "Пребарувај членови...",
+    "noSearchResults": "Не се пронајдени членови."
   },
   "payments": {
     "title": "Плаќања",

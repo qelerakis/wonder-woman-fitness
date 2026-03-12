@@ -276,7 +276,9 @@
   "assignment": {
     "assigned": "Assigned",
     "add": "Add",
-    "noPeopleAvailable": "No people available."
+    "noPeopleAvailable": "No people available.",
+    "searchPlaceholder": "Search members...",
+    "noSearchResults": "No members found."
   },
   "payments": {
     "title": "Payments",
