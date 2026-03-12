@@ -25,9 +25,7 @@ interface AttendanceChartProps {
 }
 
 function formatHour(hour: number): string {
-  const period = hour >= 12 ? "PM" : "AM";
-  const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-  return `${displayHour}${period}`;
+  return `${hour.toString().padStart(2, "0")}:00`;
 }
 
 export function AttendanceChart({
