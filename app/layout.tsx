@@ -32,11 +32,11 @@ export default async function RootLayout({
 
   return (
     <html lang={locale}>
-      <body className="min-h-screen bg-surface-950 text-surface-200 antialiased">
+      <body className="flex min-h-screen flex-col bg-surface-950 text-surface-200 antialiased">
         <NextIntlClientProvider messages={messages}>
           <SessionProvider>
             <ToastProvider>
-              {children}
+              <div className="flex-1">{children}</div>
               <Footer />
             </ToastProvider>
           </SessionProvider>
