@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { AssignmentToggleList } from "../AssignmentToggleList";
 
 // Mock next-intl
@@ -127,7 +127,9 @@ describe("AssignmentToggleList", () => {
       const addButton = screen.getByText("Add");
       fireEvent.click(addButton);
 
-      expect(onToggle).toHaveBeenCalledWith("2", false);
+      await waitFor(() => {
+        expect(onToggle).toHaveBeenCalledWith("2", false);
+      });
     });
 
     it("preserves capacity display when searching", () => {

@@ -70,6 +70,7 @@ export function AssignmentToggleList({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t("searchPlaceholder")}
+            aria-label={t("searchPlaceholder")}
             className="w-full rounded-lg border border-surface-700 bg-surface-900 px-3 py-2 text-sm text-surface-100 placeholder-surface-500 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
           />
         </div>
