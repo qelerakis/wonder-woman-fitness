@@ -14,6 +14,7 @@ interface AssignmentToggleListProps {
   disabled?: boolean;
   maxCapacity?: number;
   currentCount?: number;
+  showSearch?: boolean;
 }
 
 export function AssignmentToggleList({
@@ -24,9 +25,12 @@ export function AssignmentToggleList({
   disabled = false,
   maxCapacity,
   currentCount,
+  showSearch = false,
 }: AssignmentToggleListProps): React.ReactElement {
   const t = useTranslations("assignment");
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const trimmedQuery = searchQuery.trim();
 
   const atCapacity =
     maxCapacity !== undefined &&
@@ -38,6 +42,12 @@ export function AssignmentToggleList({
       ? `${currentCount} / ${maxCapacity}`
       : undefined;
 
+  const filteredPeople = showSearch && trimmedQuery
+    ? people.filter((person) =>
+        person.name.toLowerCase().includes(trimmedQuery.toLowerCase())
+      )
+    : people;
+
   async function handleToggle(
     userId: string,
     currentlyAssigned: boolean
@@ -45,6 +55,9 @@ export function AssignmentToggleList({
     setLoadingId(userId);
     try {
       await onToggle(userId, currentlyAssigned);
+    } catch {
+      // Error handling is the parent's responsibility via onToggle.
+      // We catch here to prevent unhandled promise rejections from event handlers.
     } finally {
       setLoadingId(null);
     }
@@ -54,14 +67,28 @@ export function AssignmentToggleList({
     <Card padding="sm">
       <CardHeader title={title} description={capacityDescription} />
 
+      {showSearch && (
+        <div className="mt-3 px-1" role="search">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t("searchPlaceholder")}
+            aria-label={t("searchPlaceholder")}
+            disabled={disabled}
+            className="w-full rounded-lg border border-surface-700 bg-surface-800 px-3 py-2 text-sm text-surface-200 placeholder:text-surface-500 focus:border-primary-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+          />
+        </div>
+      )}
+
       <div className="mt-3 flex flex-col gap-1.5">
-        {people.length === 0 && (
+        {filteredPeople.length === 0 && (
           <p className="px-3 py-2 text-sm text-surface-500">
-            {t("noPeopleAvailable")}
+            {showSearch && trimmedQuery && people.length > 0 ? t("noSearchResults") : t("noPeopleAvailable")}
           </p>
         )}
 
-        {people.map((person) => {
+        {filteredPeople.map((person) => {
           const isAssigned = assignedIds.includes(person.id);
           const isLoading = loadingId === person.id;
           const isAddDisabled = disabled || (!isAssigned && atCapacity);
