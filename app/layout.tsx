@@ -15,6 +15,10 @@ export const metadata: Metadata = {
     description: "Studio management platform for Wonder Woman Fitness",
     type: "website",
   },
+  other: {
+    "theme-color": "#9333ea",
+    "msapplication-TileColor": "#9333ea",
+  },
 };
 
 export default async function RootLayout({
