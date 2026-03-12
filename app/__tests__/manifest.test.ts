@@ -130,10 +130,10 @@ describe("manifest", () => {
       expect(icon.type).toBe("image/png");
     });
 
-    it("has purpose set to 'any maskable'", () => {
+    it("has purpose set to 'maskable'", () => {
       const result = manifest();
       const icon = result.icons![1];
-      expect(icon.purpose).toBe("any maskable");
+      expect(icon.purpose).toBe("maskable");
     });
   });
 
