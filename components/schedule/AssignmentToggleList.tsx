@@ -14,6 +14,7 @@ interface AssignmentToggleListProps {
   disabled?: boolean;
   maxCapacity?: number;
   currentCount?: number;
+  showSearch?: boolean;
 }
 
 export function AssignmentToggleList({
@@ -24,9 +25,11 @@ export function AssignmentToggleList({
   disabled = false,
   maxCapacity,
   currentCount,
+  showSearch = false,
 }: AssignmentToggleListProps): React.ReactElement {
   const t = useTranslations("assignment");
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const atCapacity =
     maxCapacity !== undefined &&
@@ -37,6 +40,12 @@ export function AssignmentToggleList({
     maxCapacity !== undefined && currentCount !== undefined
       ? `${currentCount} / ${maxCapacity}`
       : undefined;
+
+  const filteredPeople = showSearch && searchQuery.trim()
+    ? people.filter((person) =>
+        person.name.toLowerCase().includes(searchQuery.trim().toLowerCase())
+      )
+    : people;
 
   async function handleToggle(
     userId: string,
@@ -54,14 +63,26 @@ export function AssignmentToggleList({
     <Card padding="sm">
       <CardHeader title={title} description={capacityDescription} />
 
+      {showSearch && (
+        <div className="mt-3 px-1">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t("searchPlaceholder")}
+            className="w-full rounded-lg border border-surface-700 bg-surface-900 px-3 py-2 text-sm text-surface-100 placeholder-surface-500 outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+          />
+        </div>
+      )}
+
       <div className="mt-3 flex flex-col gap-1.5">
-        {people.length === 0 && (
+        {filteredPeople.length === 0 && (
           <p className="px-3 py-2 text-sm text-surface-500">
-            {t("noPeopleAvailable")}
+            {showSearch && searchQuery.trim() ? t("noSearchResults") : t("noPeopleAvailable")}
           </p>
         )}
 
-        {people.map((person) => {
+        {filteredPeople.map((person) => {
           const isAssigned = assignedIds.includes(person.id);
           const isLoading = loadingId === person.id;
           const isAddDisabled = disabled || (!isAssigned && atCapacity);
