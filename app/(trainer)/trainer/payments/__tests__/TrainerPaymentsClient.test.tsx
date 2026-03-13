@@ -6,7 +6,7 @@
  * Verifies trainer restrictions: no edit/delete, no notes, no member links.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import type { PaymentStatus } from "@/lib/constants";
 
@@ -125,8 +125,14 @@ async function renderTrainerPayments(
 
 describe("TrainerPaymentsClient", () => {
   beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date(2026, 1, 15)); // Feb 15, 2026 — matches test data
     vi.clearAllMocks();
     global.fetch = vi.fn();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   // ===== RENDERING =====
