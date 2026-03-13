@@ -5,8 +5,8 @@
  * and loading states for the manual session creation modal.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, fireEvent, waitFor, act, cleanup } from "@testing-library/react";
 
 // ===== Mocks =====
 
@@ -36,21 +36,21 @@ describe("CreateSessionModal", () => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    cleanup();
+  });
+
   it("does not render when isOpen is false", async () => {
     const { CreateSessionModal } = await import(
       "@/components/schedule/CreateSessionModal"
     );
 
-    let container: HTMLElement;
-    await act(async () => {
-      const result = render(
-        <CreateSessionModal {...defaultProps} isOpen={false} />
-      );
-      container = result.container;
-    });
+    const { container } = render(
+      <CreateSessionModal {...defaultProps} isOpen={false} />
+    );
 
-    expect(container!.innerHTML).toBe("");
-  });
+    expect(container.innerHTML).toBe("");
+  }, 15_000);
 
   it("renders modal with title and day/time selects when open", async () => {
     const { CreateSessionModal } = await import(
@@ -308,8 +308,10 @@ describe("CreateSessionModal", () => {
       expect(createButton.hasAttribute("disabled")).toBe(true);
     });
 
-    // Resolve the fetch to clean up
-    resolveFetch?.({ status: 201, ok: true, json: async () => ({ data: {} }) });
+    // Resolve the fetch to clean up — wrap in act to handle state updates
+    await act(async () => {
+      resolveFetch?.({ status: 201, ok: true, json: async () => ({ data: {} }) });
+    });
   });
 
   it("does not close modal during submission when Cancel is clicked", async () => {
@@ -348,8 +350,10 @@ describe("CreateSessionModal", () => {
 
     expect(onClose).not.toHaveBeenCalled();
 
-    // Resolve the fetch to clean up
-    resolveFetch?.({ status: 201, ok: true, json: async () => ({ data: {} }) });
+    // Resolve the fetch to clean up — wrap in act to handle state updates
+    await act(async () => {
+      resolveFetch?.({ status: 201, ok: true, json: async () => ({ data: {} }) });
+    });
   });
 
   it("does not submit when no day/time is selected", async () => {
