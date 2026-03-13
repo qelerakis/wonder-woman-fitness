@@ -112,6 +112,7 @@ wonder-woman-fitness/
 │   │       ├── voting-deadline/route.ts   # Hourly
 │   │       └── cleanup-pending/route.ts   # Daily at 3 AM (expired verifications)
 │   ├── globals.css                # Tailwind v4 CSS config (@theme directive)
+│   ├── manifest.ts                 # PWA web app manifest
 │   └── layout.tsx                 # Root layout (Header, auth provider)
 ├── components/
 │   ├── ui/                        # 13 primitives (Badge, Button, Card, ConfirmationModal,
@@ -121,15 +122,15 @@ wonder-woman-fitness/
 │   │                              #   DeleteRecurringSlotModal, VotingPrompt, VoteSummary,
 │   │                              #   WorkoutDisplay, WorkoutEditor, AssignmentToggleList,
 │   │                              #   AttendanceChecklist)
-│   ├── payment/                   # 5 components (PaymentBanner, LockoutScreen, PaymentForm,
-│   │                              #   PaymentHistory, PaymentStatusBadge)
+│   ├── payment/                   # 6 components (PaymentBanner, LockoutScreen, PaymentForm,
+│   │                              #   PaymentHistory, PaymentStatusBadge, PaymentInfoSection)
 │   ├── member/                    # 2 components (MemberTable, MemberCard)
 │   ├── notification/              # 5 components (NotificationBell, NotificationList,
 │   │                              #   NotificationItem, NotificationsClient, SendNotificationModal)
 │   ├── analytics/                 # 7 components (MetricCard, AttendanceChart, RevenueChart,
 │   │                              #   RetentionChart, DateRangeFilter, MemberAttendanceTable,
 │   │                              #   VoteVsActualCards)
-│   └── layout/                    # 3 components (Header, Navigation, BottomNav)
+│   └── layout/                    # 6 components (Header, Navigation, BottomNav, Footer, AuthBackground, LanguageToggle)
 ├── lib/
 │   ├── prisma.ts                  # Prisma 7 singleton (PrismaPg adapter)
 │   ├── auth.ts                    # NextAuth full config (server-only, uses Prisma)
@@ -154,14 +155,23 @@ wonder-woman-fitness/
 │       └── strict-schemas.test.ts  # Strict schema validation (unknown field rejection, length limits)
 ├── hooks/                         # Custom React hooks
 │   ├── useNotifications.ts        # Real-time notification polling
-│   └── usePaymentStatus.ts        # Payment status fetching & display
+│   ├── usePaymentStatus.ts        # Payment status fetching & display
+│   └── useIsMobile.ts               # Mobile viewport detection hook (< 768px)
+├── i18n/
+│   └── request.ts                   # next-intl configuration, cookie-based locale
+├── messages/
+│   ├── en.json                      # English translations (~680 keys)
+│   └── mk.json                      # Macedonian translations (~680 keys)
+├── public/
+│   ├── icon-192.png                 # PWA icon (192×192)
+│   └── icon-512.png                 # PWA icon (512×512, maskable)
 ├── docs/
-│   └── plans/                     # 33 design/plan documents
+│   └── plans/                     # 40 design/plan documents
 ├── middleware.ts                   # Role-based routing + departed redirect
 ├── .env.local                     # Environment variables (gitignored)
 ├── next.config.ts                 # serverExternalPackages: prisma, pg, bcrypt
 ├── prisma.config.ts               # Prisma 7 configuration (adapter pattern)
-├── vercel.json                    # 3 cron job definitions
+├── vercel.json                    # 4 cron jobs + domain redirects
 ├── vitest.config.ts               # Test configuration
 ├── package.json
 ├── tsconfig.json
@@ -292,7 +302,7 @@ NotificationType: WORKOUT_POSTED | VOTING_OPENED | CLASS_CANCELLED |
                   MEMBER_MOVED | PAYMENT_REMINDER | LOCKOUT |
                   MEMBER_DEPARTED | REJOIN_REQUEST | TRIAL_EXPIRING |
                   TRIAL_EXPIRED | SESSION_DELETED | MANUAL_REMINDER |
-                  BROADCAST
+                  BROADCAST | ROLE_CHANGED
 ```
 
 ---
@@ -491,11 +501,11 @@ DATABASE_URL=postgresql://...@neon.tech/wwfitness
 
 # Auth
 NEXTAUTH_SECRET=<random-32-char-string>
-NEXTAUTH_URL=https://wonderwomanfitness.mk
+NEXTAUTH_URL=https://wonderwomanfitness.org
 
 # Email
 RESEND_API_KEY=re_...
-EMAIL_FROM=noreply@wonderwomanfitness.mk
+EMAIL_FROM=noreply@wonderwomanfitness.org
 
 # File Storage
 CLOUDINARY_CLOUD_NAME=...
@@ -512,7 +522,7 @@ CRON_SECRET=<random-32-char-string>
 
 ```
                     ┌─────────────────┐
-                    │   Cloudflare    │  (DNS for wonderwomanfitness.mk)
+                    │   Cloudflare    │  (DNS for wonderwomanfitness.org)
                     │   or Vercel DNS │
                     └────────┬────────┘
                              │
@@ -538,7 +548,7 @@ CRON_SECRET=<random-32-char-string>
 
 | Environment  | Purpose                 | Database Branch  | URL                                    |
 |-------------|-------------------------|------------------|----------------------------------------|
-| Production  | Live app                | `main`           | https://wonderwomanfitness.mk          |
+| Production  | Live app                | `main`           | https://wonderwomanfitness.org          |
 | Preview     | PR previews             | `preview`        | https://preview-*.vercel.app           |
 | Development | Local dev               | `dev` (or local) | http://localhost:3000                   |
 
@@ -607,10 +617,10 @@ The owner can be assigned as a trainer to sessions, appearing in all trainer sel
 
 ### 9.12 Test Suite
 
-1,860 automated tests across 53 files using Vitest (~17s):
-- **Business logic & utilities** (15 files, 297 tests): payment-logic (51), voting-logic (38), attendance-analytics (35), notification-helpers (26), carry-forward (25), session-generation (24), rate-limit (24), resend-verification (14), register-verification (13), env (12), verify-email-page (11), email-verification (10), cron-auth (5), cleanup-pending (5), rate-limit-integration (4)
-- **API routes** (12 files, 399 tests): sessions (96), private-sessions (52), votes (44), attendance (38), broadcast-notifications (32), payments (26), analytics-attendance (25), recurring-slots (24), session-members (19), members (16), session-trainers (15), mark-all-read (12)
-- **UI components** (24 files, 1,078 tests): MemberSessionDetailClient (113), SessionCard (100), PrivateSessionsClient (88), PaymentsClient (82), SendNotificationModal (75), DateTimePicker (73), DashboardClient (68), DatePicker (64), TrainerPaymentsClient (45), Button (40), ConfirmationModal (37), CheckEmailPage (34), SessionDetailClient (33), PaymentHistory (31), VotingPrompt (30), Modal (28), AttendanceChecklist (27), AttendanceAnalytics (22), PaymentBanner (17), TrainerSessionDetailClient (17), CreateSessionModal (15), LoginPage (15), PaymentStatusBadge (12), NotificationsClient (12)
+2,805 automated tests across 78 files using Vitest (~27s):
+- **Business logic & utilities** (20 files, 621 tests): i18n-translation-keys (170), max-class-size (67), profile-payment-info (56), payment-logic (51), voting-logic (38), attendance-analytics (35), notification-helpers (26), carry-forward (25), time-format (25), rate-limit (24), session-generation (24), resend-verification (14), register-verification (13), env (12), verify-email-page (11), email-verification (10), date-locale (6), cron-auth (5), cleanup-pending (5), rate-limit-integration (4)
+- **API routes** (14 files, 458 tests): sessions (96), private-sessions (52), votes (44), payments-my (43), attendance (38), broadcast-notifications (32), payments (26), analytics-attendance (25), recurring-slots (24), session-members (19), members (16), trainers (16), session-trainers (15), mark-all-read (12)
+- **UI components** (42 files, 1,640 tests): MemberSessionDetailClient (154), SessionCard (107), DateTimePicker (91), PrivateSessionsClient (88), PaymentsClient (82), DatePicker (80), SendNotificationModal (75), DashboardClient (68), ProfileClient (65), PaymentInfoSection (58), TrainersClient (54), AssignmentToggleList (51), TrainerPaymentsClient (45), Button (40), ConfirmationModal (37), CheckEmailPage (34), SessionDetailClient (33), PaymentHistory (31), generated-icons (30), icon-svg (30), VotingPrompt (30), Modal (28), AttendanceChecklist (27), manifest (26), i18n-trainer-session (26), AttendanceAnalytics (22), AuthLayout (21), i18n-member-session (21), i18n-components (17), PaymentBanner (17), next-intl-mock (17), TrainerSessionDetailClient (17), MemberTable (16), CreateSessionModal (15), LoginPage (15), layout-metadata (13), Footer (12), i18n-session-card (12), PaymentStatusBadge (12), NotificationsClient (12), i18n-payment-history (6), LanguageToggle (5)
 - **Type validation** (2 files, 86 tests): strict-schemas (69), session-schemas (17)
 
 ### 9.13 Email Verification
@@ -652,3 +662,58 @@ Session cards display color-coded backgrounds based on member state:
 - Haptic feedback on successful vote submission
 - Refresh button on member schedule page
 - Compact horizontal chips for who's-coming list on mobile
+
+### 9.18 Internationalization (i18n)
+
+Full Macedonian and English language support via `next-intl`:
+- `messages/en.json` and `messages/mk.json` contain ~680 translation keys each
+- `i18n/request.ts` configures locale detection from `NEXT_LOCALE` cookie
+- `LanguageToggle` component in header and auth pages switches locale via cookie + page reload
+- Client components use `useTranslations(namespace)` hook
+- Server components use `getTranslations(namespace)`
+- Test mock in `test/mocks/next-intl.ts` loads English translations for all tests (auto-loaded by vitest setup)
+
+### 9.19 PWA Support
+
+Progressive Web App configuration for mobile home screen installation:
+- `app/manifest.ts` generates web app manifest with `display: "standalone"`, theme color `#9333ea`
+- Icons: `public/icon-192.png` (192×192) and `public/icon-512.png` (512×512, maskable)
+- Root layout metadata includes `themeColor` for browser chrome coloring
+
+### 9.20 Footer Component
+
+Minimal footer component (`components/layout/Footer.tsx`) rendered in root layout. Uses i18n translations from `footer` namespace. Sticks to viewport bottom via flex layout (`flex-1` on content, `shrink-0` on footer).
+
+### 9.21 Search in Assignment Lists
+
+`AssignmentToggleList` component gained an optional `showSearch` prop that displays a search input for filtering people by name. Case-insensitive filtering, shows "No members found" for empty results, disabled when component is disabled.
+
+### 9.22 24-Hour Time Format
+
+All time displays converted from 12-hour (AM/PM) to 24-hour format. The `formatTime(hour)` helper pads hours with zero and appends `:00` (e.g., 9 → "09:00", 13 → "13:00"). `TIME_FORMAT = 'HH:mm'` constant in `lib/constants.ts` used with date-fns.
+
+### 9.23 Member-to-Trainer Promotion
+
+`POST /api/trainers` endpoint (owner-only) promotes a member to trainer role:
+- Atomically changes role MEMBER → TRAINER, sets status ACTIVE
+- Removes future session member assignments and votes (from current week forward)
+- Sends ROLE_CHANGED notification to promoted user
+- `TrainersClient` component provides the promotion UI with member selector
+
+### 9.24 Animated Auth Background
+
+`AuthBackground` component renders three overlapping gradient orbs with CSS keyframe animations (10s, 13s, 8s cycles). Applied to `(auth)` route group layout. Respects `prefers-reduced-motion`. Uses `willChange: "transform, opacity"` for GPU acceleration.
+
+### 9.25 Member Payment Profile
+
+Members can view their own payment status and history:
+- `GET /api/payments/my` endpoint returns the member's own payment records
+- `PaymentInfoSection` component displays status badge, date grid (last payment, paid through, next due), and payment history with "Show all" toggle
+- Integrated into member profile page
+
+### 9.26 Domain Redirect Configuration
+
+`vercel.json` includes three 301 redirect rules:
+- `www.wonderwomanfitness.org` → `wonderwomanfitness.org`
+- `wonder-woman-fitness.vercel.app` → `wonderwomanfitness.org`
+- `*.vercel.app` → `wonderwomanfitness.org` (catch-all)
