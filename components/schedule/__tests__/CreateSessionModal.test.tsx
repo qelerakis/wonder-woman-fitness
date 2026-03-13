@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 
 // ===== Mocks =====
 
@@ -41,11 +41,15 @@ describe("CreateSessionModal", () => {
       "@/components/schedule/CreateSessionModal"
     );
 
-    const { container } = render(
-      <CreateSessionModal {...defaultProps} isOpen={false} />
-    );
+    let container: HTMLElement;
+    await act(async () => {
+      const result = render(
+        <CreateSessionModal {...defaultProps} isOpen={false} />
+      );
+      container = result.container;
+    });
 
-    expect(container.innerHTML).toBe("");
+    expect(container!.innerHTML).toBe("");
   });
 
   it("renders modal with title and day/time selects when open", async () => {
