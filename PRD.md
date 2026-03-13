@@ -8,9 +8,9 @@
 | **Version**        | 1.0 (MVP) — Feature Complete                |
 | **Platform**       | Web Application                             |
 | **Author**         | —                                           |
-| **Last Updated**   | February 18, 2026                           |
+| **Last Updated**   | March 13, 2026                              |
 | **Status**         | Complete — All MVP features implemented     |
-| **Domain**         | wonderwomanfitness.mk                       |
+| **Domain**         | wonderwomanfitness.org                      |
 
 ---
 
@@ -603,7 +603,7 @@ This section outlines the primary screens to be designed and built.
 
 ---
 
-## 12. Implementation Status (as of February 25, 2026)
+## 12. Implementation Status (as of March 13, 2026)
 
 All MVP features defined in this PRD have been implemented and tested. The application is feature-complete and production-ready.
 
@@ -628,6 +628,9 @@ All MVP features defined in this PRD have been implemented and tested. The appli
 | Session Assignments | Done | Owner assigns trainers/members, carry-forward on week generation |
 | Delete Recurring Slot | Done | Cascade option to delete future sessions |
 | Security Hardening | Done | Rate limiting, CSP header, strict Zod schemas, timing-safe cron auth |
+| Internationalization (i18n) | Done | Macedonian + English, cookie-based locale, next-intl |
+| PWA Support | Done | Web app manifest, icons, theme-color metadata |
+| Member-to-Trainer Promotion | Done | Owner promotes member via API, cleans up assignments |
 
 ### Post-MVP Additions (Built Beyond Original PRD)
 
@@ -656,6 +659,15 @@ These features were added during development to address real workflow needs:
 21. **Assigned Members Card** — For non-voting (assignment-based) sessions, assigned members see a "Members" card showing all other assigned members with avatar initials. Only visible to assigned members when voting is disabled.
 22. **Attendance Analytics Refinements** — Dashboard attendance analytics refined: VoteVsActual metric only counts voting sessions (sessions with at least 1 vote). Member "Expected" sessions include both assigned sessions and sessions they voted yes on. Removed chart-based visualizations in favor of focused metrics.
 23. **Mobile UX Enhancements** — Bottom navigation bar for mobile members and trainers. Haptic feedback on successful vote. Refresh button on member schedule page. Compact horizontal chips for who's-coming list on mobile.
+24. **Internationalization (Macedonian & English)** — Full i18n support via `next-intl`. ~680 translation keys per locale. Cookie-based locale persistence (`NEXT_LOCALE`). Language toggle in header and auth pages. Test mock auto-loaded.
+25. **PWA Support** — Web app manifest (`app/manifest.ts`) with standalone display, theme color `#9333ea`, and maskable icons (192×192, 512×512). Enables mobile home screen installation.
+26. **Footer Component** — Minimal footer in root layout showing author attribution. Uses i18n translations. Sticks to viewport bottom via flex layout.
+27. **Search in Assignment Lists** — Optional search bar in `AssignmentToggleList` for filtering trainers/members by name. Case-insensitive, with disabled state support.
+28. **24-Hour Time Format** — All time displays converted from 12-hour (AM/PM) to 24-hour format system-wide. `formatTime()` helper and `TIME_FORMAT = 'HH:mm'` constant.
+29. **Member-to-Trainer Promotion** — Owner can promote a member to trainer role via `POST /api/trainers`. Atomically changes role, removes future session assignments/votes, sends notification.
+30. **Animated Auth Background** — Three floating gradient orbs with CSS keyframe animations on auth pages. Respects `prefers-reduced-motion`.
+31. **Member Payment Profile** — Members view their own payment status, date grid, and history via `GET /api/payments/my` endpoint and `PaymentInfoSection` component.
+32. **Domain Configuration** — Production domain changed to `wonderwomanfitness.org` with 301 redirects from www and Vercel subdomains.
 
 ### Tech Stack (Actual Versions)
 
@@ -671,6 +683,7 @@ These features were added during development to address real workflow needs:
 | File Storage | Cloudinary | 2.9.0 |
 | Charts | Recharts | 3.7.0 |
 | Validation | Zod | 4.3.6 |
+| i18n | next-intl | Latest |
 | Testing | Vitest | 4.0.18 |
 | React | React + React DOM | 19.2.4 |
 | Password Hash | bcrypt | 6.0.0 |
@@ -678,10 +691,10 @@ These features were added during development to address real workflow needs:
 
 ### Test Coverage
 
-1,860 automated tests across 53 test files, all passing (~17s):
-- Business logic & utilities: 297 tests (payment, voting, attendance analytics, session generation, rate limiting, email verification, env validation)
-- API routes: 399 tests (sessions, private sessions, votes, attendance, broadcast notifications, payments, analytics, recurring slots, session members/trainers, members, mark-all-read)
-- UI components: 1,078 tests (session detail, private sessions, schedule, payments, dashboard, notifications, date pickers, attendance, modals, buttons, badges, banners, login, check-email)
+2,805 automated tests across 78 test files, all passing (~27s):
+- Business logic & utilities: 621 tests (i18n keys, class size, payment info, payment logic, voting, attendance analytics, session generation, rate limiting, email verification, time format, date locale, env validation)
+- API routes: 458 tests (sessions, private sessions, votes, payments-my, attendance, broadcast notifications, payments, analytics, recurring slots, session members/trainers, members, trainers, mark-all-read)
+- UI components: 1,640 tests (session detail, session card, date pickers, private sessions, payments, notifications, dashboard, profile, payment info, trainers, assignments, modals, buttons, badges, banners, login, PWA icons/manifest, i18n integration, footer, language toggle, auth layout)
 - Type validation: 86 tests (Zod session schemas, strict schemas with length limits)
 
 ---
