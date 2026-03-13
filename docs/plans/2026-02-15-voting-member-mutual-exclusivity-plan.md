@@ -533,7 +533,7 @@ describe("PATCH /api/sessions/[id] — disabling voting clears votes", () => {
     });
   });
 
-  it("clears many votes (20 members all voted)", async () => {
+  it("clears many votes (30 members all voted)", async () => {
     mockAuth.mockResolvedValue(ownerSession());
     mockPrisma.session.findUnique.mockResolvedValue({
       id: "s-full",

@@ -120,7 +120,7 @@ The schedule follows a **recurring weekly structure** — the same time slots re
 - Create, edit, and delete individual training sessions within those slots.
 - Assign one or more trainers to a session.
 - Add or remove members from a session.
-- Cap each class at a maximum of **27 members**.
+- Cap each class at a maximum of **30 members**.
 
 **Workout Posting**:
 - The owner or assigned trainer can write workout details for each session.
@@ -167,7 +167,7 @@ The owner has two options:
 
 **Edge Cases**:
 - A member who hasn't voted by the deadline is treated as "not coming."
-- If a member is moved to a group that is already at capacity (20), the system should block the move and alert the owner.
+- If a member is moved to a group that is already at capacity (30), the system should block the move and alert the owner.
 - If voting is disabled mid-vote, existing votes are preserved but no new votes can be cast.
 
 ---
@@ -691,8 +691,8 @@ These features were added during development to address real workflow needs:
 
 ### Test Coverage
 
-2,805 automated tests across 78 test files, all passing (~27s):
-- Business logic & utilities: 621 tests (i18n keys, class size, payment info, payment logic, voting, attendance analytics, session generation, rate limiting, email verification, time format, date locale, env validation)
+2,881 automated tests across 78 test files, all passing (~27s):
+- Business logic & utilities: 632 tests (i18n keys, class size, payment info, payment logic, voting, attendance analytics, session generation, rate limiting, email verification, time format, date locale, env validation)
 - API routes: 458 tests (sessions, private sessions, votes, payments-my, attendance, broadcast notifications, payments, analytics, recurring slots, session members/trainers, members, trainers, mark-all-read)
 - UI components: 1,640 tests (session detail, session card, date pickers, private sessions, payments, notifications, dashboard, profile, payment info, trainers, assignments, modals, buttons, badges, banners, login, PWA icons/manifest, i18n integration, footer, language toggle, auth layout)
 - Type validation: 86 tests (Zod session schemas, strict schemas with length limits)

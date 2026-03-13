@@ -9,7 +9,7 @@ When voting is enabled on a session, the "No Vote Yet" count shows negative numb
 
 1. **Negative "No Vote Yet":** `totalMembers` counts only assigned members, but any active/trial member can vote. Votes exceed assigned count → negative.
 2. **No one-vote-per-day enforcement:** A member can vote "Coming" on multiple sessions in the same day. Business rule: one "Coming" per day.
-3. **No full-session enforcement:** When 20 members vote "Coming", voting should be disabled entirely.
+3. **No full-session enforcement:** When 30 members vote "Coming", voting should be disabled entirely.
 
 ## Design
 
@@ -35,11 +35,11 @@ A member can only vote "Coming" on one session per day. "Not Coming" votes are u
 
 ### Fix 3: Full Session Disables Voting
 
-When `comingVotes >= MAX_CLASS_SIZE (20)`, all voting is disabled.
+When `comingVotes >= MAX_CLASS_SIZE (30)`, all voting is disabled.
 
 **API enforcement (`POST /api/votes`):**
 - Count "Coming" votes for the session
-- If >= 20, reject ALL votes with "This session is full"
+- If >= 30, reject ALL votes with "This session is full"
 
 **UI enforcement:**
 - Show "Full" badge on session

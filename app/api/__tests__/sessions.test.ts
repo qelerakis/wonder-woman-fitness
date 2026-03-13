@@ -2186,7 +2186,7 @@ describe("PATCH /api/sessions/[id] — enabling voting clears members", () => {
 
   it("clears members with many members (bulk operation)", async () => {
     mockAuth.mockResolvedValue(ownerSession());
-    const manyMembers = Array.from({ length: 27 }, (_, i) => ({
+    const manyMembers = Array.from({ length: 30 }, (_, i) => ({
       user: { id: `m-${i + 1}`, name: `Member ${i + 1}` },
     }));
     mockPrisma.session.findUnique.mockResolvedValue({
@@ -2200,7 +2200,7 @@ describe("PATCH /api/sessions/[id] — enabling voting clears members", () => {
       customDay: null,
       customStartHour: null,
     });
-    mockPrisma.sessionMember.deleteMany.mockResolvedValue({ count: 27 });
+    mockPrisma.sessionMember.deleteMany.mockResolvedValue({ count: 30 });
     mockPrisma.session.update.mockResolvedValue({
       id: "s-1",
       status: "SCHEDULED",
@@ -2417,7 +2417,7 @@ describe("PATCH /api/sessions/[id] — disabling voting clears votes", () => {
     });
   });
 
-  it("clears many votes (27 members all voted)", async () => {
+  it("clears many votes (30 members all voted)", async () => {
     mockAuth.mockResolvedValue(ownerSession());
     mockPrisma.session.findUnique.mockResolvedValue({
       id: "s-1",
@@ -2430,7 +2430,7 @@ describe("PATCH /api/sessions/[id] — disabling voting clears votes", () => {
       customDay: null,
       customStartHour: null,
     });
-    mockPrisma.vote.deleteMany.mockResolvedValue({ count: 27 });
+    mockPrisma.vote.deleteMany.mockResolvedValue({ count: 30 });
     mockPrisma.session.update.mockResolvedValue({
       id: "s-1",
       status: "SCHEDULED",

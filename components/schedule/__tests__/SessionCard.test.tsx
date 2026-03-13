@@ -291,14 +291,14 @@ describe("SessionCard", () => {
       const session = makeSession({ votingEnabled: false });
       render(<SessionCard session={session} basePath="/member/session" />);
 
-      expect(screen.getByText("2/27 members")).toBeDefined();
+      expect(screen.getByText("2/30 members")).toBeDefined();
     });
 
-    it("shows 0/27 members when no members assigned and voting disabled", () => {
+    it("shows 0/30 members when no members assigned and voting disabled", () => {
       const session = makeSession({ members: [], votingEnabled: false });
       render(<SessionCard session={session} basePath="/member/session" />);
 
-      expect(screen.getByText("0/27 members")).toBeDefined();
+      expect(screen.getByText("0/30 members")).toBeDefined();
     });
 
     it("shows correct assigned count with many members", () => {
@@ -315,7 +315,7 @@ describe("SessionCard", () => {
       const session = makeSession({ members, votingEnabled: false });
       render(<SessionCard session={session} basePath="/member/session" />);
 
-      expect(screen.getByText("15/27 members")).toBeDefined();
+      expect(screen.getByText("15/30 members")).toBeDefined();
     });
   });
 
@@ -328,11 +328,11 @@ describe("SessionCard", () => {
       render(<SessionCard session={session} basePath="/member/session" />);
 
       // Should show 1 (coming votes), NOT 2 (assigned members)
-      expect(screen.getByText("1/27 coming")).toBeDefined();
-      expect(screen.queryByText("2/27 members")).toBeNull();
+      expect(screen.getByText("1/30 coming")).toBeDefined();
+      expect(screen.queryByText("2/30 members")).toBeNull();
     });
 
-    it("shows 0/27 coming when voting enabled but no attending votes", () => {
+    it("shows 0/30 coming when voting enabled but no attending votes", () => {
       const session = makeSession({
         votingEnabled: true,
         votes: [
@@ -346,17 +346,17 @@ describe("SessionCard", () => {
       });
       render(<SessionCard session={session} basePath="/member/session" />);
 
-      expect(screen.getByText("0/27 coming")).toBeDefined();
+      expect(screen.getByText("0/30 coming")).toBeDefined();
     });
 
-    it("shows 0/27 coming when voting enabled and no votes at all", () => {
+    it("shows 0/30 coming when voting enabled and no votes at all", () => {
       const session = makeSession({
         votingEnabled: true,
         votes: [],
       });
       render(<SessionCard session={session} basePath="/member/session" />);
 
-      expect(screen.getByText("0/27 coming")).toBeDefined();
+      expect(screen.getByText("0/30 coming")).toBeDefined();
     });
 
     it("counts only attending=true votes for the coming count", () => {
@@ -371,7 +371,7 @@ describe("SessionCard", () => {
       render(<SessionCard session={session} basePath="/member/session" />);
 
       // 3 attending out of 5 votes
-      expect(screen.getByText("3/27 coming")).toBeDefined();
+      expect(screen.getByText("3/30 coming")).toBeDefined();
     });
 
     it("shows high coming count correctly when many are attending", () => {
@@ -384,7 +384,7 @@ describe("SessionCard", () => {
       const session = makeSession({ votingEnabled: true, votes });
       render(<SessionCard session={session} basePath="/member/session" />);
 
-      expect(screen.getByText("18/27 coming")).toBeDefined();
+      expect(screen.getByText("18/30 coming")).toBeDefined();
     });
 
     it("uses 'coming' label not 'members' when voting is enabled", () => {
@@ -392,8 +392,8 @@ describe("SessionCard", () => {
       render(<SessionCard session={session} basePath="/member/session" />);
 
       // Should say "coming" not "members"
-      expect(screen.queryByText(/\/27 members/)).toBeNull();
-      expect(screen.getByText(/\/27 coming/)).toBeDefined();
+      expect(screen.queryByText(/\/30 members/)).toBeNull();
+      expect(screen.getByText(/\/30 coming/)).toBeDefined();
     });
   });
 

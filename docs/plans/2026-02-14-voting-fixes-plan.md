@@ -28,16 +28,16 @@ describe("isSessionFull", () => {
     expect(isSessionFull(10)).toBe(false);
   });
 
-  it("returns false when coming count is 19 (one below max)", () => {
-    expect(isSessionFull(19)).toBe(false);
+  it("returns false when coming count is 29 (one below max)", () => {
+    expect(isSessionFull(29)).toBe(false);
   });
 
-  it("returns true when coming count equals MAX_CLASS_SIZE (20)", () => {
-    expect(isSessionFull(20)).toBe(true);
+  it("returns true when coming count equals MAX_CLASS_SIZE (30)", () => {
+    expect(isSessionFull(30)).toBe(true);
   });
 
   it("returns true when coming count exceeds MAX_CLASS_SIZE", () => {
-    expect(isSessionFull(25)).toBe(true);
+    expect(isSessionFull(35)).toBe(true);
   });
 
   it("returns false when coming count is 0", () => {
@@ -106,7 +106,7 @@ git commit -m "feat: add isSessionFull helper to voting-logic"
 Add these tests to the `POST /api/votes` describe block in `app/api/__tests__/votes.test.ts`:
 
 ```typescript
-it("returns 400 when session is full (20 Coming votes) and attending=true", async () => {
+it("returns 400 when session is full (30 Coming votes) and attending=true", async () => {
   mockAuth.mockResolvedValue(memberSession("member-1"));
   mockPrisma.session.findUnique.mockResolvedValue({
     id: "cm1234567890abcdef",
@@ -114,7 +114,7 @@ it("returns 400 when session is full (20 Coming votes) and attending=true", asyn
     votingEnabled: true,
     votingDeadline: new Date("2099-01-01"),
   });
-  mockPrisma.vote.count.mockResolvedValue(20);
+  mockPrisma.vote.count.mockResolvedValue(30);
 
   const { POST } = await import("@/app/api/votes/route");
   const response = await POST(
@@ -141,7 +141,7 @@ it("returns 400 when session is full and attending=false", async () => {
     votingEnabled: true,
     votingDeadline: new Date("2099-01-01"),
   });
-  mockPrisma.vote.count.mockResolvedValue(20);
+  mockPrisma.vote.count.mockResolvedValue(30);
 
   const { POST } = await import("@/app/api/votes/route");
   const response = await POST(

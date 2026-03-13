@@ -18,7 +18,7 @@ Add trainer and member management to workout sessions. Three capabilities:
 ### POST /api/sessions/[id]/members (Owner + assigned Trainers)
 - Body: `{ userId: string, action: "add" | "remove" }`
 - Validates: user is active MEMBER (not DEPARTED), session exists, not CANCELLED
-- On add: validates capacity < MAX_CLASS_SIZE (20), creates SessionMember record
+- On add: validates capacity < MAX_CLASS_SIZE (30), creates SessionMember record
 - On remove: deletes SessionMember record + cleans up any Vote for that member
 - Returns updated member list
 
@@ -27,7 +27,7 @@ Add trainer and member management to workout sessions. Three capabilities:
 ### Owner Session Detail (`/owner/session/[id]`)
 - "Manage Trainers" section: inline toggle list of all trainers
 - "Manage Members" section: inline toggle list of all active members
-- Shows capacity count (current / 20)
+- Shows capacity count (current / 30)
 - Optimistic toggle UI with rollback on error
 - Uses existing `allTrainers` and `allMembers` props (currently unused)
 

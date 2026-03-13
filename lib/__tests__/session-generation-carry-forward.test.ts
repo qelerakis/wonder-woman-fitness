@@ -443,8 +443,33 @@ describe("generateSessionsForWeek — carry-forward assignments", () => {
   // ----- MAX_CLASS_SIZE cap -----
 
   describe("MAX_CLASS_SIZE cap", () => {
-    it("caps member copy at MAX_CLASS_SIZE (27) when previous session has more", async () => {
-      // Create 30 active members
+    it("caps member copy at MAX_CLASS_SIZE (30) when previous session has more", async () => {
+      // Create 33 active members (more than MAX_CLASS_SIZE of 30)
+      const members = Array.from({ length: 33 }, (_, i) => ({
+        userId: `member-${i + 1}`,
+        user: { id: `member-${i + 1}`, status: "ACTIVE" },
+      }));
+
+      mockPrisma.recurringSlot.findMany.mockResolvedValue([SLOT_MON_9]);
+      mockPrisma.session.create.mockResolvedValue(
+        makeCreatedSession("new-s1", SLOT_MON_9.id)
+      );
+      mockPrisma.session.findUnique.mockResolvedValue(
+        makePreviousSession("prev-s1", [], members)
+      );
+      mockPrisma.sessionMember.createMany.mockResolvedValue({ count: 30 });
+
+      await generateSessionsForWeek(WEEK_DATE);
+
+      expect(mockPrisma.sessionMember.createMany).toHaveBeenCalledTimes(1);
+      const createManyArgs = mockPrisma.sessionMember.createMany.mock.calls[0][0];
+      expect(createManyArgs.data).toHaveLength(30);
+      // Should be the first 30 members (slice preserves order)
+      expect(createManyArgs.data[0].userId).toBe("member-1");
+      expect(createManyArgs.data[29].userId).toBe("member-30");
+    });
+
+    it("copies all members when count is exactly MAX_CLASS_SIZE", async () => {
       const members = Array.from({ length: 30 }, (_, i) => ({
         userId: `member-${i + 1}`,
         user: { id: `member-${i + 1}`, status: "ACTIVE" },
@@ -457,37 +482,12 @@ describe("generateSessionsForWeek — carry-forward assignments", () => {
       mockPrisma.session.findUnique.mockResolvedValue(
         makePreviousSession("prev-s1", [], members)
       );
-      mockPrisma.sessionMember.createMany.mockResolvedValue({ count: 27 });
-
-      await generateSessionsForWeek(WEEK_DATE);
-
-      expect(mockPrisma.sessionMember.createMany).toHaveBeenCalledTimes(1);
-      const createManyArgs = mockPrisma.sessionMember.createMany.mock.calls[0][0];
-      expect(createManyArgs.data).toHaveLength(27);
-      // Should be the first 27 members (slice preserves order)
-      expect(createManyArgs.data[0].userId).toBe("member-1");
-      expect(createManyArgs.data[26].userId).toBe("member-27");
-    });
-
-    it("copies all members when count is exactly MAX_CLASS_SIZE", async () => {
-      const members = Array.from({ length: 27 }, (_, i) => ({
-        userId: `member-${i + 1}`,
-        user: { id: `member-${i + 1}`, status: "ACTIVE" },
-      }));
-
-      mockPrisma.recurringSlot.findMany.mockResolvedValue([SLOT_MON_9]);
-      mockPrisma.session.create.mockResolvedValue(
-        makeCreatedSession("new-s1", SLOT_MON_9.id)
-      );
-      mockPrisma.session.findUnique.mockResolvedValue(
-        makePreviousSession("prev-s1", [], members)
-      );
-      mockPrisma.sessionMember.createMany.mockResolvedValue({ count: 27 });
+      mockPrisma.sessionMember.createMany.mockResolvedValue({ count: 30 });
 
       await generateSessionsForWeek(WEEK_DATE);
 
       const createManyArgs = mockPrisma.sessionMember.createMany.mock.calls[0][0];
-      expect(createManyArgs.data).toHaveLength(27);
+      expect(createManyArgs.data).toHaveLength(30);
     });
 
     it("copies all members when count is below MAX_CLASS_SIZE", async () => {

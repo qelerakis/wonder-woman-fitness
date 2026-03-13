@@ -72,10 +72,10 @@ describe("AssignmentToggleList", () => {
     it("displays capacity description when maxCapacity and currentCount provided", () => {
       render(
         <AssignmentToggleList
-          {...makeProps({ maxCapacity: 27, currentCount: 12 })}
+          {...makeProps({ maxCapacity: 30, currentCount: 12 })}
         />
       );
-      expect(screen.getByText("12 / 27")).toBeDefined();
+      expect(screen.getByText("12 / 30")).toBeDefined();
     });
 
     it("does not display capacity when maxCapacity not provided", () => {
@@ -379,13 +379,13 @@ describe("AssignmentToggleList", () => {
     it("preserves capacity display when searching", () => {
       render(
         <AssignmentToggleList
-          {...makeProps({ showSearch: true, maxCapacity: 27, currentCount: 5 })}
+          {...makeProps({ showSearch: true, maxCapacity: 30, currentCount: 5 })}
         />
       );
       const input = screen.getByPlaceholderText("Search members...");
       fireEvent.change(input, { target: { value: "alice" } });
 
-      expect(screen.getByText("5 / 27")).toBeDefined();
+      expect(screen.getByText("5 / 30")).toBeDefined();
     });
 
     it("at-capacity state is preserved when searching", () => {

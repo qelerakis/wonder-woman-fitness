@@ -8,7 +8,7 @@
 
 Wonder Woman Fitness is a web-based boutique fitness studio management platform. It has three user roles (Owner, Trainer, Member) and handles scheduling, attendance voting, cash payment tracking, notifications, and analytics for a single gym.
 
-**Project status**: Feature-complete. All MVP features + post-MVP additions implemented and tested. 2,805 tests passing across 78 test files. Production build succeeds.
+**Project status**: Feature-complete. All MVP features + post-MVP additions implemented and tested. 2,881 tests passing across 78 test files. Production build succeeds.
 
 **Key documents** — read these first:
 - `PRD.md` — What was built and why (includes implementation status)
@@ -188,7 +188,7 @@ npx prisma migrate deploy
 ### 4.8 Constants
 - All magic numbers live in `lib/constants.ts`. Never hardcode numbers in business logic.
   ```typescript
-  export const MAX_CLASS_SIZE = 27;
+  export const MAX_CLASS_SIZE = 30;
   export const GRACE_PERIOD_DAYS = 10;
   export const TRIAL_DAYS = 14;
   export const SLOT_START_HOUR = 7;
@@ -347,7 +347,7 @@ CRON_SECRET=              # Random 32+ char string for securing cron endpoints
 7. **Cloudinary unsigned uploads are insecure.** Always upload from the server (API route), never directly from the client.
 8. **The owner account is created via seed script, not via the registration page.** The registration page always creates MEMBER accounts.
 9. **Session weekDate** is always the Monday of that week, regardless of which day the session falls on. The actual day comes from the RecurringSlot's `dayOfWeek` or Session's `customDay`.
-10. **Max class size is 27.** Always validate before adding members to a session. The constant is in `lib/constants.ts`.
+10. **Max class size is 30.** Always validate before adding members to a session. The constant is in `lib/constants.ts`.
 11. **Trial period is exactly 14 days.** After that, the first grace period starts from `trialEndsAt`, not from the 1st of the month.
 12. **Client components cannot import from `@/generated/prisma/client`** — use local type aliases instead.
 13. **Route groups are invisible in URL.** `(auth)`, `(locked)`, `(owner)`, `(trainer)`, `(member)` don't appear in paths. Use role-prefixed paths: `/owner/schedule`, `/member/schedule`, `/trainer/session/[id]`. The `(locked)` group handles the payment lockout screen at `/member/locked`.
@@ -367,13 +367,13 @@ CRON_SECRET=              # Random 32+ char string for securing cron endpoints
 
 ## 10. Test Suite
 
-2,805 tests across 78 files, all passing (~27s). Run with `npm test`.
+2,881 tests across 78 files, all passing (~27s). Run with `npm test`.
 
-### Business Logic & Utilities (20 files, 621 tests)
+### Business Logic & Utilities (20 files, 632 tests)
 | File | Tests | What it covers |
 |---|---|---|
 | `i18n-translation-keys.test.ts` | 170 | Translation key completeness for MK and EN |
-| `max-class-size.test.ts` | 67 | MAX_CLASS_SIZE validation across components |
+| `max-class-size.test.ts` | 78 | MAX_CLASS_SIZE validation across components |
 | `profile-payment-info.test.ts` | 56 | Member payment profile info section |
 | `payment-logic.test.ts` | 51 | Trial-as-grace-period, grace period, lockout, overrides, advance payments |
 | `voting-logic.test.ts` | 38 | Deadline calculation, eligibility, isFull, same-day constraints |

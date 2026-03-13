@@ -1,7 +1,7 @@
 /**
  * Comprehensive MAX_CLASS_SIZE Test Suite
  *
- * Tests that the class capacity limit (MAX_CLASS_SIZE = 27) is correctly
+ * Tests that the class capacity limit (MAX_CLASS_SIZE = 30) is correctly
  * enforced across ALL enforcement points in the system:
  *
  * 1. Constants — the single source of truth
@@ -27,8 +27,8 @@ import { isSessionFull } from "@/lib/voting-logic";
 // ===== 1. CONSTANT VALUE =====
 
 describe("MAX_CLASS_SIZE constant", () => {
-  it("is exactly 27", () => {
-    expect(MAX_CLASS_SIZE).toBe(27);
+  it("is exactly 30", () => {
+    expect(MAX_CLASS_SIZE).toBe(30);
   });
 
   it("is a positive integer", () => {
@@ -171,21 +171,21 @@ describe("capacity enforcement logic contracts", () => {
 
     it("blocks move when result would exceed capacity", () => {
       const currentCount = MAX_CLASS_SIZE - 2;
-      const movingCount = 3; // 25 + 3 = 28 > 27
+      const movingCount = 3; // 28 + 3 = 31 > 30
       const shouldBlock = currentCount + movingCount > MAX_CLASS_SIZE;
       expect(shouldBlock).toBe(true);
     });
 
     it("allows move when result equals exactly MAX_CLASS_SIZE", () => {
       const currentCount = MAX_CLASS_SIZE - 3;
-      const movingCount = 3; // 24 + 3 = 27 = MAX_CLASS_SIZE
+      const movingCount = 3; // 27 + 3 = 30 = MAX_CLASS_SIZE
       const shouldBlock = currentCount + movingCount > MAX_CLASS_SIZE;
       expect(shouldBlock).toBe(false);
     });
 
     it("allows move when result is below MAX_CLASS_SIZE", () => {
       const currentCount = MAX_CLASS_SIZE - 5;
-      const movingCount = 2; // 22 + 2 = 24 < 27
+      const movingCount = 2; // 25 + 2 = 27 < 30
       const shouldBlock = currentCount + movingCount > MAX_CLASS_SIZE;
       expect(shouldBlock).toBe(false);
     });
@@ -268,23 +268,23 @@ describe("capacity display format", () => {
   it("formats member count with MAX_CLASS_SIZE denominator", () => {
     const memberCount = 15;
     const display = `${memberCount}/${MAX_CLASS_SIZE} members`;
-    expect(display).toBe("15/27 members");
+    expect(display).toBe("15/30 members");
   });
 
   it("formats coming count with MAX_CLASS_SIZE denominator", () => {
     const comingCount = 8;
     const display = `${comingCount}/${MAX_CLASS_SIZE} coming`;
-    expect(display).toBe("8/27 coming");
+    expect(display).toBe("8/30 coming");
   });
 
   it("formats zero count correctly", () => {
     const display = `${0}/${MAX_CLASS_SIZE} members`;
-    expect(display).toBe("0/27 members");
+    expect(display).toBe("0/30 members");
   });
 
   it("formats full session correctly", () => {
     const display = `${MAX_CLASS_SIZE}/${MAX_CLASS_SIZE} coming`;
-    expect(display).toBe("27/27 coming");
+    expect(display).toBe("30/30 coming");
   });
 });
 
@@ -295,16 +295,16 @@ describe("operator consistency across enforcement points", () => {
   // - votes & members: >= (blocks AT the limit)
   // - move-members: > (allows filling TO the limit)
   //
-  // This is intentional: you can't add a 28th member via any path, but you CAN
-  // move members to fill a session to exactly 27.
+  // This is intentional: you can't add a 31st member via any path, but you CAN
+  // move members to fill a session to exactly 30.
 
-  it("votes: >= means a full session (27/27) blocks new Coming votes", () => {
+  it("votes: >= means a full session (30/30) blocks new Coming votes", () => {
     // votes/route.ts: comingCount >= MAX_CLASS_SIZE
     expect(MAX_CLASS_SIZE >= MAX_CLASS_SIZE).toBe(true); // blocks
     expect((MAX_CLASS_SIZE - 1) >= MAX_CLASS_SIZE).toBe(false); // allows
   });
 
-  it("member assignment: >= means a full session (27/27) blocks new assignments", () => {
+  it("member assignment: >= means a full session (30/30) blocks new assignments", () => {
     // sessions/[id]/members/route.ts: currentCount >= MAX_CLASS_SIZE
     expect(MAX_CLASS_SIZE >= MAX_CLASS_SIZE).toBe(true); // blocks
     expect((MAX_CLASS_SIZE - 1) >= MAX_CLASS_SIZE).toBe(false); // allows
@@ -313,7 +313,7 @@ describe("operator consistency across enforcement points", () => {
   it("move-members: > means you CAN fill to exactly MAX_CLASS_SIZE", () => {
     // sessions/[id]/move-members/route.ts: currentCount + movingCount > MAX_CLASS_SIZE
     const fillToExact = (MAX_CLASS_SIZE - 3) + 3 > MAX_CLASS_SIZE;
-    expect(fillToExact).toBe(false); // allows filling to exactly 27
+    expect(fillToExact).toBe(false); // allows filling to exactly 30
 
     const overCapacity = (MAX_CLASS_SIZE - 2) + 3 > MAX_CLASS_SIZE;
     expect(overCapacity).toBe(true); // blocks going over
@@ -325,7 +325,7 @@ describe("operator consistency across enforcement points", () => {
     // All should block
     expect(overCapacity >= MAX_CLASS_SIZE).toBe(true); // votes
     expect(overCapacity >= MAX_CLASS_SIZE).toBe(true); // member assignment
-    expect(overCapacity > MAX_CLASS_SIZE).toBe(true);  // move-members (28 > 27)
+    expect(overCapacity > MAX_CLASS_SIZE).toBe(true);  // move-members (31 > 30)
   });
 
   it("all three enforcement points agree on what is under capacity", () => {
@@ -348,12 +348,12 @@ describe("remaining capacity calculations", () => {
 
   it("empty session has MAX_CLASS_SIZE remaining slots", () => {
     const remaining = MAX_CLASS_SIZE - 0;
-    expect(remaining).toBe(27);
+    expect(remaining).toBe(30);
   });
 
-  it("session with 10 members has 17 remaining slots", () => {
+  it("session with 10 members has 20 remaining slots", () => {
     const remaining = MAX_CLASS_SIZE - 10;
-    expect(remaining).toBe(17);
+    expect(remaining).toBe(20);
   });
 
   it("remaining slots is always non-negative for valid counts", () => {
@@ -367,19 +367,19 @@ describe("remaining capacity calculations", () => {
 
 describe("move-members capacity with various group sizes", () => {
   const testCases = [
-    { current: 0, moving: 27, expected: false, desc: "fill empty to exact capacity" },
-    { current: 0, moving: 28, expected: true, desc: "overflow empty session by 1" },
-    { current: 25, moving: 2, expected: false, desc: "fill near-full to exact capacity" },
-    { current: 25, moving: 3, expected: true, desc: "overflow near-full by 1" },
-    { current: 26, moving: 1, expected: false, desc: "add last member" },
-    { current: 26, moving: 2, expected: true, desc: "overflow by 1 from one-below" },
-    { current: 27, moving: 1, expected: true, desc: "add to already full session" },
-    { current: 27, moving: 0, expected: false, desc: "move 0 members to full session" },
+    { current: 0, moving: 30, expected: false, desc: "fill empty to exact capacity" },
+    { current: 0, moving: 31, expected: true, desc: "overflow empty session by 1" },
+    { current: 28, moving: 2, expected: false, desc: "fill near-full to exact capacity" },
+    { current: 28, moving: 3, expected: true, desc: "overflow near-full by 1" },
+    { current: 29, moving: 1, expected: false, desc: "add last member" },
+    { current: 29, moving: 2, expected: true, desc: "overflow by 1 from one-below" },
+    { current: 30, moving: 1, expected: true, desc: "add to already full session" },
+    { current: 30, moving: 0, expected: false, desc: "move 0 members to full session" },
     { current: 10, moving: 10, expected: false, desc: "move 10 to half-full (20 total)" },
-    { current: 20, moving: 7, expected: false, desc: "move 7 to fill exactly to 27" },
-    { current: 20, moving: 8, expected: true, desc: "move 8 to overflow (28 total)" },
-    { current: 1, moving: 26, expected: false, desc: "move 26 to nearly empty (27 total)" },
-    { current: 1, moving: 27, expected: true, desc: "move 27 to nearly empty (28 total)" },
+    { current: 20, moving: 10, expected: false, desc: "move 10 to fill exactly to 30" },
+    { current: 20, moving: 11, expected: true, desc: "move 11 to overflow (31 total)" },
+    { current: 1, moving: 29, expected: false, desc: "move 29 to nearly empty (30 total)" },
+    { current: 1, moving: 30, expected: true, desc: "move 30 to nearly empty (31 total)" },
   ];
 
   testCases.forEach(({ current, moving, expected, desc }) => {
@@ -393,24 +393,116 @@ describe("move-members capacity with various group sizes", () => {
 // ===== 8. REGRESSION GUARD =====
 
 describe("regression guards", () => {
-  it("MAX_CLASS_SIZE has not reverted to the old value of 20", () => {
-    expect(MAX_CLASS_SIZE).not.toBe(20);
+  it("MAX_CLASS_SIZE has not reverted to the old value of 27", () => {
+    expect(MAX_CLASS_SIZE).not.toBe(27);
   });
 
-  it("MAX_CLASS_SIZE is 27 (the new required value)", () => {
-    expect(MAX_CLASS_SIZE).toBe(27);
+  it("MAX_CLASS_SIZE is 30 (the new required value)", () => {
+    expect(MAX_CLASS_SIZE).toBe(30);
   });
 
   it("isSessionFull(20) is false (old limit should not trigger full)", () => {
     expect(isSessionFull(20)).toBe(false);
   });
 
-  it("isSessionFull(27) is true (new limit triggers full)", () => {
-    expect(isSessionFull(27)).toBe(true);
+  it("isSessionFull(27) is false (previous limit should not trigger full)", () => {
+    expect(isSessionFull(27)).toBe(false);
   });
 
-  it("there are exactly 7 more slots than the old limit", () => {
-    const oldLimit = 20;
-    expect(MAX_CLASS_SIZE - oldLimit).toBe(7);
+  it("isSessionFull(30) is true (new limit triggers full)", () => {
+    expect(isSessionFull(30)).toBe(true);
+  });
+
+  it("there are exactly 3 more slots than the old limit", () => {
+    const oldLimit = 27;
+    expect(MAX_CLASS_SIZE - oldLimit).toBe(3);
+  });
+});
+
+// ===== 9. ERROR MESSAGE CONTRACTS =====
+
+describe("error message contracts", () => {
+  it("votes error uses static message (no hardcoded number)", () => {
+    const errorMessage = "This session is full";
+    expect(errorMessage).not.toMatch(/\d/);
+  });
+
+  it("member assignment error uses static message (no number)", () => {
+    const errorMessage = "Session is at maximum capacity";
+    expect(errorMessage).not.toMatch(/\d/);
+  });
+
+  it("move-members error includes MAX_CLASS_SIZE in template", () => {
+    const errorMessage = `Target session would exceed max capacity of ${MAX_CLASS_SIZE}`;
+    expect(errorMessage).toBe("Target session would exceed max capacity of 30");
+  });
+});
+
+// ===== 10. FULL CAPACITY DISPLAY =====
+
+describe("capacity display format", () => {
+  it("formats full member count correctly", () => {
+    const display = `${MAX_CLASS_SIZE}/${MAX_CLASS_SIZE} members`;
+    expect(display).toBe("30/30 members");
+  });
+
+  it("formats assignment toggle display at full capacity", () => {
+    const display = `${MAX_CLASS_SIZE} / ${MAX_CLASS_SIZE}`;
+    expect(display).toBe("30 / 30");
+  });
+});
+
+// ===== 11. CARRY-FORWARD: DEPARTED FILTERING + CAPACITY CAP INTERACTION =====
+
+describe("carry-forward: departed filtering + capacity cap interaction", () => {
+  it("filters departed first, then slices — 35 members with 6 departed yields 29 (no truncation)", () => {
+    const members = Array.from({ length: 35 }, (_, i) => ({
+      id: `member-${i}`,
+      status: i < 6 ? "DEPARTED" : "ACTIVE",
+    }));
+    const active = members.filter((m) => m.status !== "DEPARTED");
+    const capped = active.slice(0, MAX_CLASS_SIZE);
+    expect(active).toHaveLength(29);
+    expect(capped).toHaveLength(29); // 29 < 30, no truncation needed
+  });
+
+  it("filters departed first, then slices — 35 members with 2 departed caps at MAX_CLASS_SIZE", () => {
+    const members = Array.from({ length: 35 }, (_, i) => ({
+      id: `member-${i}`,
+      status: i < 2 ? "DEPARTED" : "ACTIVE",
+    }));
+    const active = members.filter((m) => m.status !== "DEPARTED");
+    const capped = active.slice(0, MAX_CLASS_SIZE);
+    expect(active).toHaveLength(33);
+    expect(capped).toHaveLength(30); // capped at MAX_CLASS_SIZE
+  });
+
+  it("filters departed first, then slices — 30 members with 0 departed yields exactly MAX_CLASS_SIZE", () => {
+    const members = Array.from({ length: 30 }, (_, i) => ({
+      id: `member-${i}`,
+      status: "ACTIVE",
+    }));
+    const active = members.filter((m) => m.status !== "DEPARTED");
+    const capped = active.slice(0, MAX_CLASS_SIZE);
+    expect(active).toHaveLength(30);
+    expect(capped).toHaveLength(30); // exactly at capacity
+  });
+});
+
+// ===== 12. VOTE CHANGE BEHAVIOR AT CAPACITY =====
+
+describe("vote change behavior at capacity", () => {
+  it("blocks switching from Not Coming to Coming when session is at MAX_CLASS_SIZE", () => {
+    // Member has a "Not Coming" vote, so their vote is NOT counted in comingCount
+    const comingCount = MAX_CLASS_SIZE; // 30 other members are Coming
+    const shouldBlock = comingCount >= MAX_CLASS_SIZE;
+    expect(shouldBlock).toBe(true);
+  });
+
+  it("allows switching from Not Coming to Coming when session is at MAX_CLASS_SIZE - 1", () => {
+    // Member has a "Not Coming" vote, comingCount doesn't include them
+    const comingCount = MAX_CLASS_SIZE - 1; // 29 other members are Coming
+    const shouldBlock = comingCount >= MAX_CLASS_SIZE;
+    expect(shouldBlock).toBe(false);
   });
 });

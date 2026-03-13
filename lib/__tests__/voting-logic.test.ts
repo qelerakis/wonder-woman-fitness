@@ -331,8 +331,8 @@ describe("hasLowAttendance", () => {
     expect(hasLowAttendance(10)).toBe(false);
   });
 
-  it("returns false when 27 members are coming (max class size)", () => {
-    expect(hasLowAttendance(27)).toBe(false);
+  it("returns false when 30 members are coming (max class size)", () => {
+    expect(hasLowAttendance(30)).toBe(false);
   });
 });
 
@@ -347,16 +347,16 @@ describe("isSessionFull", () => {
     expect(isSessionFull(10)).toBe(false);
   });
 
-  it("returns false when coming count is 26 (one below max)", () => {
-    expect(isSessionFull(26)).toBe(false);
+  it("returns false when coming count is 29 (one below max)", () => {
+    expect(isSessionFull(29)).toBe(false);
   });
 
-  it("returns true when coming count equals MAX_CLASS_SIZE (27)", () => {
-    expect(isSessionFull(27)).toBe(true);
+  it("returns true when coming count equals MAX_CLASS_SIZE (30)", () => {
+    expect(isSessionFull(30)).toBe(true);
   });
 
-  it("returns true when coming count is 28 (one above max)", () => {
-    expect(isSessionFull(28)).toBe(true);
+  it("returns true when coming count is 31 (one above max)", () => {
+    expect(isSessionFull(31)).toBe(true);
   });
 
   it("returns true when coming count exceeds MAX_CLASS_SIZE", () => {

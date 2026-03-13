@@ -6,7 +6,7 @@
  */
 
 // ===== CLASS CONFIGURATION =====
-export const MAX_CLASS_SIZE = 27;
+export const MAX_CLASS_SIZE = 30;
 
 // ===== PAYMENT CONFIGURATION =====
 export const GRACE_PERIOD_DAYS = 10;
