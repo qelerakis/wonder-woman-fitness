@@ -870,4 +870,617 @@ describe("TrainerPaymentsClient", () => {
       expect(screen.queryByPlaceholderText(/notes/i)).toBeNull();
     });
   });
+
+  // ===== FILTER EDGE CASES =====
+
+  describe("Filter Edge Cases", () => {
+    it("Clear button is not visible when filters match current month/year and search is empty", async () => {
+      // defaultProps has initialMonth=1 (Feb) and initialYear=2026, which matches the fake timer (Feb 15, 2026)
+      await renderTrainerPayments();
+
+      expect(screen.queryByText("Clear")).toBeNull();
+    });
+
+    it("Clear button becomes visible when search has text even if month/year match current", async () => {
+      await renderTrainerPayments();
+
+      const searchInput = screen.getByLabelText("Search payments by member name");
+      await act(async () => {
+        fireEvent.change(searchInput, { target: { value: "test" } });
+      });
+
+      expect(screen.getByText("Clear")).toBeTruthy();
+    });
+
+    it("changing month to empty string (null) prevents fetch", async () => {
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ data: [] }),
+      });
+
+      await renderTrainerPayments();
+
+      const monthSelect = screen.getByLabelText("Filter by month");
+      await act(async () => {
+        fireEvent.change(monthSelect, { target: { value: "" } });
+      });
+
+      // fetch should NOT have been called since month is null — early return in fetchPayments
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("changing year to empty string (null) prevents fetch", async () => {
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ data: [] }),
+      });
+
+      await renderTrainerPayments();
+
+      const yearSelect = screen.getByLabelText("Filter by year");
+      await act(async () => {
+        fireEvent.change(yearSelect, { target: { value: "" } });
+      });
+
+      // fetch should NOT have been called since year is null — early return in fetchPayments
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+  });
+
+  // ===== SEARCH EDGE CASES =====
+
+  describe("Search Edge Cases", () => {
+    it("search with regex metacharacters does not crash", async () => {
+      await renderTrainerPayments();
+
+      const searchInput = screen.getByLabelText("Search payments by member name");
+      // "[test" contains an unclosed bracket — would crash if used as regex
+      await act(async () => {
+        fireEvent.change(searchInput, { target: { value: "[test" } });
+      });
+
+      // Should not crash; shows empty state since no member matches
+      expect(screen.getByText("No payments recorded yet")).toBeTruthy();
+    });
+
+    it("search with only whitespace shows all payments (trim behavior)", async () => {
+      await renderTrainerPayments();
+
+      const searchInput = screen.getByLabelText("Search payments by member name");
+      await act(async () => {
+        fireEvent.change(searchInput, { target: { value: "   " } });
+      });
+
+      // Whitespace-only search is trimmed to empty, so all payments show
+      expect(screen.getByText("Alice Smith")).toBeTruthy();
+      expect(screen.getByText("Bob Jones")).toBeTruthy();
+      expect(screen.getByText("Charlie Brown")).toBeTruthy();
+    });
+
+    it("clearing search text shows all payments again", async () => {
+      await renderTrainerPayments();
+
+      const searchInput = screen.getByLabelText("Search payments by member name");
+
+      // First filter to one member
+      await act(async () => {
+        fireEvent.change(searchInput, { target: { value: "Alice" } });
+      });
+      expect(screen.queryByText("Bob Jones")).toBeNull();
+
+      // Clear the search
+      await act(async () => {
+        fireEvent.change(searchInput, { target: { value: "" } });
+      });
+
+      // All payments should be visible again
+      expect(screen.getByText("Alice Smith")).toBeTruthy();
+      expect(screen.getByText("Bob Jones")).toBeTruthy();
+      expect(screen.getByText("Charlie Brown")).toBeTruthy();
+    });
+
+    it("search filters are case-insensitive for unicode characters", async () => {
+      const unicodePayments = [
+        {
+          id: "pay-u1",
+          amount: 1500,
+          paidAt: "2026-02-05T10:00:00.000Z",
+          periodStart: "2026-02-01T00:00:00.000Z",
+          periodEnd: "2026-02-28T00:00:00.000Z",
+          memberName: "Марија Петрова",
+          recordedBy: "Trainer Jane",
+        },
+      ];
+
+      await renderTrainerPayments({ payments: unicodePayments });
+
+      const searchInput = screen.getByLabelText("Search payments by member name");
+      await act(async () => {
+        fireEvent.change(searchInput, { target: { value: "марија" } });
+      });
+
+      // toLowerCase() handles cyrillic, so this should still match
+      expect(screen.getByText("Марија Петрова")).toBeTruthy();
+    });
+  });
+
+  // ===== PAYMENT FORM VALIDATION EDGE CASES =====
+
+  describe("Payment Form Validation Edge Cases", () => {
+    it("submitting with amount '0' shows validation error", async () => {
+      await renderTrainerPayments();
+
+      // Open modal
+      const button = screen.getByText("Record Payment");
+      await act(async () => {
+        fireEvent.click(button);
+      });
+
+      // Select member
+      const memberSelect = screen.getByLabelText("Member");
+      await act(async () => {
+        fireEvent.change(memberSelect, { target: { value: "member-1" } });
+      });
+
+      const amountInput = screen.getByLabelText("Amount (MKD)");
+      await act(async () => {
+        fireEvent.change(amountInput, { target: { value: "0" } });
+      });
+
+      const periodEnd = screen.getByLabelText("Period End");
+      await act(async () => {
+        fireEvent.change(periodEnd, { target: { value: "2026-02-28" } });
+      });
+
+      // Submit form directly
+      const form = document.querySelector("form")!;
+      await act(async () => {
+        fireEvent.submit(form);
+      });
+
+      expect(screen.getByText("Amount must be a positive number")).toBeTruthy();
+    });
+
+    it("submitting with amount '-5' shows validation error", async () => {
+      await renderTrainerPayments();
+
+      const button = screen.getByText("Record Payment");
+      await act(async () => {
+        fireEvent.click(button);
+      });
+
+      const memberSelect = screen.getByLabelText("Member");
+      await act(async () => {
+        fireEvent.change(memberSelect, { target: { value: "member-1" } });
+      });
+
+      const amountInput = screen.getByLabelText("Amount (MKD)");
+      await act(async () => {
+        fireEvent.change(amountInput, { target: { value: "-5" } });
+      });
+
+      const periodEnd = screen.getByLabelText("Period End");
+      await act(async () => {
+        fireEvent.change(periodEnd, { target: { value: "2026-02-28" } });
+      });
+
+      const form = document.querySelector("form")!;
+      await act(async () => {
+        fireEvent.submit(form);
+      });
+
+      expect(screen.getByText("Amount must be a positive number")).toBeTruthy();
+    });
+
+    it("submitting with amount 'abc' shows validation error (NaN)", async () => {
+      await renderTrainerPayments();
+
+      const button = screen.getByText("Record Payment");
+      await act(async () => {
+        fireEvent.click(button);
+      });
+
+      const memberSelect = screen.getByLabelText("Member");
+      await act(async () => {
+        fireEvent.change(memberSelect, { target: { value: "member-1" } });
+      });
+
+      const amountInput = screen.getByLabelText("Amount (MKD)");
+      await act(async () => {
+        fireEvent.change(amountInput, { target: { value: "abc" } });
+      });
+
+      const periodEnd = screen.getByLabelText("Period End");
+      await act(async () => {
+        fireEvent.change(periodEnd, { target: { value: "2026-02-28" } });
+      });
+
+      const form = document.querySelector("form")!;
+      await act(async () => {
+        fireEvent.submit(form);
+      });
+
+      expect(screen.getByText("Amount must be a positive number")).toBeTruthy();
+    });
+
+    it("submitting with periodStart AFTER periodEnd shows period end error", async () => {
+      await renderTrainerPayments();
+
+      const button = screen.getByText("Record Payment");
+      await act(async () => {
+        fireEvent.click(button);
+      });
+
+      const memberSelect = screen.getByLabelText("Member");
+      await act(async () => {
+        fireEvent.change(memberSelect, { target: { value: "member-1" } });
+      });
+
+      const amountInput = screen.getByLabelText("Amount (MKD)");
+      await act(async () => {
+        fireEvent.change(amountInput, { target: { value: "1500" } });
+      });
+
+      const periodStart = screen.getByLabelText("Period Start");
+      const periodEnd = screen.getByLabelText("Period End");
+      await act(async () => {
+        fireEvent.change(periodStart, { target: { value: "2026-03-15" } });
+        fireEvent.change(periodEnd, { target: { value: "2026-03-01" } });
+      });
+
+      const form = document.querySelector("form")!;
+      await act(async () => {
+        fireEvent.submit(form);
+      });
+
+      expect(screen.getByText("Period end must be after start")).toBeTruthy();
+    });
+
+    it("submitting with periodStart equal to periodEnd succeeds (equal dates are valid)", async () => {
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ data: { id: "new-pay" } }),
+      });
+
+      await renderTrainerPayments();
+
+      const button = screen.getByText("Record Payment");
+      await act(async () => {
+        fireEvent.click(button);
+      });
+
+      const memberSelect = screen.getByLabelText("Member");
+      await act(async () => {
+        fireEvent.change(memberSelect, { target: { value: "member-1" } });
+      });
+
+      const amountInput = screen.getByLabelText("Amount (MKD)");
+      await act(async () => {
+        fireEvent.change(amountInput, { target: { value: "1500" } });
+      });
+
+      const periodStart = screen.getByLabelText("Period Start");
+      const periodEnd = screen.getByLabelText("Period End");
+      await act(async () => {
+        fireEvent.change(periodStart, { target: { value: "2026-03-01" } });
+        fireEvent.change(periodEnd, { target: { value: "2026-03-01" } });
+      });
+
+      const form = document.querySelector("form")!;
+      await act(async () => {
+        fireEvent.submit(form);
+      });
+
+      // Should NOT show period error — equal dates are valid since condition is >
+      expect(screen.queryByText("Period end must be after start")).toBeNull();
+
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalledWith("/api/payments", expect.objectContaining({
+          method: "POST",
+        }));
+      });
+    });
+  });
+
+  // ===== API RESPONSE HANDLING =====
+
+  describe("API Response Handling", () => {
+    it("fetchPayments handles non-ok response with error toast", async () => {
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: false,
+      });
+
+      await renderTrainerPayments();
+
+      const monthSelect = screen.getByLabelText("Filter by month");
+      await act(async () => {
+        fireEvent.change(monthSelect, { target: { value: "0" } }); // January
+      });
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledWith(
+          expect.objectContaining({ type: "error", title: "Failed to load payments" })
+        );
+      });
+    });
+
+    it("fetchPayments handles malformed JSON (missing data key) with unexpected response toast", async () => {
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ results: [] }), // missing "data" key
+      });
+
+      await renderTrainerPayments();
+
+      const monthSelect = screen.getByLabelText("Filter by month");
+      await act(async () => {
+        fireEvent.change(monthSelect, { target: { value: "0" } });
+      });
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledWith(
+          expect.objectContaining({ type: "error", title: "Unexpected response format" })
+        );
+      });
+    });
+
+    it("record payment handles server error response showing data.error message", async () => {
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: false,
+        json: () => Promise.resolve({ error: "Insufficient permissions" }),
+      });
+
+      await renderTrainerPayments();
+
+      // Open modal and fill form
+      const button = screen.getByText("Record Payment");
+      await act(async () => {
+        fireEvent.click(button);
+      });
+
+      const memberSelect = screen.getByLabelText("Member");
+      await act(async () => {
+        fireEvent.change(memberSelect, { target: { value: "member-1" } });
+      });
+
+      const amountInput = screen.getByLabelText("Amount (MKD)");
+      await act(async () => {
+        fireEvent.change(amountInput, { target: { value: "1500" } });
+      });
+
+      const periodEnd = screen.getByLabelText("Period End");
+      await act(async () => {
+        fireEvent.change(periodEnd, { target: { value: "2026-02-28" } });
+      });
+
+      const submitButton = screen.getAllByText("Record Payment")[2];
+      await act(async () => {
+        fireEvent.click(submitButton);
+      });
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: "error",
+            title: "Failed to record payment",
+            message: "Insufficient permissions",
+          })
+        );
+      });
+    });
+
+    it("record payment handles network error with network error toast", async () => {
+      (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error("Failed to fetch")
+      );
+
+      await renderTrainerPayments();
+
+      // Open modal and fill form
+      const button = screen.getByText("Record Payment");
+      await act(async () => {
+        fireEvent.click(button);
+      });
+
+      const memberSelect = screen.getByLabelText("Member");
+      await act(async () => {
+        fireEvent.change(memberSelect, { target: { value: "member-1" } });
+      });
+
+      const amountInput = screen.getByLabelText("Amount (MKD)");
+      await act(async () => {
+        fireEvent.change(amountInput, { target: { value: "1500" } });
+      });
+
+      const periodEnd = screen.getByLabelText("Period End");
+      await act(async () => {
+        fireEvent.change(periodEnd, { target: { value: "2026-02-28" } });
+      });
+
+      const submitButton = screen.getAllByText("Record Payment")[2];
+      await act(async () => {
+        fireEvent.click(submitButton);
+      });
+
+      await waitFor(() => {
+        expect(mockAddToast).toHaveBeenCalledWith(
+          expect.objectContaining({ type: "error", title: "Network error" })
+        );
+      });
+    });
+  });
+
+  // ===== LOADING STATES =====
+
+  describe("Loading States", () => {
+    it("payment table shows opacity-50 during loading", async () => {
+      let resolvePromise: (value: unknown) => void;
+      const fetchPromise = new Promise((resolve) => {
+        resolvePromise = resolve;
+      });
+
+      (global.fetch as ReturnType<typeof vi.fn>).mockReturnValue(fetchPromise);
+
+      await renderTrainerPayments();
+
+      const monthSelect = screen.getByLabelText("Filter by month");
+      await act(async () => {
+        fireEvent.change(monthSelect, { target: { value: "0" } });
+      });
+
+      // While loading, the table overflow container should have opacity-50
+      const opacityEl = document.querySelector(".opacity-50");
+      expect(opacityEl).toBeTruthy();
+      expect(opacityEl!.classList.contains("transition-opacity")).toBe(true);
+
+      // Resolve to clean up
+      await act(async () => {
+        resolvePromise!({ ok: true, json: () => Promise.resolve({ data: [] }) });
+      });
+    });
+
+    it("opacity is removed after loading completes", async () => {
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({
+          data: [{
+            id: "pay-new",
+            amount: 1000,
+            paidAt: "2026-01-05T10:00:00.000Z",
+            periodStart: "2026-01-01T00:00:00.000Z",
+            periodEnd: "2026-01-31T00:00:00.000Z",
+            user: { id: "member-1", name: "Alice Smith" },
+            recordedBy: null,
+          }],
+        }),
+      });
+
+      await renderTrainerPayments();
+
+      const monthSelect = screen.getByLabelText("Filter by month");
+      await act(async () => {
+        fireEvent.change(monthSelect, { target: { value: "0" } });
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector(".opacity-50")).toBeNull();
+      });
+    });
+
+    it("record payment button shows loading state during submission", async () => {
+      let resolvePromise: (value: unknown) => void;
+      const fetchPromise = new Promise((resolve) => {
+        resolvePromise = resolve;
+      });
+
+      (global.fetch as ReturnType<typeof vi.fn>).mockReturnValue(fetchPromise);
+
+      await renderTrainerPayments();
+
+      // Open modal and fill form
+      const button = screen.getByText("Record Payment");
+      await act(async () => {
+        fireEvent.click(button);
+      });
+
+      const memberSelect = screen.getByLabelText("Member");
+      await act(async () => {
+        fireEvent.change(memberSelect, { target: { value: "member-1" } });
+      });
+
+      const amountInput = screen.getByLabelText("Amount (MKD)");
+      await act(async () => {
+        fireEvent.change(amountInput, { target: { value: "1500" } });
+      });
+
+      const periodEnd = screen.getByLabelText("Period End");
+      await act(async () => {
+        fireEvent.change(periodEnd, { target: { value: "2026-02-28" } });
+      });
+
+      const submitButton = screen.getAllByText("Record Payment")[2];
+      await act(async () => {
+        fireEvent.click(submitButton);
+      });
+
+      // The submit button should be disabled while loading (Button with loading=true sets disabled)
+      await waitFor(() => {
+        // Find the actual submit button in the modal form
+        const buttons = screen.getAllByRole("button");
+        const submitBtn = buttons.find((b) => b.getAttribute("type") === "submit");
+        expect(submitBtn).toBeTruthy();
+        expect(submitBtn!.hasAttribute("disabled") || submitBtn!.getAttribute("aria-disabled") === "true").toBe(true);
+      });
+
+      // Resolve to clean up
+      await act(async () => {
+        resolvePromise!({ ok: true, json: () => Promise.resolve({ data: { id: "new" } }) });
+      });
+    });
+  });
+
+  // ===== FORMAT CURRENCY =====
+
+  describe("formatCurrency display", () => {
+    it("displays '0 MKD' for zero amount", async () => {
+      await renderTrainerPayments({ summary: { ...sampleSummary, thisMonthRevenue: 0 } });
+
+      expect(screen.getByText("0 MKD")).toBeTruthy();
+    });
+
+    it("displays formatted amount with locale separator for 1500", async () => {
+      // samplePayments already has 1500 MKD entries — check they render with MKD suffix
+      await renderTrainerPayments();
+
+      // toLocaleString may or may not add commas for 1500 depending on env
+      const amountCells = screen.getAllByText(/1[,.]?500 MKD/);
+      expect(amountCells.length).toBeGreaterThanOrEqual(2); // Alice and Charlie both have 1500
+    });
+  });
+
+  // ===== UNPAID MEMBERS SECTION EDGE CASES =====
+
+  describe("Unpaid Members Section Edge Cases", () => {
+    it("section is not rendered when all members are PAID", async () => {
+      const allPaidMembers: MemberStatusItem[] = [
+        { id: "member-1", name: "Alice Smith", paymentStatus: "PAID" },
+        { id: "member-2", name: "Bob Jones", paymentStatus: "PAID" },
+        { id: "member-3", name: "Charlie Brown", paymentStatus: "PAID" },
+      ];
+
+      await renderTrainerPayments({ members: allPaidMembers });
+
+      expect(screen.queryByText("Unpaid Members")).toBeNull();
+      expect(screen.queryByText("Members with outstanding payments")).toBeNull();
+    });
+
+    it("section shows only GRACE_PERIOD and LOCKED members, not PAID or OVERRIDE", async () => {
+      const mixedMembers: MemberStatusItem[] = [
+        { id: "member-1", name: "Alice Smith", paymentStatus: "PAID" },
+        { id: "member-2", name: "Bob Jones", paymentStatus: "GRACE_PERIOD" },
+        { id: "member-3", name: "Charlie Brown", paymentStatus: "LOCKED" },
+        { id: "member-4", name: "Diana Prince", paymentStatus: "OVERRIDE" },
+        { id: "member-5", name: "Eve Wilson", paymentStatus: "PAID" },
+      ];
+
+      await renderTrainerPayments({ members: mixedMembers });
+
+      // The Unpaid Members card should exist
+      const unpaidHeading = screen.getByText("Unpaid Members");
+      let unpaidCard: HTMLElement | null = unpaidHeading.closest("div");
+      while (unpaidCard && !unpaidCard.classList.contains("rounded-xl")) {
+        unpaidCard = unpaidCard.parentElement;
+      }
+      expect(unpaidCard).toBeTruthy();
+
+      // GRACE_PERIOD and LOCKED should appear
+      expect(unpaidCard!.textContent).toContain("Bob Jones");
+      expect(unpaidCard!.textContent).toContain("Charlie Brown");
+
+      // PAID and OVERRIDE should NOT appear in the unpaid section
+      expect(unpaidCard!.textContent).not.toContain("Alice Smith");
+      expect(unpaidCard!.textContent).not.toContain("Diana Prince");
+      expect(unpaidCard!.textContent).not.toContain("Eve Wilson");
+    });
+  });
 });
