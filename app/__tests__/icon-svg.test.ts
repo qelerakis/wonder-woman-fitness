@@ -165,11 +165,12 @@ describe("app/icon.svg favicon", () => {
       expect(rectMatch).not.toBeNull();
       const rectAttrs = rectMatch![1];
       const hasExplicitX = /\bx="([^"]*)"/.exec(rectAttrs);
+      // Either x="0" explicitly, or no x attribute (SVG defaults to 0)
       if (hasExplicitX) {
         expect(hasExplicitX[1]).toBe("0");
+      } else {
+        expect(rectAttrs).not.toMatch(/\bx="/);
       }
-      // If no x attribute, that's also valid (defaults to 0)
-      expect(true).toBe(true);
     });
 
     it('rect has y="0" or no y attribute (defaults to 0)', () => {
@@ -177,11 +178,12 @@ describe("app/icon.svg favicon", () => {
       expect(rectMatch).not.toBeNull();
       const rectAttrs = rectMatch![1];
       const hasExplicitY = /\by="([^"]*)"/.exec(rectAttrs);
+      // Either y="0" explicitly, or no y attribute (SVG defaults to 0)
       if (hasExplicitY) {
         expect(hasExplicitY[1]).toBe("0");
+      } else {
+        expect(rectAttrs).not.toMatch(/\by="/);
       }
-      // If no y attribute, that's also valid (defaults to 0)
-      expect(true).toBe(true);
     });
   });
 

@@ -589,7 +589,7 @@ describe("TrainerPaymentsClient", () => {
 
       // Submit without filling anything
       // Page button [0], modal title h2 [1], form submit button [2]
-      const submitButton = screen.getAllByText("Record Payment")[2];
+      const submitButton = document.querySelector("form button[type='submit']") as HTMLButtonElement;
       await act(async () => {
         fireEvent.click(submitButton);
       });
@@ -627,7 +627,7 @@ describe("TrainerPaymentsClient", () => {
       });
 
       // Page button [0], modal title h2 [1], form submit button [2]
-      const submitButton = screen.getAllByText("Record Payment")[2];
+      const submitButton = document.querySelector("form button[type='submit']") as HTMLButtonElement;
       await act(async () => {
         fireEvent.click(submitButton);
       });
@@ -665,7 +665,7 @@ describe("TrainerPaymentsClient", () => {
       });
 
       // Page button [0], modal title h2 [1], form submit button [2]
-      const submitButton = screen.getAllByText("Record Payment")[2];
+      const submitButton = document.querySelector("form button[type='submit']") as HTMLButtonElement;
       await act(async () => {
         fireEvent.click(submitButton);
       });
@@ -711,7 +711,7 @@ describe("TrainerPaymentsClient", () => {
       });
 
       // Page button [0], modal title h2 [1], form submit button [2]
-      const submitButton = screen.getAllByText("Record Payment")[2];
+      const submitButton = document.querySelector("form button[type='submit']") as HTMLButtonElement;
       await act(async () => {
         fireEvent.click(submitButton);
       });
@@ -755,7 +755,7 @@ describe("TrainerPaymentsClient", () => {
       });
 
       // Page button [0], modal title h2 [1], form submit button [2]
-      const submitButton = screen.getAllByText("Record Payment")[2];
+      const submitButton = document.querySelector("form button[type='submit']") as HTMLButtonElement;
       await act(async () => {
         fireEvent.click(submitButton);
       });
@@ -796,7 +796,7 @@ describe("TrainerPaymentsClient", () => {
       });
 
       // Page button [0], modal title h2 [1], form submit button [2]
-      const submitButton = screen.getAllByText("Record Payment")[2];
+      const submitButton = document.querySelector("form button[type='submit']") as HTMLButtonElement;
       await act(async () => {
         fireEvent.click(submitButton);
       });
@@ -924,6 +924,101 @@ describe("TrainerPaymentsClient", () => {
 
       // fetch should NOT have been called since year is null — early return in fetchPayments
       expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("displays fetched payments in the table after changing month filter", async () => {
+      const fetchedPayments = [
+        {
+          id: "fetched-1",
+          amount: 3000,
+          paidAt: "2026-01-10T10:00:00.000Z",
+          periodStart: "2026-01-01T00:00:00.000Z",
+          periodEnd: "2026-01-31T00:00:00.000Z",
+          user: { id: "m1", name: "Diana Prince" },
+          recordedBy: { id: "t1", name: "Trainer One" },
+        },
+        {
+          id: "fetched-2",
+          amount: 1800,
+          paidAt: "2026-01-15T14:00:00.000Z",
+          periodStart: "2026-01-01T00:00:00.000Z",
+          periodEnd: "2026-01-31T00:00:00.000Z",
+          user: { id: "m2", name: "Bruce Wayne" },
+          recordedBy: null,
+        },
+      ];
+
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ data: fetchedPayments }),
+      });
+
+      await renderTrainerPayments();
+
+      // Initial data shows Alice, Bob, Charlie
+      expect(screen.getByText("Alice Smith")).toBeTruthy();
+
+      // Change month to January (index 0)
+      const monthSelect = screen.getByLabelText("Filter by month");
+      await act(async () => {
+        fireEvent.change(monthSelect, { target: { value: "0" } });
+      });
+
+      // Wait for the fetched data to render
+      await waitFor(() => {
+        expect(screen.getByText("Diana Prince")).toBeTruthy();
+      });
+
+      // New data should be displayed
+      expect(screen.getByText("Bruce Wayne")).toBeTruthy();
+      expect(screen.getByText(/3[,.]?000 MKD/)).toBeTruthy();
+      expect(screen.getByText(/1[,.]?800 MKD/)).toBeTruthy();
+
+      // Old data should be gone
+      expect(screen.queryByText("Alice Smith")).toBeNull();
+      expect(screen.queryByText("Bob Jones")).toBeNull();
+
+      // Verify fetch was called with correct date range for January 2026
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining("startDate=2026-01-01")
+      );
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining("endDate=2026-01-31")
+      );
+    });
+
+    it("clicking Clear resets filters and fetches current month data", async () => {
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ data: [] }),
+      });
+
+      await renderTrainerPayments();
+
+      // Type something in search to make clear button visible
+      const searchInput = screen.getByLabelText("Search payments by member name");
+      await act(async () => {
+        fireEvent.change(searchInput, { target: { value: "test" } });
+      });
+
+      // Clear button should appear
+      const clearButton = screen.getByText("Clear");
+      expect(clearButton).toBeTruthy();
+
+      // Click clear
+      await act(async () => {
+        fireEvent.click(clearButton);
+      });
+
+      // Search should be cleared
+      expect((searchInput as HTMLInputElement).value).toBe("");
+
+      // Fetch should have been called for current month (Feb 2026)
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalledWith(
+          expect.stringContaining("startDate=2026-02-01")
+        );
+      });
     });
   });
 
@@ -1253,7 +1348,7 @@ describe("TrainerPaymentsClient", () => {
         fireEvent.change(periodEnd, { target: { value: "2026-02-28" } });
       });
 
-      const submitButton = screen.getAllByText("Record Payment")[2];
+      const submitButton = document.querySelector("form button[type='submit']") as HTMLButtonElement;
       await act(async () => {
         fireEvent.click(submitButton);
       });
@@ -1297,7 +1392,7 @@ describe("TrainerPaymentsClient", () => {
         fireEvent.change(periodEnd, { target: { value: "2026-02-28" } });
       });
 
-      const submitButton = screen.getAllByText("Record Payment")[2];
+      const submitButton = document.querySelector("form button[type='submit']") as HTMLButtonElement;
       await act(async () => {
         fireEvent.click(submitButton);
       });
@@ -1398,7 +1493,7 @@ describe("TrainerPaymentsClient", () => {
         fireEvent.change(periodEnd, { target: { value: "2026-02-28" } });
       });
 
-      const submitButton = screen.getAllByText("Record Payment")[2];
+      const submitButton = document.querySelector("form button[type='submit']") as HTMLButtonElement;
       await act(async () => {
         fireEvent.click(submitButton);
       });
