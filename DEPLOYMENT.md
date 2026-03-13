@@ -6,7 +6,7 @@
 - [Neon Database](https://neon.tech) account (production database)
 - [Resend Account](https://resend.com) (email service)
 - [Cloudinary Account](https://cloudinary.com) (file uploads)
-- Domain name (wonderwomanfitness.mk) configured
+- Domain name (wonderwomanfitness.org) configured
 
 ---
 
@@ -62,9 +62,9 @@
    |------|-------|--------------|
    | `DATABASE_URL` | `postgresql://...` | Neon connection string (pooled) |
    | `NEXTAUTH_SECRET` | Run: `openssl rand -base64 32` | Generate locally |
-   | `NEXTAUTH_URL` | `https://wonderwomanfitness.mk` | Your production domain |
+   | `NEXTAUTH_URL` | `https://wonderwomanfitness.org` | Your production domain |
    | `RESEND_API_KEY` | `re_...` | Resend Dashboard → API Keys |
-   | `EMAIL_FROM` | `noreply@wonderwomanfitness.mk` | Your verified domain |
+   | `EMAIL_FROM` | `noreply@wonderwomanfitness.org` | Your verified domain |
    | `CLOUDINARY_CLOUD_NAME` | Your cloud name | Cloudinary Dashboard |
    | `CLOUDINARY_API_KEY` | Your API key | Cloudinary Dashboard |
    | `CLOUDINARY_API_SECRET` | Your API secret | Cloudinary Dashboard |
@@ -84,7 +84,7 @@
 1. **Add Custom Domain**
    - Go to [Resend Dashboard](https://resend.com/domains)
    - Click "Add Domain"
-   - Enter: `wonderwomanfitness.mk`
+   - Enter: `wonderwomanfitness.org`
 
 2. **Configure DNS Records**
 
@@ -108,7 +108,7 @@
    ```
    Name: _dmarc
    Type: TXT
-   Value: v=DMARC1; p=none; rua=mailto:dmarc@wonderwomanfitness.mk
+   Value: v=DMARC1; p=none; rua=mailto:dmarc@wonderwomanfitness.org
    ```
 
 3. **Verify Domain**
@@ -129,8 +129,8 @@
 
 1. **Add Domain to Vercel**
    - Project Settings → Domains
-   - Add: `wonderwomanfitness.mk`
-   - Add: `www.wonderwomanfitness.mk` (redirects to apex)
+   - Add: `wonderwomanfitness.org`
+   - Add: `www.wonderwomanfitness.org` (redirects to apex)
 
 2. **Configure DNS Records**
 
@@ -156,16 +156,19 @@
    - Vercel automatically provisions SSL certificate
    - HTTPS is enforced by default
 
+**Domain Redirects:** `vercel.json` includes 301 redirects from `www.wonderwomanfitness.org` and all `*.vercel.app` subdomains to the apex domain `wonderwomanfitness.org`.
+
 ---
 
 ## Step 5: Cron Jobs Verification
 
 1. **Check Cron Configuration**
    - Vercel Dashboard → Project → Cron Jobs
-   - Should show 3 cron jobs from `vercel.json`:
-     - Payment reminders (9 AM daily)
-     - Trial expiration (6 AM daily)
-     - Voting deadline (daily at midnight)
+   - Should show 4 cron jobs from `vercel.json`:
+     - Payment reminders (daily 9 AM)
+     - Trial expiration (daily 6 AM)
+     - Voting deadline (daily midnight)
+     - Cleanup pending verifications (daily 3 AM)
 
 2. **Test Cron Endpoints**
 
@@ -175,15 +178,19 @@
 
    # Test payment reminders
    curl -H "Authorization: Bearer $CRON_SECRET" \
-     https://wonderwomanfitness.mk/api/cron/payment-reminders
+     https://wonderwomanfitness.org/api/cron/payment-reminders
 
    # Test trial expiration
    curl -H "Authorization: Bearer $CRON_SECRET" \
-     https://wonderwomanfitness.mk/api/cron/trial-expiration
+     https://wonderwomanfitness.org/api/cron/trial-expiration
 
    # Test voting deadline
    curl -H "Authorization: Bearer $CRON_SECRET" \
-     https://wonderwomanfitness.mk/api/cron/voting-deadline
+     https://wonderwomanfitness.org/api/cron/voting-deadline
+
+   # Test cleanup pending verifications
+   curl -H "Authorization: Bearer $CRON_SECRET" \
+     https://wonderwomanfitness.org/api/cron/cleanup-pending
    ```
 
 3. **Monitor Cron Logs**
@@ -211,7 +218,7 @@
    -- After registering via /register, update user role to OWNER
    UPDATE "User"
    SET role = 'OWNER', status = 'ACTIVE'
-   WHERE email = 'owner@wonderwomanfitness.mk';
+   WHERE email = 'owner@wonderwomanfitness.org';
    ```
 
 2. **Change Default Password**
@@ -257,6 +264,7 @@ Run through this checklist to verify everything works:
 - Payment reminders sent on days 1, 7, 11 ✓
 - Trial expiration notifications ✓
 - Voting deadlines enforced ✓
+- Expired pending verifications cleaned up ✓
 
 ---
 
@@ -286,7 +294,7 @@ Run through this checklist to verify everything works:
 
 5. **Cron Job Execution**
    - Vercel Cron Jobs → Logs
-   - Verify all 3 cron jobs run on schedule
+   - Verify all 4 cron jobs run on schedule
    - Check for failed executions
 
 ### Ongoing Maintenance:
@@ -381,7 +389,7 @@ The rate limiter (`lib/rate-limit.ts`) uses an in-memory `Map` for storing reque
 ## Support & Feedback
 
 - **GitHub Issues**: https://github.com/your-repo/issues
-- **Owner Email**: owner@wonderwomanfitness.mk
+- **Owner Email**: owner@wonderwomanfitness.org
 - **Emergency Contact**: [Your phone number]
 
 ---
@@ -389,7 +397,7 @@ The rate limiter (`lib/rate-limit.ts`) uses an in-memory `Map` for storing reque
 ## Next Steps After Launch
 
 1. **Invite Members**
-   - Share registration link: `https://wonderwomanfitness.mk/register`
+   - Share registration link: `https://wonderwomanfitness.org/register`
    - Send invitation emails with trial benefits (14 days free)
 
 2. **Onboard Trainers**
@@ -410,5 +418,5 @@ The rate limiter (`lib/rate-limit.ts`) uses an in-memory `Map` for storing reque
 
 **Deployment Date**: _____________________
 **Deployed By**: _____________________
-**Production URL**: https://wonderwomanfitness.mk
+**Production URL**: https://wonderwomanfitness.org
 **Version**: 1.0.0
