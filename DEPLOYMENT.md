@@ -54,6 +54,10 @@
    - Output Directory: `.next`
    - Install Command: `npm install`
 
+   **Important**: `vercel.json` specifies `"regions": ["fra1"]` (Frankfurt). This should match your Neon database region (EU Central) for minimal latency.
+
+   **Important**: `next.config.ts` sets `serverExternalPackages: ["@prisma/client", "@prisma/adapter-pg", "bcrypt"]` which is critical for Vercel deployment — these packages must be bundled as external dependencies for serverless functions to work correctly.
+
 3. **Set Environment Variables**
 
    Go to **Project Settings → Environment Variables** and add:
@@ -64,7 +68,7 @@
    | `NEXTAUTH_SECRET` | Run: `openssl rand -base64 32` | Generate locally |
    | `NEXTAUTH_URL` | `https://wonderwomanfitness.org` | Your production domain |
    | `RESEND_API_KEY` | `re_...` | Resend Dashboard → API Keys |
-   | `EMAIL_FROM` | `noreply@wonderwomanfitness.org` | Your verified domain |
+   | `EMAIL_FROM` | `noreply@contact.wonderwomanfitness.org` | Your verified subdomain |
    | `CLOUDINARY_CLOUD_NAME` | Your cloud name | Cloudinary Dashboard |
    | `CLOUDINARY_API_KEY` | Your API key | Cloudinary Dashboard |
    | `CLOUDINARY_API_SECRET` | Your API secret | Cloudinary Dashboard |
@@ -84,29 +88,30 @@
 1. **Add Custom Domain**
    - Go to [Resend Dashboard](https://resend.com/domains)
    - Click "Add Domain"
-   - Enter: `wonderwomanfitness.org`
+   - Enter: `contact.wonderwomanfitness.org` (the subdomain used by `EMAIL_FROM`)
+   - This must match the domain in `EMAIL_FROM` (`noreply@contact.wonderwomanfitness.org`)
 
 2. **Configure DNS Records**
 
-   Add these records to your domain DNS:
+   Add these records to your domain DNS for the `contact` subdomain (Resend will provide exact values after adding the domain):
 
    **SPF Record** (TXT):
    ```
-   Name: @
+   Name: contact
    Type: TXT
    Value: v=spf1 include:_spf.resend.com ~all
    ```
 
    **DKIM Records** (provided by Resend):
    ```
-   Name: resend._domainkey
+   Name: resend._domainkey.contact
    Type: TXT
    Value: <provided by Resend>
    ```
 
    **DMARC Record** (TXT):
    ```
-   Name: _dmarc
+   Name: _dmarc.contact
    Type: TXT
    Value: v=DMARC1; p=none; rua=mailto:dmarc@wonderwomanfitness.org
    ```
@@ -117,11 +122,7 @@
    - Status should show "Verified" with green checkmark
 
 4. **Test Email Delivery**
-   ```bash
-   curl -X POST https://yourdomain.vercel.app/api/test-email \
-     -H "Content-Type: application/json" \
-     -d '{"to": "your-email@example.com"}'
-   ```
+   There is no `/api/test-email` endpoint. To test email delivery, trigger the registration flow at `/register` — it sends a verification email to the new member's address. Check the Resend dashboard for delivery status.
 
 ---
 
@@ -219,6 +220,8 @@
    UPDATE "User"
    SET role = 'OWNER', status = 'ACTIVE'
    WHERE email = 'owner@wonderwomanfitness.org';
+   -- Note: The seed script uses 'owner@wonderwomanfitness.mk' (the old domain).
+   -- Update the seed script email for production use.
    ```
 
 2. **Change Default Password**
@@ -243,7 +246,7 @@
 
 Run through this checklist to verify everything works:
 
-- [ ] **Registration**: New member can register → receives TRIAL status
+- [ ] **Registration**: New member can register → receives verification email → clicks verification link → receives TRIAL status
 - [ ] **Login**: All roles (owner, trainer, member) can login
 - [ ] **Schedule**: Owner creates recurring slot → sessions appear
 - [ ] **Workouts**: Trainer posts workout → members receive email notification
@@ -281,6 +284,7 @@ Run through this checklist to verify everything works:
    - Vercel Analytics → Performance
    - Check P95 response times (should be < 1s)
    - Identify slow API routes
+   - **Note**: The app uses `@vercel/analytics` and `@vercel/speed-insights` (imported in the root layout). These may require Vercel Pro plan configuration for full functionality.
 
 3. **Email Deliverability**
    - Resend Dashboard → Analytics
@@ -336,8 +340,8 @@ Run through this checklist to verify everything works:
 - [ ] Cloudinary uploads always go through API route (never client-direct)
 - [ ] CORS not disabled (Next.js defaults are secure)
 - [ ] Rate limiting active on all API endpoints (in-memory sliding-window)
-- [ ] Content-Security-Policy header enabled (XSS mitigation)
-- [ ] All Zod schemas use `.strict()` (rejects unexpected fields)
+- [ ] Security headers configured in `next.config.ts`: X-Frame-Options (DENY), X-Content-Type-Options (nosniff), Referrer-Policy, Permissions-Policy, Strict-Transport-Security (HSTS with preload), and Content-Security-Policy (XSS mitigation)
+- [ ] Critical Zod schemas use `.strict()` (rejects unexpected fields)
 - [ ] Cron auth uses timing-safe comparison (`crypto.timingSafeEqual`)
 
 ---
@@ -401,9 +405,10 @@ The rate limiter (`lib/rate-limit.ts`) uses an in-memory `Map` for storing reque
    - Send invitation emails with trial benefits (14 days free)
 
 2. **Onboard Trainers**
-   - Owner creates trainer accounts with temporary passwords
-   - Trainers receive email with login credentials
-   - Trainers forced to change password on first login
+   - Trainers are promoted from existing member accounts via the Trainers page
+   - The owner selects an existing member and promotes them using `POST /api/trainers`
+   - The member's role changes to TRAINER, their future session assignments and votes are cleaned up, and they receive a ROLE_CHANGED notification
+   - No temporary passwords are involved — the trainer continues using their existing member credentials
 
 3. **Set Up Private Sessions**
    - Owner adds private training clients
@@ -420,3 +425,4 @@ The rate limiter (`lib/rate-limit.ts`) uses an in-memory `Map` for storing reque
 **Deployed By**: _____________________
 **Production URL**: https://wonderwomanfitness.org
 **Version**: 1.0.0
+**Last Updated**: March 22, 2026

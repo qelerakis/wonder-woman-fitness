@@ -1,21 +1,24 @@
 # Architecture — Wonder Woman Fitness
 
+*Last updated: March 22, 2026*
+
 ## 1. Tech Stack
 
 | Layer              | Choice                         | Version  | Why                                                                                                     |
 |--------------------|--------------------------------|----------|---------------------------------------------------------------------------------------------------------|
 | **Framework**      | Next.js (App Router)           | 15.x     | Full-stack React framework. Server components reduce client JS bundle. API routes co-located with UI. Single deployment unit on Vercel. |
 | **Language**       | TypeScript                     | 5.x      | Type safety across the entire stack prevents an entire class of runtime bugs, especially important for role-based logic and payment calculations. |
-| **Styling**        | Tailwind CSS                   | 4.x      | Utility-first CSS. Easy to enforce the purple/black brand palette via `tailwind.config`. No context-switching between files. |
+| **Styling**        | Tailwind CSS                   | 4.x      | Utility-first CSS. Easy to enforce the purple/black brand palette via `@theme` directive in `app/globals.css`. No context-switching between files. |
 | **Database**       | PostgreSQL                     | 16       | Relational data (users → payments → sessions → votes) is the core of this app. Postgres handles it natively with foreign keys, constraints, and transactional integrity. |
 | **ORM**            | Prisma                         | 7.x      | Type-safe queries with adapter pattern (`PrismaPg`). Generated client at `@/generated/prisma`. Migrations are version-controlled. |
 | **Auth**           | NextAuth.js (Auth.js) v5       | 5.x      | Credentials provider for email/password. Session strategy via JWT. Role field (`OWNER`, `TRAINER`, `MEMBER`) stored in the token for middleware-level access control. |
-| **Email**          | Resend                         | Latest   | Simple API, excellent deliverability, built-in React Email support for templated emails. Free tier covers MVP volume. |
+| **Email**          | Resend                         | ^6.9.2   | Simple API, excellent deliverability, built-in React Email support for templated emails. Free tier covers MVP volume. |
 | **File Storage**   | Cloudinary                     | Latest   | Member photo uploads with automatic resizing/optimization. No need to manage S3 buckets and CDN configuration for a single-gym app. |
 | **Cron / Jobs**    | Vercel Cron Jobs               | —        | Serverless cron for automated payment reminders (day 1, 7, 11) and trial expiration checks. No separate worker process to maintain. |
 | **Charts**         | Recharts                       | 3.x      | React-native charting library. Composable, lightweight, good Tailwind integration. Covers line, bar, pie, and area charts needed for the dashboard. |
 | **Validation**     | Zod                            | 4.x      | Runtime schema validation shared between client forms and API routes. Single source of truth for data shapes. |
 | **Hosting**        | Vercel (app) + Neon (database) | —        | Vercel for zero-config Next.js deployment with edge functions. Neon for serverless Postgres with branching (useful for staging). Both have generous free tiers. |
+| **i18n**           | next-intl                      | ^4.8.3   | Cookie-based locale persistence. Macedonian (default) and English. `useTranslations()` hook for client, `getTranslations()` for server. |
 | **Password Hash**  | bcrypt                         | 6.x      | Industry standard for password hashing with automatic salt generation.                                  |
 
 ---
@@ -25,7 +28,7 @@
 ```
 wonder-woman-fitness/
 ├── prisma/
-│   ├── schema.prisma              # Database schema (9 models, 4 enums)
+│   ├── schema.prisma              # Database schema (11 models, 4 enums)
 │   └── seed.ts                    # Seed script (owner account, sample data)
 ├── generated/
 │   └── prisma/                    # Prisma 7 generated client (adapter pattern, gitignored)
@@ -69,12 +72,11 @@ wonder-woman-fitness/
 │   │   ├── payments/page.tsx              # Payment tracking
 │   │   ├── private-sessions/page.tsx      # Private session management
 │   │   └── trainers/page.tsx              # Trainer account management
-│   ├── api/                       # API route handlers (29 route files, all rate-limited)
-│   │   ├── __tests__/                       # API route tests (12 files, 399 tests)
+│   ├── api/                       # API route handlers (31 route files, all rate-limited)
+│   │   ├── __tests__/                       # API route tests (14 files, 458 tests)
 │   │   ├── auth/
 │   │   │   ├── [...nextauth]/route.ts     # NextAuth v5 handler
 │   │   │   ├── register/route.ts          # Member self-registration (creates PendingVerification)
-│   │   │   ├── verify-email/route.ts      # GET: verify email token, create User
 │   │   │   └── resend-verification/route.ts # POST: resend verification email with cooldown
 │   │   ├── members/
 │   │   │   ├── route.ts                   # GET (list), POST
@@ -94,7 +96,8 @@ wonder-woman-fitness/
 │   │   ├── votes/route.ts                 # GET, POST, DELETE
 │   │   ├── payments/
 │   │   │   ├── route.ts                   # GET, POST
-│   │   │   └── [id]/route.ts              # GET, DELETE
+│   │   │   ├── [id]/route.ts              # GET, DELETE
+│   │   │   └── my/route.ts               # GET (member's own payment history)
 │   │   ├── private-sessions/
 │   │   │   ├── route.ts                   # GET, POST
 │   │   │   └── [id]/route.ts              # PATCH, DELETE
@@ -105,17 +108,21 @@ wonder-woman-fitness/
 │   │   │   └── broadcast/
 │   │   │       ├── route.ts               # POST (send broadcast notification)
 │   │   │       └── recipients/route.ts    # GET (preview recipient count)
+│   │   ├── trainers/route.ts              # POST (member-to-trainer promotion)
 │   │   ├── analytics/route.ts             # GET (owner-only dashboard)
 │   │   └── cron/                          # Secured with CRON_SECRET
 │   │       ├── payment-reminders/route.ts # Daily at 9 AM
 │   │       ├── trial-expiration/route.ts  # Daily at 6 AM
-│   │       ├── voting-deadline/route.ts   # Hourly
+│   │       ├── voting-deadline/route.ts   # Daily at midnight
 │   │       └── cleanup-pending/route.ts   # Daily at 3 AM (expired verifications)
+│   ├── page.tsx                   # Root redirect to /login
+│   ├── error.tsx                  # Root error boundary
+│   ├── not-found.tsx              # 404 page
 │   ├── globals.css                # Tailwind v4 CSS config (@theme directive)
 │   ├── manifest.ts                 # PWA web app manifest
 │   └── layout.tsx                 # Root layout (Header, auth provider)
 ├── components/
-│   ├── ui/                        # 13 primitives (Badge, Button, Card, ConfirmationModal,
+│   ├── ui/                        # 12 primitives (Badge, Button, Card, ConfirmationModal,
 │   │                              #   DatePicker, DateTimePicker, Input, Modal, Select,
 │   │                              #   Spinner, Textarea, Toast)
 │   ├── schedule/                  # 10 components (WeeklyCalendar, SessionCard, CreateSessionModal,
@@ -130,14 +137,14 @@ wonder-woman-fitness/
 │   ├── analytics/                 # 7 components (MetricCard, AttendanceChart, RevenueChart,
 │   │                              #   RetentionChart, DateRangeFilter, MemberAttendanceTable,
 │   │                              #   VoteVsActualCards)
-│   └── layout/                    # 6 components (Header, Navigation, BottomNav, Footer, AuthBackground, LanguageToggle)
+│   └── layout/                    # 5 components (Header, Navigation, Footer, AuthBackground, LanguageToggle)
 ├── lib/
 │   ├── prisma.ts                  # Prisma 7 singleton (PrismaPg adapter)
 │   ├── auth.ts                    # NextAuth full config (server-only, uses Prisma)
 │   ├── auth.config.ts             # NextAuth edge-compatible config (no Prisma)
 │   ├── email.ts                   # Resend client + email templates
 │   ├── cloudinary.ts              # Upload helper
-│   ├── constants.ts               # All magic numbers and enums (~177 lines)
+│   ├── constants.ts               # All magic numbers and enums (~186 lines)
 │   ├── cron-auth.ts               # Timing-safe cron secret verification
 │   ├── payment-logic.ts           # Computed payment status engine
 │   ├── rate-limit.ts              # In-memory sliding-window rate limiter
@@ -145,9 +152,8 @@ wonder-woman-fitness/
 │   ├── session-generation.ts      # generateSessionsForWeek() with carry-forward
 │   ├── notifications.ts           # dispatchNotification() email + in-app
 │   ├── env.ts                     # Centralized environment variable validation
-│   ├── email-verification.ts      # Email verification helpers, token generation
 │   ├── attendance-analytics.ts    # Shared attendance analytics computation
-│   └── __tests__/                 # 15 business logic test files (297 tests)
+│   └── __tests__/                 # 20 business logic test files (632 tests)
 ├── types/
 │   ├── index.ts                   # Shared TypeScript types + Zod schemas (strict, with length limits)
 │   └── __tests__/
@@ -160,8 +166,8 @@ wonder-woman-fitness/
 ├── i18n/
 │   └── request.ts                   # next-intl configuration, cookie-based locale
 ├── messages/
-│   ├── en.json                      # English translations (~680 keys)
-│   └── mk.json                      # Macedonian translations (~680 keys)
+│   ├── en.json                      # English translations (~613 keys)
+│   └── mk.json                      # Macedonian translations (~613 keys)
 ├── public/
 │   ├── icon-192.png                 # PWA icon (192×192)
 │   └── icon-512.png                 # PWA icon (512×512, maskable)
@@ -302,7 +308,7 @@ NotificationType: WORKOUT_POSTED | VOTING_OPENED | CLASS_CANCELLED |
                   MEMBER_MOVED | PAYMENT_REMINDER | LOCKOUT |
                   MEMBER_DEPARTED | REJOIN_REQUEST | TRIAL_EXPIRING |
                   TRIAL_EXPIRED | SESSION_DELETED | MANUAL_REMINDER |
-                  BROADCAST | ROLE_CHANGED
+                  ROLE_CHANGED
 ```
 
 ---
@@ -378,7 +384,7 @@ In-app notifications are fetched client-side by polling `GET /api/notifications?
 | `payment-reminders`      | Daily at 9:00 AM  | Check all active members. Send reminders on day 1, 7. Lock out on day 11. |
 | `trial-expiration`       | Daily at 6:00 AM  | Check trial members. Notify owner and member 2 days before payment deadline. |
 | `voting-deadline`        | Daily at midnight | Lock voting on sessions where deadline has passed.                     |
-| `cleanup-pending`        | Daily at 3:00 AM  | Delete expired PendingVerification records (token > 1 hour old).           |
+| `cleanup-pending`        | Daily at 3:00 AM  | Delete expired PendingVerification records (token > 24 hours old).           |
 
 Cron routes are secured with a `CRON_SECRET` header that Vercel injects automatically.
 
@@ -463,7 +469,7 @@ Cron routes are secured with a `CRON_SECRET` header that Vercel injects automati
 - All passwords hashed with bcrypt (12 salt rounds).
 - JWT-based sessions via NextAuth.js. Token contains: `userId`, `role`, `status`.
 - Session token stored in an HTTP-only, secure, SameSite cookie.
-- Password reset via time-limited email token (expires in 1 hour).
+- Password reset page directs users to contact support (full email-based reset flow not yet implemented).
 
 ### 6.2 Authorization Matrix
 
@@ -505,7 +511,7 @@ NEXTAUTH_URL=https://wonderwomanfitness.org
 
 # Email
 RESEND_API_KEY=re_...
-EMAIL_FROM=noreply@wonderwomanfitness.org
+EMAIL_FROM=noreply@contact.wonderwomanfitness.org
 
 # File Storage
 CLOUDINARY_CLOUD_NAME=...
@@ -626,9 +632,9 @@ The owner can be assigned as a trainer to sessions, appearing in all trainer sel
 ### 9.13 Email Verification
 
 New member registration uses a two-step verification flow:
-1. `POST /api/auth/register` creates a `PendingVerification` record (not a User) with a hashed password, a unique token, and a 1-hour expiry.
+1. `POST /api/auth/register` creates a `PendingVerification` record (not a User) with a hashed password, a unique token, and a 24-hour expiry.
 2. Verification email sent via Resend with a link to `/verify-email?token=...`.
-3. `GET /api/auth/verify-email` validates the token, creates the User, deletes the PendingVerification record.
+3. Server action at `app/(auth)/verify-email/actions.ts` validates the token, creates the User, deletes the PendingVerification record.
 4. Resend endpoint (`POST /api/auth/resend-verification`) with 60-second cooldown and max 5 resend attempts.
 5. Daily cron job (`/api/cron/cleanup-pending`) deletes expired records at 3 AM.
 
@@ -656,17 +662,16 @@ Session cards display color-coded backgrounds based on member state:
 - Grey/dimmed: Cancelled sessions (60% opacity)
 - Mobile: Colored left border for compact visual status
 
-### 9.17 Mobile UX Enhancements
+### 9.17 Mobile UX
 
-- `BottomNav` component for mobile members and trainers (replaces sidebar on small screens)
-- Haptic feedback on successful vote submission
-- Refresh button on member schedule page
-- Compact horizontal chips for who's-coming list on mobile
+- Mobile-centered DatePicker/DateTimePicker popups with backdrop overlay (centered on screen instead of anchored to input)
+- `useIsMobile` hook at `hooks/useIsMobile.ts` detects mobile viewport (`< 768px`) and triggers mobile-specific UI behavior
+- Responsive Tailwind layouts with mobile-first approach (base styles for mobile, `sm:`/`md:`/`lg:` breakpoint overrides)
 
 ### 9.18 Internationalization (i18n)
 
 Full Macedonian and English language support via `next-intl`:
-- `messages/en.json` and `messages/mk.json` contain ~680 translation keys each
+- `messages/en.json` and `messages/mk.json` contain ~613 translation keys each
 - `i18n/request.ts` configures locale detection from `NEXT_LOCALE` cookie
 - `LanguageToggle` component in header and auth pages switches locale via cookie + page reload
 - Client components use `useTranslations(namespace)` hook

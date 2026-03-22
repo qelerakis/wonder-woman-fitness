@@ -8,13 +8,13 @@
 
 Wonder Woman Fitness is a web-based boutique fitness studio management platform. It has three user roles (Owner, Trainer, Member) and handles scheduling, attendance voting, cash payment tracking, notifications, and analytics for a single gym.
 
-**Project status**: Feature-complete. All MVP features + post-MVP additions implemented and tested. 2,881 tests passing across 78 test files. Production build succeeds.
+**Project status**: Feature-complete. All MVP features + post-MVP additions implemented and tested. 2,881 tests across 78 test files. Production build succeeds.
 
 **Key documents** — read these first:
 - `PRD.md` — What was built and why (includes implementation status)
 - `ARCHITECTURE.md` — How the system is designed, tech stack, data flow, and design decisions
 - `DEPLOYMENT.md` — Production deployment guide (Vercel + Neon + Resend + Cloudinary)
-- `docs/plans/` — 23 design and implementation plan documents
+- `docs/plans/` — 40 design and implementation plan documents
 
 ---
 
@@ -188,15 +188,62 @@ npx prisma migrate deploy
 ### 4.8 Constants
 - All magic numbers live in `lib/constants.ts`. Never hardcode numbers in business logic.
   ```typescript
+  // Class & Schedule
   export const MAX_CLASS_SIZE = 30;
-  export const GRACE_PERIOD_DAYS = 10;
-  export const TRIAL_DAYS = 14;
   export const SLOT_START_HOUR = 7;
   export const SLOT_END_HOUR = 22;
-  export const NOTIFICATION_POLL_INTERVAL_MS = 30_000;
-  export const VOTING_DEADLINE_HOURS_BEFORE = 24;
-  export const TIME_FORMAT = 'HH:mm';
+
+  // Payment & Trial
+  export const GRACE_PERIOD_DAYS = 10;
+  export const TRIAL_DAYS = 14;
+  export const PAYMENT_REMINDER_DAYS = [1, 7, 11] as const;
   export const PAYMENTS_START_YEAR = 2025;
+
+  // Voting
+  export const VOTING_DEADLINE_HOURS_BEFORE = 24;
+  export const VOTING_URGENCY_HOURS = 6;
+
+  // Notifications
+  export const NOTIFICATION_POLL_INTERVAL_MS = 30_000;
+  export const TRIAL_EXPIRATION_WARNING_DAYS = 2;
+  export const LOW_ATTENDANCE_THRESHOLD = 2;
+
+  // Date & Time Formats
+  export const TIME_FORMAT = 'HH:mm';
+  export const DATE_FORMAT = 'yyyy-MM-dd';
+  export const DATETIME_FORMAT = 'yyyy-MM-dd HH:mm';
+
+  // Text Field Limits
+  export const MAX_NAME_LENGTH = 100;
+  export const MAX_EMAIL_LENGTH = 254;
+  export const MAX_WORKOUT_DETAILS_LENGTH = 2000;
+  export const MAX_BROADCAST_BODY_LENGTH = 500;
+  // ... and 15+ more MAX_* constants
+
+  // Security
+  export const BCRYPT_ROUNDS = 12;
+  export const MIN_PASSWORD_LENGTH = 8;
+  export const VERIFICATION_EXPIRY_HOURS = 24;
+  export const VERIFICATION_MAX_RESENDS = 5;
+  export const VERIFICATION_RESEND_COOLDOWN_MS = 60_000;
+  export const BROADCAST_RATE_LIMIT_MAX = 10;
+
+  // Pagination
+  export const DEFAULT_PAGE_SIZE = 20;
+  export const MAX_PAGE_SIZE = 100;
+
+  // Session Generation
+  export const MAX_WEEKS_AHEAD_TO_GENERATE = 4;
+
+  // Cron Schedules
+  export const CRON_SCHEDULES = {
+    PAYMENT_REMINDERS: '0 9 * * *',
+    TRIAL_EXPIRATION: '0 6 * * *',
+    VOTING_DEADLINE: '0 0 * * *',
+  } as const;
+
+  // Email
+  export const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@contact.wonderwomanfitness.org';
   ```
 
 ---
@@ -327,7 +374,7 @@ DATABASE_URL=             # Neon PostgreSQL connection string
 NEXTAUTH_SECRET=          # Random 32+ char string (run: openssl rand -base64 32)
 NEXTAUTH_URL=             # http://localhost:3000 in dev
 RESEND_API_KEY=           # From resend.com dashboard
-EMAIL_FROM=               # noreply@wonderwomanfitness.org
+EMAIL_FROM=               # noreply@contact.wonderwomanfitness.org
 CLOUDINARY_CLOUD_NAME=    # From Cloudinary dashboard
 CLOUDINARY_API_KEY=       # From Cloudinary dashboard
 CLOUDINARY_API_SECRET=    # From Cloudinary dashboard
@@ -411,7 +458,7 @@ CRON_SECRET=              # Random 32+ char string for securing cron endpoints
 | `session-trainers.test.ts` | 15 | Assign/remove trainers, auth, owner-as-trainer |
 | `mark-all-read.test.ts` | 12 | Mark all notifications as read |
 
-### UI Components (42 files, 1,640 tests)
+### UI Components (42 files, 1,705 tests)
 | File | Tests | What it covers |
 |---|---|---|
 | `MemberSessionDetailClient.test.tsx` | 154 | Session detail, voting UI, full/same-day constraints, assigned members |
@@ -421,19 +468,20 @@ CRON_SECRET=              # Random 32+ char string for securing cron endpoints
 | `PaymentsClient.test.tsx` | 82 | Payment list, filters, edit/delete, date range |
 | `DatePicker.test.tsx` | 80 | Calendar navigation, date selection, custom styling, mobile |
 | `SendNotificationModal.test.tsx` | 75 | Broadcast modal, audience targeting, recipient preview |
+| `TrainerPaymentsClient.test.tsx` | 71 | Trainer payment recording, member status view, search |
 | `DashboardClient.test.tsx` | 68 | Analytics metrics, date range filters, attendance data |
 | `ProfileClient.test.tsx` | 65 | Member profile, payment info section, edit form |
 | `PaymentInfoSection.test.tsx` | 58 | Payment status display, date grid, payment history |
 | `TrainersClient.test.tsx` | 54 | Trainer list, member-to-trainer promotion UI |
 | `AssignmentToggleList.test.tsx` | 51 | Toggle lists, search bar, capacity, disabled states |
-| `TrainerPaymentsClient.test.tsx` | 45 | Trainer payment recording, member status view, search |
+| `icon-svg.test.ts` | 46 | SVG icon generation tests |
 | `Button.test.tsx` | 40 | Variants, sizes, states, accessibility |
+| `CreateSessionModal.test.tsx` | 38 | One-off, new recurring, validation |
 | `ConfirmationModal.test.tsx` | 37 | Confirm/cancel actions, keyboard nav, focus trap |
 | `CheckEmailPage.test.tsx` | 34 | Email verification check page, resend button |
 | `SessionDetailClient.test.tsx` | 33 | Owner session management, assignments, workouts, attendance |
 | `PaymentHistory.test.tsx` | 31 | Payment records display, filtering |
 | `generated-icons.test.ts` | 30 | PWA icon validation, dimensions, file size |
-| `icon-svg.test.ts` | 30 | SVG icon generation tests |
 | `VotingPrompt.test.tsx` | 30 | Inline voting modal, vote states, constraints |
 | `Modal.test.tsx` | 28 | Keyboard nav, accessibility, focus trap |
 | `AttendanceChecklist.test.tsx` | 27 | Attendance marking UI, present/absent toggles |
@@ -447,7 +495,6 @@ CRON_SECRET=              # Random 32+ char string for securing cron endpoints
 | `next-intl-mock.test.ts` | 17 | next-intl mock verification |
 | `TrainerSessionDetailClient.test.tsx` | 17 | Trainer session view, workout editor |
 | `MemberTable.test.tsx` | 16 | Member table display, sorting |
-| `CreateSessionModal.test.tsx` | 15 | One-off, new recurring, validation |
 | `LoginPage.test.tsx` | 15 | Sign-in form, verification hint |
 | `layout-metadata.test.ts` | 13 | Root layout metadata, PWA config |
 | `Footer.test.tsx` | 12 | Footer display, i18n integration |
