@@ -8,7 +8,7 @@
 | **Version**        | 1.0 (MVP) — Feature Complete                |
 | **Platform**       | Web Application                             |
 | **Author**         | —                                           |
-| **Last Updated**   | March 13, 2026                              |
+| **Last Updated**   | March 22, 2026                              |
 | **Status**         | Complete — All MVP features implemented     |
 | **Domain**         | wonderwomanfitness.org                      |
 
@@ -76,8 +76,11 @@ Trainers have their own login credentials and a scoped set of permissions.
 |-----------------------------------|---------------------------------------------------------------|
 | Post workouts                     | Write and publish workout details for their assigned sessions  |
 | View assigned sessions            | See schedule for sessions they are assigned to                 |
-| Track member attendance           | View which members are in their sessions and attendance status |
+| Create recurring slots & sessions | Create recurring slots and one-off sessions                    |
+| Track member attendance           | View which members are in their sessions and mark attendance (present/absent) |
+| Record payments                   | Record payments on behalf of the owner                         |
 | View member payment status        | See which members are paid, unpaid, or overdue to assist with cash collection |
+| View private sessions             | Read-only access to private sessions for scheduling coordination |
 
 ### 2.3 Member
 
@@ -104,16 +107,17 @@ Members have a consumer-facing experience focused on viewing and interacting.
 
 **Acceptance Criteria**:
 - Members can register with name, phone, email, and password.
-- Upon registration, members are in an "active" state and can browse the app.
+- Upon registration, a verification email is sent. After clicking the verification link, members receive TRIAL status and can browse the app.
+- Trial members see a "Payment due" banner with a 14-day countdown from registration. After 14 days without payment, members are locked out.
 - Owner can create trainer accounts from the admin panel.
 - Passwords must meet minimum security requirements (8+ characters, at least one number and one special character).
-- Users can reset their password via email.
+- Password reset page directs users to contact support (full email-based reset flow not yet implemented).
 
 ---
 
 ### 3.2 Schedule Management
 
-The schedule follows a **recurring weekly structure** — the same time slots repeat every week. Workouts assigned to those slots change on a weekly basis. Time slots run from **7:00 AM to 11:00 PM**, with each slot lasting **one hour** (16 possible slots per day).
+The schedule follows a **recurring weekly structure** — the same time slots repeat every week. Workouts assigned to those slots change on a weekly basis. Time slots run from **07:00 to 22:00** (last slot starts at 22:00), with each slot lasting **one hour** (16 possible slots per day).
 
 **Owner Capabilities**:
 - Define recurring weekly time slots (e.g., Monday 9:00 AM, Monday 10:00 AM, etc.).
@@ -271,7 +275,7 @@ Notifications are delivered via **two channels**: email and in-app web notificat
 - Email notifications include clear subject lines and action links back to the app.
 - Web notifications appear as a badge/bell icon in the app header with a dropdown of recent notifications.
 - Members can view a notification history page.
-- Notification delivery failures (bounced emails) are logged for the owner to review.
+- Notification delivery failure logging (bounced emails) for the owner to review is planned but not yet implemented.
 
 ---
 
@@ -332,10 +336,10 @@ New members receive a **2-week free trial** upon registration before their first
 **Rules**:
 - The trial begins on the member's registration date (join date).
 - During the trial, the member has **full access** to all member features: schedule, workouts, voting, notifications.
-- No payment banners or reminders are shown during the trial period.
-- On the day the trial expires, the member transitions to the standard payment cycle:
+- Trial members see a "Payment due" grace period banner with a 14-day countdown from registration.
+- On the day the trial expires (14 days), if unpaid, the member is locked out:
   - They are treated as if it is "day 1" of their first payment month.
-  - The 10-day grace period applies from the trial expiration date for their first month only. Subsequent months follow the standard 1st-of-month cycle.
+  - Subsequent months follow the standard 1st-of-month cycle with a 10-day grace period.
 
 **Owner Visibility**:
 - Trial members are visually tagged in the members list (e.g., "Trial — 5 days left").
@@ -345,8 +349,7 @@ New members receive a **2-week free trial** upon registration before their first
 **Acceptance Criteria**:
 - Trial period is exactly 14 days from the registration date.
 - The system automatically transitions the member from trial to active (payment required) status.
-- Trial members are excluded from payment reminders and lockout logic.
-- Owner can manually end a trial early or extend it if needed.
+- Trial members see the grace period banner with a countdown to payment due date.
 - Trial members appear in attendance analytics but are excluded from payment/revenue analytics until their trial ends.
 
 **Edge Cases**:
@@ -481,7 +484,7 @@ The analytics dashboard gives the owner a real-time view of business health and 
 - Single-gym architecture (one owner, one business)
 - 2-week free trial for new members with automatic transition to paid status
 - Member voluntary departure with optional reason, motivational banner, and rejoin flow
-- Domain: wonderwomanfitness.mk
+- Domain: wonderwomanfitness.org
 
 ### 5.2 Out of Scope (Future Versions)
 
@@ -496,7 +499,7 @@ The analytics dashboard gives the owner a real-time view of business health and 
 - Member-to-member social features (comments, reactions)
 - Integration with third-party calendar apps (Google Calendar, Apple Calendar)
 - SMS notifications
-- Multi-language support
+- ~~Multi-language support~~ [Implemented — see Post-MVP #24]
 
 ---
 
@@ -509,12 +512,12 @@ The analytics dashboard gives the owner a real-time view of business health and 
 | **Database**     | PostgreSQL                           | Relational data (members, payments, sessions) fits naturally. Robust and scalable. |
 | **ORM**          | Prisma                               | Type-safe database access, excellent migration tooling.       |
 | **Auth**         | NextAuth.js (Auth.js)                | Built-in email/password support, session management, role-based access. |
-| **Email**        | Resend or SendGrid                   | Transactional email delivery for notifications and reminders. |
-| **Notifications**| Web Push API + in-app notification system | Real-time web notifications via the browser.              |
-| **File Storage** | Cloudinary or AWS S3                 | Member photo uploads.                                         |
-| **Hosting**      | Vercel (frontend) + Railway/Render (DB) | Low-ops deployment, scales easily, generous free tiers.    |
-| **Scheduling**   | node-cron or Vercel Cron Jobs        | Automated payment reminders on day 1, 7, and 11.             |
-| **Analytics**    | Recharts or Chart.js                 | Interactive, lightweight charting for the owner dashboard.    |
+| **Email**        | Resend                               | Transactional email delivery for notifications and reminders. |
+| **Notifications**| In-app polling + Resend email        | In-app notification bell with polling, email for important events. |
+| **File Storage** | Cloudinary                           | Member photo uploads.                                         |
+| **Hosting**      | Vercel (frontend) + Neon (DB)        | Low-ops deployment, scales easily, generous free tiers.       |
+| **Scheduling**   | Vercel Cron Jobs                     | Automated payment reminders on day 1, 7, and 11.             |
+| **Analytics**    | Recharts                             | Interactive, lightweight charting for the owner dashboard.    |
 
 ---
 
@@ -593,9 +596,9 @@ This section outlines the primary screens to be designed and built.
 | #  | Question                                                                                    | Resolution |
 |----|---------------------------------------------------------------------------------------------|------------|
 | 1  | Should trainers be able to see payment status of members, or is that owner-only?             | **Yes** — trainers can see payment status since they also handle cash collection. |
-| 2  | What is the maximum number of time slots per day?                                            | **16 slots** — from 7:00 AM to 11:00 PM, one hour each. |
+| 2  | What is the maximum number of time slots per day?                                            | **16 slots** — from 07:00 to 22:00 (last slot starts at 22:00), one hour each. |
 | 3  | Should members be able to delete their own accounts, or only the owner?                      | Members can **deactivate** ("stop training") with an optional reason. They see a motivational banner and can request to rejoin. The owner is notified for personal outreach. Departed members are excluded from payments and projected earnings. |
-| 4  | Is there a preferred domain name for the web app?                                            | **wonderwomanfitness.mk** |
+| 4  | Is there a preferred domain name for the web app?                                            | **wonderwomanfitness.org** |
 | 5  | Should the app support a "trial" period for new members before their first payment is due?   | **Yes** — 2-week free trial with full access. After trial, standard payment cycle begins with a 10-day grace period for the first month. |
 | 6  | What happens if a member's move is declined — does the original class stay cancelled?        | **The move is final.** The original class stays cancelled and the member is notified of their new assignment. |
 
@@ -603,7 +606,7 @@ This section outlines the primary screens to be designed and built.
 
 ---
 
-## 12. Implementation Status (as of March 13, 2026)
+## 12. Implementation Status (as of March 22, 2026)
 
 All MVP features defined in this PRD have been implemented and tested. The application is feature-complete and production-ready.
 
@@ -617,7 +620,7 @@ All MVP features defined in this PRD have been implemented and tested. The appli
 | Attendance Voting | Done | 24h deadline, inline voting modal for members |
 | Payment Tracking | Done | Computed status (never stored), grace period, lockout, edit/delete |
 | Private Sessions | Done | Full CRUD, payment tracking, audit trail, trainer visibility |
-| Notifications | Done | 12 types, email + in-app, 4 automated cron jobs, broadcast messaging |
+| Notifications | Done | 13 types, email + in-app, 4 automated cron jobs, broadcast messaging |
 | Member Profile | Done | Edit name, phone, email, photo (Cloudinary) |
 | Member Departure | Done | Voluntary departure, motivational banner, rejoin flow |
 | Trial Period | Done | 14-day trial merged into grace period, auto-transition, owner notifications |
@@ -648,18 +651,18 @@ These features were added during development to address real workflow needs:
 10. **Private Session Trainer Visibility** — Trainers can view private sessions (read-only) for scheduling coordination.
 11. **Payment Edit/Delete** — Owner can edit and delete payment records with confirmation.
 12. **Date Range Filters** — Custom date range filtering on payments page and analytics dashboard.
-13. **Security Hardening** — Rate limiting on all 21 API endpoints (sliding-window, per-IP), Content-Security-Policy header, `.strict()` on all Zod schemas to reject unexpected fields, Zod-validated query parameters for GET endpoints, string length limits on all text fields.
+13. **Security Hardening** — Rate limiting on all API endpoints (sliding-window, per-IP), Content-Security-Policy header, `.strict()` on all Zod schemas to reject unexpected fields, Zod-validated query parameters for GET endpoints, string length limits on all text fields.
 14. **Trial-as-Grace-Period** — Trial period merged into the grace period flow. Trial members see "Payment due" from day 1 with a 14-day countdown (no separate TRIAL payment status).
 15. **Voter Cancellation Notifications** — Members notified when sessions with their votes are cancelled.
 16. **Owner as Trainer** — Owner appears in trainer selection lists and can be assigned as a trainer to sessions.
-17. **Email Verification** — New members register through a PendingVerification flow. A verification email with a token link is sent on registration. Token expires after 1 hour. Resend with cooldown (60s) and max attempts. Expired records cleaned up by daily cron job.
+17. **Email Verification** — New members register through a PendingVerification flow. A verification email with a token link is sent on registration. Token expires after 24 hours. Resend with cooldown (60s) and max attempts. Expired records cleaned up by daily cron job.
 18. **Attendance Tracking** — Owner and trainers can mark members as present/absent after sessions occur. AttendanceRecord model tracks who attended, who marked them, and when. Integrated into dashboard analytics with member attendance rates and vote-vs-actual reliability metrics.
 19. **Broadcast Notifications** — Owner can send custom notifications to targeted member groups: all active members, trial members, members from a specific session slot, members by payment status, or individually selected members. Includes live recipient count preview and confirmation step.
 20. **Session Card Color States** — Session cards display color-coded backgrounds: yellow/amber when voting is needed, green when the user is going (voted yes or assigned). Cancelled sessions are greyed out. Mobile view uses colored left borders for compact visual status.
 21. **Assigned Members Card** — For non-voting (assignment-based) sessions, assigned members see a "Members" card showing all other assigned members with avatar initials. Only visible to assigned members when voting is disabled.
 22. **Attendance Analytics Refinements** — Dashboard attendance analytics refined: VoteVsActual metric only counts voting sessions (sessions with at least 1 vote). Member "Expected" sessions include both assigned sessions and sessions they voted yes on. Removed chart-based visualizations in favor of focused metrics.
-23. **Mobile UX Enhancements** — Bottom navigation bar for mobile members and trainers. Haptic feedback on successful vote. Refresh button on member schedule page. Compact horizontal chips for who's-coming list on mobile.
-24. **Internationalization (Macedonian & English)** — Full i18n support via `next-intl`. ~680 translation keys per locale. Cookie-based locale persistence (`NEXT_LOCALE`). Language toggle in header and auth pages. Test mock auto-loaded.
+23. **Mobile Responsive Layouts** — Responsive layouts throughout the app using Tailwind breakpoints. `useIsMobile` hook for responsive behavior (< 768px viewport detection).
+24. **Internationalization (Macedonian & English)** — Full i18n support via `next-intl`. ~613 translation keys per locale. Cookie-based locale persistence (`NEXT_LOCALE`). Language toggle in header and auth pages. Test mock auto-loaded.
 25. **PWA Support** — Web app manifest (`app/manifest.ts`) with standalone display, theme color `#9333ea`, and maskable icons (192×192, 512×512). Enables mobile home screen installation.
 26. **Footer Component** — Minimal footer in root layout showing author attribution. Uses i18n translations. Sticks to viewport bottom via flex layout.
 27. **Search in Assignment Lists** — Optional search bar in `AssignmentToggleList` for filtering trainers/members by name. Case-insensitive, with disabled state support.
@@ -668,6 +671,7 @@ These features were added during development to address real workflow needs:
 30. **Animated Auth Background** — Three floating gradient orbs with CSS keyframe animations on auth pages. Respects `prefers-reduced-motion`.
 31. **Member Payment Profile** — Members view their own payment status, date grid, and history via `GET /api/payments/my` endpoint and `PaymentInfoSection` component.
 32. **Domain Configuration** — Production domain changed to `wonderwomanfitness.org` with 301 redirects from www and Vercel subdomains.
+33. **Mobile-Centered Date Pickers** — DatePicker and DateTimePicker popups center on screen with backdrop overlay on mobile viewports (< 768px). Uses `useIsMobile` hook for responsive behavior detection.
 
 ### Tech Stack (Actual Versions)
 
@@ -683,7 +687,7 @@ These features were added during development to address real workflow needs:
 | File Storage | Cloudinary | 2.9.0 |
 | Charts | Recharts | 3.7.0 |
 | Validation | Zod | 4.3.6 |
-| i18n | next-intl | Latest |
+| i18n | next-intl | ^4.8.3 |
 | Testing | Vitest | 4.0.18 |
 | React | React + React DOM | 19.2.4 |
 | Password Hash | bcrypt | 6.0.0 |
