@@ -21,6 +21,17 @@ vi.mock("@/components/layout/LanguageToggle", () => ({
   ),
 }));
 
+// Mock AuthBackground to render on server during tests
+vi.mock("@/components/layout/AuthBackground", () => ({
+  AuthBackground: () => (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+      data-testid="auth-background"
+    />
+  ),
+}));
+
 // ===== Helpers =====
 
 async function renderAuthLayout(children?: React.ReactNode) {
@@ -217,17 +228,18 @@ describe("AuthLayout", () => {
       const outerDiv = container.firstChild as HTMLElement;
       const children = Array.from(outerDiv.children);
 
-      // First child is the animated background (aria-hidden)
-      expect(children[0].getAttribute("aria-hidden")).toBe("true");
+      // Note: AuthBackground is lazy-loaded with ssr: false, so it won't be
+      // in the server-rendered DOM during tests. The first visible child is the toggle.
+      // In production, the background loads client-side after hydration.
 
-      // Second child should contain the toggle
-      const toggleContainer = children[1] as HTMLElement;
+      // First child should be the toggle (background won't render on server)
+      const toggleContainer = children[0] as HTMLElement;
       expect(
         toggleContainer.querySelector("[data-testid='language-toggle']")
       ).toBeTruthy();
 
-      // Third child should contain the brand and card
-      const contentContainer = children[2] as HTMLElement;
+      // Second child should contain the brand and card
+      const contentContainer = children[1] as HTMLElement;
       expect(contentContainer.querySelector("h1")).toBeTruthy();
     });
 

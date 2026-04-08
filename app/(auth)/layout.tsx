@@ -1,6 +1,14 @@
 import { getTranslations } from "next-intl/server";
 import { LanguageToggle } from "@/components/layout/LanguageToggle";
-import { AuthBackground } from "@/components/layout/AuthBackground";
+import dynamic from "next/dynamic";
+
+const AuthBackground = dynamic(
+  () =>
+    import("@/components/layout/AuthBackground").then((m) => ({
+      default: m.AuthBackground,
+    })),
+  { ssr: false }
+);
 
 export default async function AuthLayout({
   children,
