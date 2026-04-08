@@ -10,6 +10,6 @@ const AuthBackground = dynamic(
   { ssr: false }
 );
 
-export function LazyAuthBackground(): React.ReactElement | null {
+export function LazyAuthBackground(): React.ReactElement {
   return <AuthBackground />;
 }
