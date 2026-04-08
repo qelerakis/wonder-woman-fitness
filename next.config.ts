@@ -48,6 +48,9 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["@prisma/client", "@prisma/adapter-pg", "bcrypt"],
+  experimental: {
+    optimizePackageImports: ["date-fns", "recharts", "next-intl"],
+  },
   async headers() {
     return [
       {
