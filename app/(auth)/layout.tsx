@@ -1,14 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { LanguageToggle } from "@/components/layout/LanguageToggle";
-import dynamic from "next/dynamic";
-
-const AuthBackground = dynamic(
-  () =>
-    import("@/components/layout/AuthBackground").then((m) => ({
-      default: m.AuthBackground,
-    })),
-  { ssr: false }
-);
+import { LazyAuthBackground } from "@/components/layout/LazyAuthBackground";
 
 export default async function AuthLayout({
   children,
@@ -20,7 +12,7 @@ export default async function AuthLayout({
   return (
     <div className="relative flex flex-1 items-center justify-center overflow-hidden bg-surface-950 px-4">
       {/* Animated Background */}
-      <AuthBackground />
+      <LazyAuthBackground />
 
       {/* Language Toggle */}
       <div className="absolute top-4 right-4 z-10">
